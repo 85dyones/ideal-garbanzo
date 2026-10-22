@@ -29,6 +29,6 @@ A sessão principal é o orquestrador (T2). Ela despacha subtarefas aos subagent
 
 ## Estado do projeto
 
-- A pasta ainda não é um repositório Git (pré-requisito P1). Sem worktree, não despachar `builder`.
+- Repositório Git na branch `main`; remoto `origin` = `https://github.com/85dyones/ideal-garbanzo.git`. Push só com aprovação explícita.
 - Comandos de build, lint e teste: definidos na S0.2; registrar aqui quando existirem.
 - Modelos dos subagentes: não configurados até P3/P4; os subagentes herdam o modelo padrão da instalação.

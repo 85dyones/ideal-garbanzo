@@ -35,7 +35,7 @@ Referências como §6.2 apontam para seções da especificação.
 
 | Etapa | Status | Gate de saída |
 |---|---|---|
-| Pré-requisitos P1–P6 | não iniciado | worktree funcional e perfis validados ou fallback documentado |
+| Pré-requisitos P1–P6 | em andamento (P1 concluída) | worktree funcional e perfis validados ou fallback documentado |
 | Sprint 0: Fundação | não iniciado | app local e em homologação |
 | Sprint 1: Identidade e organizações | não iniciado | isolamento entre empresas comprovado |
 | Sprint 2: Veículos e ofertas | não iniciado | publicar e retirar com histórico |
@@ -100,7 +100,7 @@ Valem para todas as sprints, independentemente do modelo:
 
 # 5. PRÉ-REQUISITOS ANTES DA SPRINT 0
 
-**Estado atual:** a pasta não é um repositório Git, não há código e os subagentes de `.claude/agents/` ainda não foram validados contra o gateway. Sem Git não existe worktree, portanto nenhum T1 pode ser despachado antes de P1.
+**Estado atual:** P1 concluída: repositório Git na branch `main`, com remoto `origin` em `github.com/85dyones/ideal-garbanzo`, ainda sem push. Não há código, e os subagentes de `.claude/agents/` ainda não foram validados contra o gateway.
 
 | ID | Item | Nível | Aceite |
 |---|---|---|---|
