@@ -1,0 +1,27 @@
+# Segredos e variáveis de ambiente (valores reais nunca entram no repositório)
+.env
+.env.*
+!.env.example
+
+# Dependências e build
+node_modules/
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+
+# Logs
+*.log
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Claude Code: configuração pessoal e worktrees dos subagentes
+.claude/settings.local.json
+.claude/worktrees/
