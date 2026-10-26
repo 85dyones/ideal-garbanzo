@@ -1,332 +1,334 @@
-# PLANO DE EXECUÇÃO ORQUESTRADO
-## Plataforma B2B de Oportunidades e Repasse de Veículos
+# PLANO DE EXECUÇÃO ORQUESTRADO v2
+## Plataforma privada de oportunidades de repasse de veículos
 
-**Fontes:** `operacao-repasse-origem.md` (especificação v1.0) e `model-orchestration.md` (regras de orquestração)  
-**Status:** plano inicial, antes da Sprint 0  
-**Atualizado em:** 2026-10-22  
-**Responsável pelo aceite:** orquestrador (T2), com aprovação da pessoa responsável pelo produto (H) onde indicado
+**Fontes:** `docs/especificacao/especificacao-v1.1.md` (aprovada em 26/10/2026), `docs/diagnostico/2026-10-26-missao-001.md` e `model-orchestration.md`  
+**Substitui:** o plano v1, baseado na especificação v1.0 (disponível no histórico do Git, commit `b34f01e`)  
+**Atualizado em:** 2026-10-26  
+**Responsável pelo aceite:** orquestrador (T2), com aprovação da pessoa responsável (H) onde indicado
 
-Este plano não altera a especificação. Ele traduz cada sprint do §12 em subtarefas despacháveis, com nível de execução, arquivos permitidos, aceite e verificação. Em conflito, a especificação prevalece sobre este plano quanto às regras de negócio, e o `model-orchestration.md` prevalece quanto ao despacho, ao escalonamento e ao paralelismo.
-
-Referências como §6.2 apontam para seções da especificação.
+Este plano traduz o roteiro da seção 12 da v1.1 em subtarefas despacháveis. Em caso de conflito, a v1.1 prevalece nas regras de negócio, e o `model-orchestration.md` prevalece no despacho, no escalonamento e no paralelismo. "§" indica uma seção da v1.1.
 
 ---
 
-# 1. COMO USAR ESTE PLANO
+# 1. COMO USAR
 
-1. No início de cada sessão, o orquestrador lê `CLAUDE.md`, `docs/workflow/current-task.md`, a sprint atual neste plano, as seções da especificação citadas na subtarefa e o estado do Git.
+1. No início de cada sessão, o orquestrador lê `CLAUDE.md`, `docs/workflow/current-task.md`, o incremento atual deste plano, as seções da v1.1 citadas na subtarefa e o estado do Git.
 2. Copia a subtarefa da vez para `current-task.md`: escopo, arquivos permitidos, entrega, aceite e verificação.
 3. Despacha conforme a coluna **Nível**. Quando o nível é T2, o próprio orquestrador executa.
-4. Ao concluir, registra a evidência real (comandos, saídas, diff) em `current-task.md` e atualiza o quadro de progresso abaixo.
-5. A sprint só fecha quando o gate de saída for cumprido com evidência observada.
+4. Ao concluir, registra em `current-task.md` a evidência real (comandos, saídas, diff) e atualiza o quadro de progresso.
+5. O incremento só fecha quando o gate de saída for cumprido com evidência observada.
 
 **Níveis:**
 
-| Código | Perfil | Quem executa |
+| Código | Quem | Uso |
 |---|---|---|
-| T0 | `fast-helper` | subagente somente leitura |
-| T1 | `builder` | subagente com escrita em worktree isolado |
-| T2 | `orchestrator` | sessão principal do Claude Code |
-| T3 | `reasoning-review` | subagente revisor, somente leitura, de preferência com modelo independente do T2 |
-| TV | `vision-review` | subagente com entrada de imagem confirmada |
-| H | pessoa responsável | ação humana obrigatória |
+| T0 | `fast-helper` | leitura, extração de regras, inventário de código a portar, rascunho de casos de teste |
+| T1 | `builder` | escrita em worktree isolado: telas, testes a partir de tabela aprovada, portes de baixo risco, documentação |
+| T2 | sessão principal | ADRs, migrações, RLS, Storage, operações de servidor críticas, integração de worktrees |
+| T3 | `reasoning-review` | revisão independente, somente leitura, de preferência com modelo diferente do T2 |
+| TV | `vision-review` | screenshots; só com entrada de imagem confirmada |
+| AG | Antigravity | revisão independente externa (briefing §8): riscos, permissões, exposição de documentos, estados documentais |
+| H | pessoa responsável | decisões, credenciais, criação de projetos, deploy, produção, aceite do piloto |
 
 ## Quadro de progresso
 
 | Etapa | Status | Gate de saída |
 |---|---|---|
-| Pré-requisitos P1–P6 | em andamento (P1 concluída) | worktree funcional e perfis validados ou fallback documentado |
-| Sprint 0: Fundação | não iniciado | app local e em homologação |
-| Sprint 1: Identidade e organizações | não iniciado | isolamento entre empresas comprovado |
-| Sprint 2: Veículos e ofertas | não iniciado | publicar e retirar com histórico |
-| Sprint 3: Planos e antecipação | não iniciado | não elegível não obtém dados restritos |
-| Sprint 4: Negociação | não iniciado | rastreio da visualização até a negociação |
-| Sprint 5: Monetização | não iniciado | estados financeiros só mudam por evento confirmado |
-| Sprint 6: Piloto | não iniciado | critérios críticos de produção atendidos |
+| Pré-requisitos P1-P6 | P1 concluída; P2-P6 pausadas | ver seção 5 |
+| Inc. 0: Fundação | não iniciado | app local e em homologação; CI verde; testes de banco executam as migrações |
+| Inc. 1: Identidade e adesão | não iniciado | testes negativos 1, 2 (empresa), 4, 5 e 13 |
+| Inc. 2: Oferta | não iniciado | publica com pendência e mostra aviso; testes 2 (ofertas e documentos), 6, 11 e 12 (preço) |
+| Inc. 3: Domínio documental | não iniciado | estados conforme §6.4; testes 7 e 10; revisão AG |
+| Inc. 4: Catálogo privado | não iniciado | critérios 4, 6, 7 e 10 da §10 |
+| Inc. 5: Ciência e negociação | não iniciado | critérios 8 e 9; testes 2 (negociações), 3, 8 e 9 |
+| Inc. 6: Piloto | não iniciado | os 13 critérios da §10; go/no-go de H |
 
 ---
 
-# 2. CLASSIFICAÇÃO DE RISCO POR MÓDULO
+# 2. RISCO POR MÓDULO
 
-A classificação segue o algoritmo de despacho: risco, reversibilidade, ambiguidade, abrangência e ferramentas, não número de linhas.
-
-| Módulo (§11.1) | Risco | Motivo | Implementação | Revisão T3 |
+| Módulo (§15) | Risco | Motivo | Implementação | Revisão |
 |---|---|---|---|---|
-| `auth` | Crítico | autenticação, sessão, usuário suspenso (§7.2 #3, #6) | T2 | Obrigatória |
-| `organizations` | Crítico | isolamento multiempresa, papéis, RLS (§7.1) | T2; telas em T1 | Obrigatória |
-| `vehicles` | Médio | placa restrita e mídia privada (§4.4, §5.4, §5.5) | T1 nas telas; T2 nas políticas de Storage | Obrigatória para Storage |
-| `offers` | Alto | máquina de estados, publicação, histórico de preço (§5.6, §6.1) | T2 nas operações e consultas; T1 nas telas | Obrigatória |
-| `access-control` | Crítico | acesso premium decidido só no servidor (§1.4, princípio 2; §6.2) | T2 | Obrigatória |
-| `proposals` | Alto | isolamento entre compradores, histórico imutável (§6.3) | T2 nas operações; T1 em favoritos e telas | Obrigatória |
-| `transactions` | Crítico | origem do negócio e evidência de venda (§5.12, §6.4) | T2 | Obrigatória |
-| `commissions` | Crítico | valores financeiros; nunca "paga" sem evidência (§1.4, princípio 4; §6.5) | T2 | Obrigatória |
-| `subscriptions` | Crítico | cobrança e webhooks idempotentes (§6.6) | T2 | Obrigatória |
-| `notifications` | Baixo/médio | não é fonte de verdade (§4.5) | T2 na outbox; T1 em templates e fluxos n8n | Só se tocar dados pessoais |
-| `audit` | Alto | rastreabilidade; não pode registrar segredos (§5.14) | T2 | Junto com cada módulo crítico |
-| Telas (§9) | Médio | estados obrigatórios, mobile-first | T1 | TV quando houver screenshot |
-| Documentação | Baixo | — | T0 rascunha; T1 ou T2 escreve | Não |
+| `auth` | Crítico | sessão, usuário suspenso, papéis de plataforma (§3.1, §6.1) | T2 | T3 obrigatório |
+| `organizations`, `membership` | Crítico | isolamento entre empresas; aprovação | T2; telas T1 | T3 obrigatório |
+| `vehicles` | Alto | placa, RENAVAM e chassi restritos (§7.2) | T2 nas políticas; T1 nas telas | T3 |
+| `offers` | Alto | ciclo de estados, versões, histórico (§6.2, §6.7) | T2 nas regras; T1 nas telas | T3 obrigatório |
+| `documental` | Crítico | estados documentais, origem da informação, nunca simular (§6.3-§6.6) | T2 | T3 e AG obrigatórios |
+| `acknowledgments` | Crítico | ciência vinculada à versão (§6.7) | T2 | T3 obrigatório |
+| `negotiations` | Alto | isolamento entre compradores; eventos só de inclusão (§6.8) | T2 nas regras; T1 nas telas | T3 obrigatório |
+| `outcomes`, `commissions` | Crítico | valores; dependem de C1-C4 | T2 (pós-piloto) | T3 obrigatório |
+| `notifications` | Médio | nunca levar dado restrito (§6.13) | T2 na outbox; T1 nos templates | T3 se tocar dado pessoal |
+| `audit` | Alto | só inclusão; sem segredos (§5.6) | T2 | junto com cada módulo crítico |
+| Telas (§9) | Médio | estados obrigatórios; linguagem proibida (§6.6) | T1 | TV quando houver screenshot |
 
-**Regra derivada:** módulo crítico não aceita fallback heterogêneo silencioso. Se o modelo do T2 ficar indisponível durante uma subtarefa crítica, a subtarefa pausa com handoff (seção 9) em vez de continuar num modelo menos capaz.
+**Regra derivada:** módulo crítico não aceita fallback heterogêneo silencioso. Se o modelo do T2 ficar indisponível numa subtarefa crítica, ela pausa com handoff (seção 9).
 
 ---
 
-# 3. PAPEL DE CADA NÍVEL NESTE PROJETO
+# 3. GATES TRANSVERSAIS
 
-| Nível | Faz neste projeto | Nunca faz |
+Valem para todos os incrementos, independentemente do modelo:
+
+1. **Migrações:** versionadas e executadas de verdade num banco limpo antes da integração. Teste que só confere o texto do SQL não conta (lição do `motors-site-oficial`). Migração destrutiva exige plano e aprovação H.
+2. **Políticas de segurança:** nenhuma política RLS ou de Storage é desabilitada ou afrouxada para um teste passar. `service_role` só em código de servidor; o T2 confere com uma busca no código cliente antes de integrar.
+3. **Testes negativos válidos:** cada teste da §7.4 precisa falhar quando a política correspondente é removida. Essa verificação de mutação é feita pelo T2 ou pelo T3.
+4. **Nunca simular:** nenhuma consulta, resultado ou evidência de exemplo em oferta real. Dados de teste usam `is_test` e ficam identificados (§6.3).
+5. **Linguagem proibida (§6.6):** um teste automatizado varre os textos da interface, dos e-mails e dos guias atrás dos termos proibidos sem a qualificação exigida.
+6. **Separação da Motors (§4.5):** nada de banco, projeto, credencial, conta de provedor ou dado da Motors. Código portado é reescrito para multiempresa e revisado.
+7. **Decisões pendentes (§13):** a estrutura pode ser construída; o comportamento definitivo, não. Padrões provisórios ficam marcados no código e na configuração.
+8. **Produção, push e deploy:** só com aprovação H explícita, por ação.
+9. **Dados:** nenhum dado real de cliente em seed, fixture ou teste.
+10. **Entrega de subagente:** resumo, arquivos e diff, testes executados com saída, limitações e riscos. O T2 inspeciona o diff e roda os testes antes de integrar.
+11. **Definição de pronto (§16):** inclui revisão por um segundo agente; nos módulos críticos, T3, e em documental e piloto, também AG.
+
+---
+
+# 4. MAPA DE REAPROVEITAMENTO
+
+Origem no `motors-site-oficial`, caminhos relativos à raiz desse repositório. Portar significa reescrever no produto novo, nunca importar nem compartilhar.
+
+| Origem | O que portar | Destino | Nível do porte |
+|---|---|---|---|
+| `supabase/migrations/20261006180000_consultas_de_placa.sql`, `20261019120000_niveis_da_consulta_de_placa.sql` | registro só de inclusão; trava de chaves de dado pessoal; nova consulta como linha nova | I3.3 (`vehicle_checks`) | T2 |
+| `supabase/migrations/20260924180000_repasse_fundacao.sql:26-91`, `20260924200000` | CHECKs de completude por estado; RLS com GRANT por coluna | I2.3, I4.1 | T2 |
+| `src/lib/transicoesDoRepasse.ts` | transição decidida em função pura, espelhada no banco | I2.2, I2.6 | T2 |
+| `supabase/migrations/20260807190000` (`historico_veiculo`), `20260829120200` (`veiculo_eventos`) | histórico antes e depois por campo; eventos só de inclusão | I0.6 (`field_history`), I2.3 | T2 |
+| `src/components/admin/repasse/EditorDeRepasse.tsx:283-307` e campos da ficha | campos de declaração (laudo, leilão, sinistro, itens de estado) como **declaração do fornecedor** | I2.7 | T1 |
+| `src/lib/turnstile.ts`, `src/proxy.ts:78-101` | Turnstile e rate limit em formulários públicos e rotas sensíveis | I1.6 | T1, revisão T2 |
+| `src/lib/apiBrasil.ts`, `docs/CONSULTA_DE_DOCUMENTOS.md` | conferência de CNPJ com finalidade LGPD declarada | I1.5, só depois de contrato próprio do provedor | T2 |
+| `.github/workflows/testes.yml`, `tests/migracoes-executam.test.ts` | jobs de CI; execução real das migrações | I0.8 | T2 |
+| `conteudo-seo/pacote/guias/01-08, 23` | conteúdo para guias e checklists | pós-piloto | T1 |
+| ideia do `rede-auto` (`version`, `audit_entries`, `membership_applications`) | versão por agregado; pedido de adesão | I2.2, I1.3 | T2 |
+
+**Não portar:** modelo de uma só empresa, leitura pública do catálogo, feed da RevendaMais, CRM da Motors, modo de homologação da APIBrasil em fluxo real, cliente Evolution (depende de D6).
+
+---
+
+# 5. PRÉ-REQUISITOS
+
+| ID | Item | Nível | Status |
+|---|---|---|---|
+| P1 | Git, `.gitignore`, commit inicial, remoto `origin` | T2 | concluída em 22/10 |
+| P2-P5 | Validar o gateway FreeLLMAPI e os perfis dos subagentes | H + T2 + T3 | pausadas; não bloqueiam os incrementos |
+| P6 | Definir o que pode ir para cada provedor de modelo (segredos e dados pessoais nunca) | H + T2 | pendente; registrar em `CLAUDE.md` |
+
+Enquanto P2-P5 estiverem pausadas, os subagentes herdam o modelo padrão da instalação. Isso custa mais, mas não rebaixa a qualidade silenciosamente.
+
+---
+
+# 6. INCREMENTOS DECOMPOSTOS
+
+Os caminhos de arquivo são provisórios até a I0.2 fixar a estrutura; depois dela, o T2 atualiza esta seção. Convenção provisória:
+- `app/` para rotas;
+- `src/modules/<módulo>/` para o domínio (§15);
+- `supabase/migrations/` e `supabase/tests/` para o banco;
+- `tests/e2e/` para testes ponta a ponta;
+- `docs/adr/` para decisões técnicas.
+
+Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de arquivos própria.
+
+## Inc. 0: Fundação
+
+**Aceite (§12):** app sobe localmente e em homologação; CI verde; migrações em banco limpo.  
+**Depende de:** P1. **Decisões:** nenhuma. **Externo (H):** projetos Supabase e Vercel próprios (D1), credenciais em variáveis protegidas.
+
+| ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
+|---|---|---|---|---|
+| I0.1 | Levantar ferramentas instaladas (Node, gerenciador de pacotes, Supabase CLI, Docker, `psql`) → relatório com versões | T0 | nenhum | versões observadas por comando, não presumidas |
+| I0.2 | Decidir estrutura física, gerenciador de pacotes, lint e formatação, testes unitários, testes de banco que **executem** migrações e e2e → ADR-0001 | T2 | `docs/adr/0001-fundacao.md`, este plano | ADR com alternativas e motivo; caminhos deste plano atualizados |
+| I0.3 | Criar os projetos Supabase (desenvolvimento e homologação) e Vercel próprios; cadastrar as credenciais | H | — | projetos existem e são separados da Motors; T2 confere os IDs |
+| I0.4 | Scaffold Next.js, TypeScript estrito, lint, formatação e teste unitário de exemplo | T1 | tudo exceto `supabase/` e `docs/` | `lint`, `typecheck`, `test` e `build` passam no worktree |
+| I0.5 | Supabase local (`supabase init`) e harness de teste de banco executando migrações | T1 | `supabase/**`, configuração do harness | reset em banco limpo; teste de banco roda de verdade (não é pulado) |
+| I0.6 | Migração base: `audit_logs`, `field_history`, `restricted_access_logs`, `platform_settings`, função genérica que barra UPDATE e DELETE em tabela só de inclusão | T2 | `supabase/migrations/**`, `supabase/tests/**` | UPDATE e DELETE recusados nas tabelas só de inclusão (teste 11, parte base) |
+| I0.7 | `.env.example` e `docs/ambiente.md`, separando público de somente servidor | T2 | `.env.example`, `docs/ambiente.md` | nenhum valor real |
+| I0.8 | CI com lint, typecheck, unitários, testes de banco em banco limpo, linguagem proibida e build | T2 | arquivos de CI do ADR-0001 | pipeline verde num commit de teste |
+| I0.9 | Primeiro deploy em homologação | H + T2 | — | app abre na URL de homologação; H aprova |
+| I0.10 | README de instalação local | T1 | `README.md` | T2 segue o README do zero num worktree limpo |
+
+**Paralelismo:** I0.4 ∥ I0.5 (só a I0.5 toca `supabase/`). I0.3 com H em paralelo a tudo.  
+**Gate:** aceite observado; CI verde; prova de que o teste de banco executa migração.
+
+## Inc. 1: Identidade, empresas e adesão
+
+**Aceite:** testes negativos 1, 2 (parte de empresa), 4, 5 e 13 da §7.4.  
+**Seções:** §3, §5.1, §6.1, §7.  
+**Decisões:** C5 (documentos para aprovação): construir o registro da conferência sem lista fixa.
+
+| ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
+|---|---|---|---|---|
+| I1.1 | Extrair §3.3, §5.1, §6.1 e os testes 1, 2, 4, 5 e 13 → tabela de decisão e casos de teste em texto | T0 | nenhum | cada regra cita a seção; ambiguidades listadas |
+| I1.2 | Funções auxiliares de autorização; revalidação de usuário suspenso no banco; adesão aprovada cria empresa e vínculo de forma atômica → ADR-0002 | T2 | `docs/adr/0002-identidade.md` | ADR responde às ambiguidades da I1.1 |
+| I1.3 | Migrações de `organizations`, `profiles`, `organization_members`, `platform_staff`, `membership_applications`; RLS; sincronização segura de e-mail; bloqueio de autopromoção | T2 | `supabase/migrations/**`, `supabase/tests/**` | reset limpo; RLS ativa em toda tabela exposta |
+| I1.4 | Testes de banco e de integração a partir da I1.1 | T1 | `supabase/tests/identity/**`, testes de `src/modules/{auth,organizations,membership}/**` | testes passam; T2 remove cada política e confirma a falha |
+| I1.5 | Operações de servidor: enviar e revisar adesão (com registro da conferência de CNPJ e evidência), suspender e reativar, gerenciar membros; auditoria | T2 | `src/modules/{auth,organizations,membership,audit}/**` | payload manipulado não concede papel (teste 4); suspenso é barrado na operação seguinte (teste 5) |
+| I1.6 | Telas: pedido de adesão (com Turnstile e rate limit portados), login, recuperação, painel de adesões, empresa e membros | T1 | rotas de autenticação, adesão e admin em `app/`, componentes, `src/lib/` do porte | estados do §9; nenhuma autorização só na interface |
+| I1.7 | Revisão independente do diff, das políticas e do ADR-0002 | T3 | leitura | achado crítico bloqueia o gate |
+
+**Paralelismo:** I1.4 roda enquanto o T2 executa a I1.5. A I1.6 começa com os contratos da I1.5 integrados.  
+**Gate:** testes 1, 2 (empresa), 4, 5 e 13 com verificação de mutação; T3 sem crítico aberto.
+
+## Inc. 2: Oferta
+
+**Aceite:** publicação com pendência e com aviso; testes 2 (ofertas e documentos), 6, 11 e 12 (preço).  
+**Seções:** §5.2, §5.3 (`supplier_declarations`), §6.2, §6.7, §6.9, §6.10.  
+**Decisões:** D10 (revisão antes de publicar) vira configuração com valor provisório; D5 deixa documentos ocultos ao comprador por padrão.
+
+| ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
+|---|---|---|---|---|
+| I2.1 | Extrair transições da §6.2, requisitos de publicação, campos materiais da §6.7 e regras de validade; inventariar o código a portar (seção 4) | T0 | nenhum | tabela de transições com autor permitido |
+| I2.2 | Máquina de estados com `under_review` condicionado a D10; estrutura do snapshot e algoritmo do hash; gatilhos de histórico; expiração no banco ou no servidor; buckets → ADR-0003 | T2 | `docs/adr/0003-oferta.md` | transições, versionamento e expiração definidos |
+| I2.3 | Migrações de `vehicles`, `offers`, `offer_versions`, `offer_media`, `offer_documents`, `supplier_declarations`; transições e CHECKs no banco; RLS; só inclusão onde a §5 exige | T2 | `supabase/migrations/**`, `supabase/tests/**` | transição inválida recusada pelo banco; publicar sem declaração em todas as categorias falha |
+| I2.4 | Storage privado, URLs temporárias, registro em `restricted_access_logs` | T2 | `supabase/migrations/**`, `src/modules/offers/storage/**` | arquivo privado não é obtido só pelo caminho (teste 6) |
+| I2.5 | Função de estado documental, parte das declarações (`not_checked`, `declared_unverified`, `with_findings`), base para a I3 | T2 | `supabase/migrations/**`, `src/modules/documental/**` | estados conforme as linhas da §6.4 que dependem só de declaração |
+| I2.6 | `createOffer`, `updateOffer`, `publishOffer`, `withdrawOffer`, `suspendOffer`, `confirmAvailability`, `declareCategory`, com versão nova em mudança material e auditoria | T2 | `src/modules/{offers,documental,audit}/**` | mudança de preço gera versão e histórico; suspensão exige motivo |
+| I2.7 | Testes da máquina de estados, do versionamento e dos registros só de inclusão | T1 | testes de `src/modules/offers/**`, `supabase/tests/offers/**` | todas as transições válidas e ao menos uma inválida por estado; teste 11 para as tabelas deste incremento |
+| I2.8 | Telas do fornecedor: cadastro em etapas (veículo, fotos, condições, declarações por categoria, documentos), painel de ofertas, histórico, aviso documental | T1 | rotas do fornecedor em `app/`, componentes | fluxo completo pela interface; aviso visível ao publicar com pendência |
+| I2.9 | Telas administrativas: ofertas, suspensão, revisão (se D10) | T1 | rotas administrativas em `app/` | suspensão pede motivo |
+| I2.10 | Revisão independente | T3 | leitura | sem crítico aberto |
+
+**Paralelismo:** I2.7 ∥ I2.8 depois da I2.3 e da I2.6. A I2.9 vem depois da I2.8.  
+**Gate:** aceite demonstrado; testes 2 (ofertas e documentos), 6, 11 e 12 (preço) com verificação de mutação; T3 limpo.
+
+## Inc. 3: Domínio documental
+
+**Aceite:** estados conforme a §6.4; testes 7 e 10.  
+**Seções:** §5.3, §6.3-§6.6, §6.11.  
+**Decisões:** D9 adota o padrão provisório da §6.11 (impedimento ativo não publica); C7 mantém o registro manual.
+
+| ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
+|---|---|---|---|---|
+| I3.1 | Tabela de decisão com todas as combinações (declaração × resultado da consulta × revisão aberta), precedência, mapeamento das cinco origens, lista de termos proibidos e chaves de dado pessoal | T0 | nenhum | cada linha cita a §6.4, §6.5 ou §6.6 |
+| I3.2 | Derivação completa dos estados, detecção de divergência, níveis de origem, isolamento de `is_test`, trava de dado pessoal, impedimento de transferência → ADR-0004 | T2 | `docs/adr/0004-documental.md` | cobre todas as linhas da I3.1 |
+| I3.3 | Migrações de `vehicle_checks`, `documental_reviews`, `transfer_impediments`; trava de dado pessoal portada; CHECK de `is_test`; função de estado completa; `known_limitations` obrigatório | T2 | `supabase/migrations/**`, `supabase/tests/**` | consulta de teste não se liga a oferta real (teste 7); `no_findings_in_sources` exige consulta (teste 10) |
+| I3.4 | Testes de todas as linhas da tabela de decisão e dos testes 7, 10 e 11 | T1 | testes de `src/modules/documental/**`, `supabase/tests/documental/**` | cobertura total da tabela; T2 faz verificação de mutação |
+| I3.5 | `recordCheck` com upload de evidência, `openDocumentalReview` e `closeDocumentalReview`, registro de impedimento; mudança de estado documental gera versão | T2 | `src/modules/{documental,offers,audit}/**` | alteração posterior preserva o histórico e cria versão |
+| I3.6 | Telas: registro de consulta (operador e fornecedor), revisão documental, ficha do fornecedor com estados e origem por informação, aviso de impedimento separado | T1 | rotas do fornecedor e admin em `app/`, componentes do estado documental | origens nunca fundidas num rótulo; teste de linguagem proibida passa |
+| I3.7 | Revisão independente obrigatória | T3 | leitura | sem crítico aberto |
+| I3.8 | Revisão externa: consulta pendente, apontamento, divergência, alteração posterior, falso estado de verificação, rastreabilidade | AG | leitura do diff e de um ambiente de homologação com dados de teste | relatório sem crítico aberto |
+
+**Paralelismo:** I3.4 ∥ I3.6 depois da I3.3 e da I3.5.  
+**Gate:** estados conforme a §6.4 em todas as linhas; testes 7 e 10 com verificação de mutação; T3 e AG sem crítico aberto.
+
+## Inc. 4: Catálogo privado
+
+**Aceite:** critérios 4, 6, 7 e 10 da §10.  
+**Seções:** §6.4 (exibição), §6.6, §7.2, §7.3, §9.  
+**Decisões:** D5 deixa as evidências ocultas; C6 deixa os filtros genéricos.
+
+| ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
+|---|---|---|---|---|
+| I4.1 | `listOffers` e `getOfferDetails`: só para comprador aprovado; sem placa, RENAVAM, chassi nem documento; resumo documental proporcional; `is_test` fora para comprador real; fotos por URL temporária | T2 | consultas de `src/modules/offers/**`, `src/modules/documental/**` | T2 confere a resposta de rede, não só a tela |
+| I4.2 | Catálogo: busca, filtros (preço, marca, modelo, ano, quilometragem, localização, estado documental), ordenação, paginação; ficha com ressalvas e origem | T1 | rotas do comprador em `app/`, componentes | consome só a I4.1; estados do §9 |
+| I4.3 | E2E: comprador aprovado vê; não aprovado não vê, nem por URL direta (teste 1); oferta pendente nunca aparece como verificada | T1 | `tests/e2e/catalogo/**` | passam localmente e em homologação |
+| I4.4 | Revisão de exposição de dados | T3 | leitura | sem crítico aberto |
+| I4.5 | Screenshots do catálogo e da ficha em mobile e desktop | TV | leitura | estados do §9 visíveis |
+
+**Paralelismo:** I4.2 ∥ I4.3 depois da I4.1.  
+**Gate:** critérios 4, 6, 7 e 10; T3 limpo.
+
+## Inc. 5: Ciência, interesse e negociação
+
+**Aceite:** critérios 8 e 9 da §10; testes 2 (negociações), 3, 8 e 9.  
+**Seções:** §5.4, §6.7, §6.8, §6.13.  
+**Decisões:** D5 deixa o texto da ciência provisório e marcado. O provedor de e-mail transacional é dependência externa (H).
+
+| ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
+|---|---|---|---|---|
+| I5.1 | Extrair §5.4, §6.7, §6.8, §6.13 e os testes 3, 8 e 9 → tabelas e casos | T0 | nenhum | ambiguidades listadas |
+| I5.2 | Fluxo da ciência com conferência de hash; estados da negociação; eventos; outbox; como o envio de e-mail consome a outbox sem depender do n8n → ADR-0005 | T2 | `docs/adr/0005-ciencia-e-negociacao.md` | regra de `agreed` com ciência vigente definida |
+| I5.3 | Migrações de `buyer_acknowledgments`, `interests`, `negotiations`, `negotiation_events`, `notification_outbox`; RLS por comprador e fornecedor | T2 | `supabase/migrations/**`, `supabase/tests/**` | reset limpo |
+| I5.4 | `acknowledgeOffer`, `registerInterest`, `addNegotiationEvent`, `changeNegotiationStatus` | T2 | `src/modules/{acknowledgments,negotiations,audit}/**` | hash diferente recusado (teste 8); `agreed` com ciência desatualizada recusado (teste 9) |
+| I5.5 | Testes de isolamento entre compradores (teste 3), ciência desatualizada após versão nova e eventos só de inclusão | T1 | testes de `src/modules/{acknowledgments,negotiations}/**`, `supabase/tests/negotiations/**` | T2 faz verificação de mutação |
+| I5.6 | Telas: ciência, interesse, negociações do comprador e do fornecedor, mensagens, renovação de ciência | T1 | rotas do comprador e do fornecedor em `app/` | estados do §9; ciência desatualizada visível |
+| I5.7 | Templates de e-mail e envio pela outbox; nenhuma credencial no repositório; nenhum dado restrito na mensagem | T1 | `src/modules/notifications/**` | falha de envio não altera estado; teste de linguagem proibida cobre os templates |
+| I5.8 | Revisão independente | T3 | leitura | sem crítico aberto |
+
+**Paralelismo:** I5.5 ∥ I5.6 depois da I5.4; I5.7 depois da I5.5.  
+**Gate:** critérios 8 e 9; testes 2 (negociações), 3, 8 e 9; T3 limpo.
+
+## Inc. 6: Piloto
+
+**Aceite:** os 13 critérios da §10, com evidência.  
+**Seções:** §7, §10, §11, §15, §16.  
+**Decisões que bloqueiam o piloto:** D5, D8, D9, D10.
+
+| ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
+|---|---|---|---|---|
+| I6.1 | Decisões D5 (textos jurídicos), D8 (participantes), D9 e D10; projetos de produção | H | — | decisões registradas em `current-task.md` |
+| I6.2 | Aplicar os textos aprovados e os valores de D9 e D10 na configuração | T2 | configuração, textos, `docs/**` | nenhum texto provisório restante |
+| I6.3 | E2E do fluxo vertical da §2.2 com dados de teste identificados | T1 | `tests/e2e/**` | T2 roda em homologação e anexa a saída |
+| I6.4 | Observabilidade (§15), roteiro de incidente, backup e teste de restauração | T2 + H | configuração, `docs/operacao/**` | restauração comprovada; H executa a parte de produção |
+| I6.5 | Revisão de segurança completa: §7.1 e os 13 testes da §7.4 | T3 | leitura | sem crítico aberto |
+| I6.6 | Revisão externa do fluxo completo | AG | leitura e homologação | sem crítico aberto |
+| I6.7 | Conferir os 13 critérios da §10 contra as evidências → relatório de lacunas | T0 | nenhum | cada critério com evidência ou "pendente" |
+| I6.8 | Piloto com oferta real ou de teste identificada; linha de base das métricas da §11; go/no-go | H + T2 | — | decisão registrada |
+
+**Gate:** T2 declara prontidão técnica com evidências; H aprova o piloto.
+
+## Depois do piloto, conforme evidência
+
+| Bloco | Depende de | Observação |
 |---|---|---|
-| T0 | inventaria arquivos e ferramentas; extrai regras da especificação em tabelas de decisão; rascunha casos de teste; compara entregas com critérios de aceite; varre logs de teste em busca de segredos | escrever no repositório; decidir arquitetura; resolver requisito ambíguo |
-| T1 | telas do §9; testes a partir de tabelas de decisão já aprovadas; operações de baixo risco sobre políticas já prontas; templates de e-mail e fluxos n8n; documentação técnica | migrações ou políticas de identidade, acesso, Storage ou finanças; webhooks; push; deploy; migração destrutiva |
-| T2 | planeja a sprint; escreve ADRs; migrações e RLS; operações de servidor críticas; integra ou rejeita worktrees; diagnóstico difícil; mantém os handoffs | declarar pronto sem evidência; ativar módulo bloqueado pelo §14; aplicar migração em produção |
-| T3 | revisa diff e evidências dos módulos críticos; tenta quebrar os testes negativos do §7.2; revisa ADRs | editar código; aprovar com base apenas no resumo do implementador |
-| TV | compara screenshots com o brief visual e com os estados obrigatórios do §9 | atestar regra de negócio pela aparência da tela (§13, regra 9) |
-| H | decisões do §14; credenciais; criação de projetos Supabase e hospedagem; primeiro deploy em homologação; qualquer operação em produção; aceite do piloto | — |
+| Desfecho e comissão (§5.5, §6.12) | C1-C4 | geração desativada em produção até as decisões; teste 12 (pagador e comissão) |
+| WhatsApp | D6 | só em canal conforme à política do provedor |
+| Integração automática de consulta | C7; contrato próprio; autorização do provedor pela Portaria 139/2025 | mesmo registro de `vehicle_checks`, com `method = integration` |
+| Guias e checklists (§6.14) | — | conteúdo portado e adaptado; teste de linguagem proibida |
+| Indicadores no painel (§11) | dados do piloto | — |
 
 ---
 
-# 4. GATES TRANSVERSAIS
+# 7. DECISÕES PENDENTES × SUBTAREFAS
 
-Valem para todas as sprints, independentemente do modelo:
-
-1. **Migrações:** versionadas e testadas em banco limpo antes da integração (§11.2). Migração destrutiva exige plano escrito e aprovação H.
-2. **Políticas de segurança:** nenhuma política RLS ou de Storage é desabilitada ou afrouxada para um teste passar (§13, regra 7). A chave `service_role` só existe em código de servidor; o T2 confirma por busca no código cliente antes de integrar.
-3. **Testes negativos válidos:** todo teste de isolamento precisa falhar quando a política correspondente é removida. O T2 ou o T3 faz essa verificação de mutação. Teste que passa com e sem a política não conta como evidência.
-4. **Pendências do §14:** a estrutura pode ser construída; o comportamento definitivo não. Valores comerciais ficam em configuração, marcados como provisórios.
-5. **Produção, push e deploy:** somente com aprovação H explícita, por ação.
-6. **Dados:** nenhum dado real de cliente em seed, fixture ou teste (§4.6). Nenhum dado de teste apresentado como evidência de venda real (§13, regra 8).
-7. **Entrega de subagente:** resumo, arquivos e diff, testes executados com saída, limitações e riscos. O T2 inspeciona o diff e roda os testes antes de integrar.
-8. **Definição de pronto (§15):** exige revisão por um segundo agente. Nos módulos críticos, esse segundo agente é o T3.
-
----
-
-# 5. PRÉ-REQUISITOS ANTES DA SPRINT 0
-
-**Estado atual:** P1 concluída: repositório Git na branch `main`, com remoto `origin` em `github.com/85dyones/ideal-garbanzo`, ainda sem push. Não há código, e os subagentes de `.claude/agents/` ainda não foram validados contra o gateway.
-
-| ID | Item | Nível | Aceite |
+| Decisão | Afeta | Pode avançar antes | Não pode antes |
 |---|---|---|---|
-| P1 | `git init`, `.gitignore` com `.env*` (exceto `.env.example`), commit inicial com os documentos | T2 | `git status` limpo; arquivo `.env` de teste aparece como ignorado |
-| P2 | Confirmar o FreeLLMAPI real, a versão instalada e o endpoint local | H + T2 | registrado em `current-task.md` |
-| P3 | Obter os IDs exatos do catálogo e associá-los aos perfis | H + T2 | nenhum ID inventado; campo `model` preenchido em `.claude/agents/*.md` |
-| P4 | Validar `auto:<profile>` ou IDs exatos como `model` dos subagentes | T2 | cada subagente responde; modelo efetivo registrado, ou registrado que o gateway não o informa |
-| P5 | Rodar o checklist de validação do `model-orchestration.md` | T2 + T3 | itens marcados com evidência; T3 encontra defeitos inseridos de propósito num diff de teste |
-| P6 | Definir o que pode ser enviado a cada provedor (segredos e dados pessoais nunca) | H + T2 | política registrada em `CLAUDE.md` |
-
-Enquanto P2–P5 não estiverem concluídos, os subagentes rodam sem `model` explícito e herdam o modelo padrão da instalação. Isso custa mais, mas não rebaixa a qualidade silenciosamente.
-
----
-
-# 6. SPRINTS DECOMPOSTAS
-
-Os caminhos de arquivo são provisórios até a S0.2 fixar a estrutura física; depois dela, o T2 atualiza esta seção. Convenção provisória: `app/` para rotas, `src/modules/<módulo>/` para domínio, `supabase/migrations/` e `supabase/tests/` para banco, `tests/e2e/` para ponta a ponta, `docs/adr/` para decisões.
-
-Paralelismo segue o limite inicial de dois subagentes simultâneos, cada um com fronteira de arquivos própria.
-
-## Sprint 0: Fundação
-
-**Aceite da sprint (§12):** aplicação executa localmente e é publicada em homologação.  
-**Seções:** §4, §11.  
-**Depende de:** P1.  
-**Bloqueios do §14:** nenhum. Dependências externas (H): projetos Supabase de desenvolvimento e homologação, hospedagem de homologação, credenciais em variáveis protegidas.
-
-| ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
-|---|---|---|---|---|
-| S0.1 | Levantar ferramentas instaladas (Node, gerenciador de pacotes, Supabase CLI, Docker) → relatório com versões | T0 | nenhum | versões observadas por comando, não presumidas |
-| S0.2 | Decidir a estrutura física dos módulos do §11.1 e as ferramentas de lint, formatação, teste unitário, teste de banco e e2e → ADR-0001 | T2 | `docs/adr/0001-fundacao.md`, este plano | ADR com alternativas e motivo; caminhos deste plano atualizados |
-| S0.3 | Scaffold Next.js com TypeScript estrito, lint, formatação e um teste unitário de exemplo | T1 | tudo exceto `supabase/` e `docs/` | `lint`, `typecheck`, `test` e `build` passam no worktree; saídas anexadas |
-| S0.4 | Supabase local: `supabase init`, migração inicial não destrutiva, seed sem dados reais, um teste de banco de exemplo | T1 | `supabase/**` | reset do banco limpo sem erro; teste de banco passa |
-| S0.5 | `.env.example` com as variáveis do §11.3, sem valores reais, separando público de somente servidor | T2 | `.env.example`, `docs/ambiente.md` | nenhuma chave real; `service_role` marcada como somente servidor. Tarefa pequena: delegar custaria mais que fazer |
-| S0.6 | CI com lint, typecheck, testes e migrações em banco limpo | T2 | arquivos de CI definidos no ADR-0001 | pipeline verde num commit de teste |
-| S0.7 | Configurar homologação e fazer o primeiro deploy | H + T2 | — | H fornece credenciais e aprova; T2 prepara as instruções; app abre na URL de homologação |
-| S0.8 | README de instalação local | T1 | `README.md` | T2 segue o README do zero num worktree limpo e sobe a aplicação |
-
-**Paralelismo:** S0.3 ∥ S0.4 (só a S0.4 toca `supabase/`). S0.8 depois de integrar as duas.  
-**Gate de saída:** aceite do §12 observado; CI verde; T2 confirma que nenhum segredo entrou no histórico do Git. Revisão T3 não obrigatória.
-
-## Sprint 1: Identidade e organizações
-
-**Aceite da sprint (§12):** um usuário não acessa dados privados de outra empresa.  
-**Seções:** §2.1.A, §3, §5.1–5.3, §5.14, §7.  
-**Depende de:** Sprint 0.  
-**Bloqueios do §14:** #8 (acesso direto de fornecedores) e #9 (documentos para aprovação). Modelar papéis e status; não codificar a lista de documentos nem habilitar login de fornecedor por padrão.
-
-| ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
-|---|---|---|---|---|
-| S1.1 | Extrair regras de identidade, a matriz do §3.2 e os testes negativos §7.2 #2, #3, #6 e #10 → tabela de decisão e casos de teste em texto | T0 | nenhum | cada regra cita a seção de origem; ambiguidades listadas à parte |
-| S1.2 | Decidir o modelo de papéis: papéis de plataforma separados dos papéis por empresa, funções auxiliares de autorização e revalidação de usuário suspenso (lacunas L5, L10) → ADR-0002 | T2 | `docs/adr/0002-identidade.md` | ADR responde às ambiguidades da S1.1; o que muda regra comercial vai para H |
-| S1.3 | Migrações de `organizations`, `profiles`, `organization_members` e `audit_logs` (antecipada, lacuna L3); restrições; sincronização segura de e-mail; bloqueio de autopromoção; RLS | T2 | `supabase/migrations/**`, `supabase/tests/**` | reset limpo; RLS ativa em toda tabela exposta ao cliente |
-| S1.4 | Testes de isolamento e de papel a partir da S1.1 | T1 | `supabase/tests/identity/**`, testes em `src/modules/auth/**` e `src/modules/organizations/**` | testes passam; T2 remove cada política e confirma que o teste correspondente falha |
-| S1.5 | Operações de servidor: criar empresa, vincular membro, alterar papel, suspender e reativar, todas com auditoria | T2 | `src/modules/auth/**`, `src/modules/organizations/**`, `src/modules/audit/**` | payload manipulado não altera papel (§7.2 #3); usuário suspenso é barrado na operação seguinte (§7.2 #6) |
-| S1.6 | Telas de login, cadastro, recuperação de acesso, perfil da empresa e membros | T1 | rotas de autenticação e de empresa em `app/`, componentes | estados de carregamento, vazio, erro, sem permissão e inexistente (§9); nenhuma autorização só no frontend |
-| S1.7 | Revisão independente do diff, das políticas RLS, do ADR-0002 e das saídas da S1.4 | T3 | leitura | relatório por severidade; achado crítico bloqueia o gate |
-
-**Paralelismo:** S1.4 (T1) roda enquanto o T2 executa a S1.5. S1.6 começa quando os contratos da S1.5 estiverem integrados.  
-**Gate de saída:** aceite do §12; §7.2 #2, #3, #6 e #10 passando com verificação de mutação; §10.3 fluxo 1; T3 sem achado crítico aberto.
-
-## Sprint 2: Veículos e ofertas
-
-**Aceite da sprint (§12):** operador consegue publicar e retirar uma oferta com histórico.  
-**Seções:** §2.1.B–C, §4.4, §5.4–5.6, §6.1, §8.  
-**Depende de:** Sprint 1.  
-**Bloqueios do §14:** #10 (regiões e categorias) e #11 (dados públicos, privados e restritos). Campos de visibilidade indefinida ficam privados até decisão H.
-
-| ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
-|---|---|---|---|---|
-| S2.1 | Extrair campos obrigatórios para publicação (§6.1), transições de `offers.status` e campos restritos → tabela de transições e checklist | T0 | nenhum | cada transição cita a origem; as não especificadas ficam marcadas "a decidir" |
-| S2.2 | Decidir máquina de estados, histórico de alterações, expiração sem depender do n8n e autorização de divulgação (lacunas L2, L7, L8) → ADR-0003 | T2 | `docs/adr/0003-ofertas.md` | cada transição tem regra e autor permitido |
-| S2.3 | Migrações de `vehicles`, `vehicle_media`, `offers` e histórico; transições validadas no banco; RLS | T2 | `supabase/migrations/**`, `supabase/tests/**` | transição inválida rejeitada pelo banco, não só pela tela |
-| S2.4 | Storage: bucket privado, políticas e URLs temporárias para mídia restrita | T2 | `supabase/migrations/**`, `src/modules/vehicles/**` | arquivo privado não é obtido só pelo caminho (§7.2 #7) |
-| S2.5 | Testes unitários e de banco da máquina de estados aprovada na S2.2 | T1 | testes em `src/modules/offers/**`, `supabase/tests/offers/**` | todas as transições válidas e ao menos uma inválida por estado |
-| S2.6 | `createOffer`, `updateOffer`, `publishOffer` e `withdrawOffer` com validações do §6.1 e auditoria de publicação, retirada e preço | T2 | `src/modules/offers/**`, `src/modules/audit/**` | publicar sem campo obrigatório falha com erro previsível; alteração de preço gera registro |
-| S2.7 | `listOffers` e `getOfferDetails` com ponto único de autorização, preparado para a elegibilidade da Sprint 3 | T2 | consultas em `src/modules/offers/**` | resposta não contém placa, documento nem dados privados de outro fornecedor (§7.2 #2) |
-| S2.8 | Telas de admin e operador: veículo, upload e ordem das fotos, oferta, revisão, publicar e retirar | T1 | rotas administrativas em `app/`, componentes | fluxo completo pela interface, sem editar o banco |
-| S2.9 | Catálogo do lojista: busca, filtros do §2.1.C, ordenação, paginação, detalhe e indicação de indisponível | T1 | rotas do catálogo em `app/`, componentes | consome apenas `listOffers` e `getOfferDetails`; oferta retirada aparece como indisponível |
-| S2.10 | Revisão de Storage, máquina de estados, vazamento de campos e auditoria de preço | T3 | leitura | sem achado crítico aberto |
-| S2.11 | Screenshots de catálogo, detalhe e cadastro em mobile e desktop | TV | leitura | estados do §9 visíveis; achados viram correção T1 |
-
-**Paralelismo:** S2.5 ∥ S2.8 depois da S2.3. S2.9 depois da S2.7.  
-**Gate de saída:** aceite do §12 demonstrado com evidência; §7.2 #2 e #7 passando; §10.3 fluxos 2 e 3; T3 sem achado crítico aberto.
-
-## Sprint 3: Planos e antecipação
-
-**Aceite da sprint (§12):** usuários elegíveis acessam a oferta; usuários não elegíveis não obtêm os dados restritos.  
-**Seções:** §2.1.D, §5.7–5.9, §6.2, §7.2 #4–#5.  
-**Depende de:** Sprint 2, em especial o ponto único de autorização da S2.7.  
-**Bloqueios do §14:** #6 (inadimplência), #7 (janela por plano) e #11. Política de inadimplência e janelas ficam configuráveis, com valores de desenvolvimento marcados como provisórios; os testes cobrem cada opção da política.
-
-| ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
-|---|---|---|---|---|
-| S3.1 | Extrair os fatores de elegibilidade do §6.2 e os estados do §5.9 → tabela de decisão com casos-limite (segundo exato da liberação, fuso, `past_due`, `canceled`, empresa suspensa) | T0 | nenhum | cada linha cita a seção; combinações que dependem do §14 marcadas |
-| S3.2 | Decidir a representação estruturada de benefícios (§5.8), as regras por oferta e a resolução determinística de conflitos (§5.7) → ADR-0004 | T2 | `docs/adr/0004-acesso-antecipado.md` | regra genérica nunca amplia acesso restrito; precedência escrita |
-| S3.3 | Migrações de `plans`, `subscriptions` (estrutura antecipada, porque a elegibilidade depende do status), `offer_access_rules` e registro de acessos e tentativas negadas (lacuna L6); RLS | T2 | `supabase/migrations/**`, `supabase/tests/**` | reset limpo |
-| S3.4 | `checkOfferEligibility` no servidor, ligada a `listOffers`, `getOfferDetails` e às políticas de mídia; prévia sem preço, dados privados nem imagens restritas | T2 | `src/modules/access-control/**`, consultas de `src/modules/offers/**`, políticas de Storage | URL direta, chamada de API e caminho de mídia não vazam antes da liberação (§7.2 #4) |
-| S3.5 | Testes da tabela de decisão da S3.1, com relógio controlável | T1 | testes em `src/modules/access-control/**`, `supabase/tests/access/**` | todas as linhas cobertas; T2 faz verificação de mutação |
-| S3.6 | Telas de gestão de planos e regras de acesso (admin) e de prévia bloqueada com horário de liberação (lojista) | T1 | rotas de planos e do catálogo em `app/` | T2 confere a resposta de rede da prévia, não apenas a tela |
-| S3.7 | E2E de bloqueio antecipado e liberação no horário (§10.3 fluxos 4 e 5) | T1 | `tests/e2e/acesso/**` | passam no ambiente local e em homologação |
-| S3.8 | Revisão obrigatória: vazamento por qualquer canal, conflitos de regra, assinatura inativa (§7.2 #5), fuso horário | T3 | leitura | sem achado crítico aberto |
-
-**Paralelismo:** S3.5 ∥ S3.6 depois da S3.4. S3.7 depois das duas.  
-**Gate de saída:** aceite do §12 com testes positivos e negativos; §7.2 #4 e #5 passando; T3 sem achado crítico aberto.
-
-## Sprint 4: Negociação
-
-**Aceite da sprint (§12):** uma oportunidade pode ser rastreada desde a visualização autorizada até a negociação.  
-**Seções:** §2.1.E, §2.1.H, §4.5, §5.10–5.11, §6.3–6.4.  
-**Depende de:** Sprint 3.  
-**Bloqueios do §14:** nenhum direto. Credenciais do serviço de e-mail e instância do n8n são providenciadas por H.
-
-| ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
-|---|---|---|---|---|
-| S4.1 | Extrair estados e transições de propostas, regras de duplicação e retirada e fontes de origem (§6.4) → tabela e casos de teste | T0 | nenhum | ambiguidades listadas à parte |
-| S4.2 | Decidir como registrar manifestação de interesse, origem desde o primeiro contato e histórico de propostas (lacunas L1, L2) e a outbox de eventos (§4.5) → ADR-0005 | T2 | `docs/adr/0005-negociacao.md` | decisão que afete regra de comissão vai para H antes de implementar |
-| S4.3 | Migrações de `favorites`, `proposals`, histórico, interesse e origem, outbox; RLS por comprador e por fornecedor | T2 | `supabase/migrations/**`, `supabase/tests/**` | proposta aceita não é sobrescrita; histórico só recebe inserções |
-| S4.4 | `createProposal`, `updateProposalStatus` e registro de interesse e origem, com proteção contra envio duplicado | T2 | `src/modules/proposals/**`, `src/modules/transactions/**`, `src/modules/audit/**` | duplo envio não cria duas propostas; oferta retirada não recebe proposta (§5.6) |
-| S4.5 | `createFavorite`, `removeFavorite` e tela de favoritos sobre as políticas da S4.3 | T1 | módulo de favoritos definido no ADR-0001, rota de favoritos em `app/` | favorito duplicado rejeitado; isolamento entre empresas mantido (§5.10) |
-| S4.6 | Testes de transições de proposta, isolamento entre compradores (§7.2 #1) e escopo do fornecedor | T1 | testes em `src/modules/proposals/**`, `supabase/tests/proposals/**` | T2 faz verificação de mutação |
-| S4.7 | Telas de propostas e negociações (lojista), manifestações e negociações (fornecedor) e histórico | T1 | rotas do lojista e do fornecedor em `app/` | estados do §9 |
-| S4.8 | Templates de e-mail e fluxos n8n exportados que consomem a outbox; nenhuma credencial no repositório | T1 | `automations/n8n/**`, templates em `src/modules/notifications/**` | falha do n8n não altera estado de proposta |
-| S4.9 | Revisão de isolamento, imutabilidade do histórico, idempotência e outbox | T3 | leitura | sem achado crítico aberto |
-| S4.10 | Screenshots das telas de negociação | TV | leitura | estados do §9 visíveis |
-
-**Paralelismo:** S4.5 ∥ S4.6 depois da S4.3; em seguida S4.7 ∥ S4.8.  
-**Gate de saída:** rastreio demonstrado de ponta a ponta (visualização autorizada → interesse → proposta → status), com a origem consultável; §7.2 #1 passando; §10.3 fluxos 6 e 7; T3 sem achado crítico aberto.
-
-## Sprint 5: Monetização
-
-**Aceite da sprint (§12):** os estados financeiros refletem eventos confirmados e não podem ser alterados por usuários sem permissão.  
-**Seções:** §2.1.F, §5.9, §5.12–5.14, §6.5–6.6, §7.2 #5, #8, #9.  
-**Depende de:** Sprint 4.  
-**Bloqueios do §14:** #1–#4 (comissão), #5 (provedor de cobrança), #6 e #12. Sem #5, a integração fica atrás de uma interface, com provedor simulado apenas nos testes. Sem #1–#4, comissões funcionam em modo estrutural: estados e evidências existem, mas a regra que faz nascer a obrigação não é ativada.
-
-| ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
-|---|---|---|---|---|
-| S5.1 | Extrair estados de transação, comissão e assinatura, eventos de cobrança e os testes §7.2 #5, #8 e #9 → tabelas e casos | T0 | nenhum | pendências do §14 associadas a cada estado |
-| S5.2 | Decidir a configuração comercial (lacuna L9), o armazenamento de eventos para idempotência (lacuna L4), a interface do provedor e quem pode executar cada transição → ADR-0006 | T2 | `docs/adr/0006-monetizacao.md` | nenhuma regra do §14 inventada; pendências explícitas |
-| S5.3 | Migrações de `transactions`, `commissions`, eventos de cobrança e configuração comercial; o banco impede `paid` sem evidência e alteração de preço ou pagador sem permissão | T2 | `supabase/migrations/**`, `supabase/tests/**` | §7.2 #9 garantido no banco |
-| S5.4 | `reportTransaction`, `confirmTransaction` e `recordCommissionPayment` com evidência obrigatória e auditoria | T2 | `src/modules/transactions/**`, `src/modules/commissions/**`, `src/modules/audit/**` | comissão não vira `paid` sem confirmação ou reconciliação autorizada (§6.5) |
-| S5.5 | `processBillingWebhook` com validação de assinatura, idempotência e eventos fora de ordem | T2 | `src/modules/subscriptions/**`, rota do webhook | evento duplicado não altera estado (§7.2 #8). Integração real bloqueada pelo §14 #5 |
-| S5.6 | Testes das máquinas de estados financeiras e do webhook, com fixtures identificadas como teste | T1 | testes em `src/modules/transactions/**`, `src/modules/commissions/**`, `src/modules/subscriptions/**`, `supabase/tests/finance/**` | T2 faz verificação de mutação |
-| S5.7 | Telas de transações, comissões (evidência e contestação) e assinaturas (admin) e de assinatura e cobrança (lojista) | T1 | rotas financeiras e de assinatura em `app/` | nenhuma ação altera estado financeiro sem passar pela operação de servidor |
-| S5.8 | Consolidar a auditoria: todos os eventos do §5.14 cobertos; nenhum segredo, token ou dado pessoal desnecessário nos logs | T2 | `src/modules/audit/**` | T0 varre os logs de teste em busca de padrões de segredo |
-| S5.9 | Revisão obrigatória de segurança financeira | T3 | leitura | sem achado crítico aberto |
-| S5.10 | Escolher o provedor (§14 #5) e aprovar as regras de comissão (§14 #1–#4) e os termos (§14 #12) | H | — | decisões registradas antes de ativar cobrança real |
-
-**Paralelismo:** S5.6 ∥ S5.7 depois da S5.3 e da S5.4.  
-**Gate de saída:** aceite do §12; §7.2 #5, #8 e #9 passando; §10.3 fluxos 8, 9 e 10; T3 sem achado crítico aberto; módulos bloqueados permanecem desativados e documentados como tal.
-
-## Sprint 6: Piloto
-
-**Aceite da sprint (§12):** todos os critérios críticos de produção estão atendidos.  
-**Seções:** §7, §10, §11, §15.  
-**Depende de:** Sprints 0–5.
-
-| ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
-|---|---|---|---|---|
-| S6.1 | E2E dos dez fluxos do §10.3 | T1 | `tests/e2e/**` | T2 roda em homologação e anexa a saída |
-| S6.2 | Revisão de segurança completa: §7.1, os dez testes do §7.2, rate limiting, segredos, `service_role` fora do cliente | T3 | leitura | relatório; achado crítico bloqueia o piloto |
-| S6.3 | Observabilidade do §11.4 e procedimento de incidentes | T2 | configuração de observabilidade, `docs/operacao/incidentes.md` | erro provocado em homologação aparece no monitoramento |
-| S6.4 | Backup configurado e teste de restauração | H + T2 | `docs/operacao/backup.md` | T2 escreve o roteiro; H executa; restauração comprovada |
-| S6.5 | Documentação de instalação, deploy e variáveis | T1 | `README.md`, `docs/**` | T0 confere o texto contra o estado real do repositório |
-| S6.6 | Auditar os critérios do §10.4 e do §15 contra evidências reais → relatório de lacunas | T0 | nenhum | cada critério com evidência ou marcado "pendente" |
-| S6.7 | Revisão visual de todas as telas do §9 em mobile e desktop | TV | leitura | estados obrigatórios visíveis |
-| S6.8 | Treinamento operacional, entrada gradual de lojistas e decisão de go/no-go | H | — | decisão registrada |
-
-**Paralelismo:** S6.1 ∥ S6.5. S6.2 e S6.6 depois das correções.  
-**Gate de saída:** T2 declara prontidão técnica com evidências; H aprova o piloto. Módulos com pendência do §14 em aberto continuam desativados.
+| D5 (jurídico) | I2.3, I4.1, I5.2, I6.1 | documentos ocultos ao comprador; texto provisório marcado | piloto; abrir evidência ao comprador |
+| D6 (WhatsApp) | pós-piloto | e-mail | qualquer envio por WhatsApp |
+| D7 (`rede-auto`, `motors-plataforma`) | nenhuma | — | usar esses projetos |
+| D8 (participantes) | I6.8 | dados de teste identificados | piloto com dados reais |
+| D9 (impedimento de transferência) | I3.2, I3.3, I6.2 | padrão provisório: impedimento ativo não publica | valor definitivo |
+| D10 (revisão antes de publicar) | I2.2, I2.9, I6.2 | configuração com valor provisório | valor do piloto |
+| C1-C4 (comissão) | pós-piloto | — | gerar comissão em produção |
+| C5 (documentos para aprovação) | I1.5 | registro da conferência sem lista fixa | lista obrigatória |
+| C6 (regiões e categorias) | I4.2 | filtros genéricos | restrição por região ou categoria |
+| C7 (fornecedor de consulta) | pós-piloto | registro manual | integração automática |
 
 ---
 
-# 7. PENDÊNCIAS DO §14 × SUBTAREFAS
+# 8. PAPEL DE CADA NÍVEL NESTE PROJETO
 
-| # | Pendência | Afeta | Pode avançar antes da decisão | Não pode avançar antes da decisão |
-|---|---|---|---|---|
-| 1 | Quem paga a comissão | S5.2–S5.4 | campo de pagador e estados | geração automática de comissão |
-| 2 | Evento que caracteriza venda elegível | S5.3, S5.4 | estados de `transactions` | regra de nascimento da obrigação |
-| 3 | Comprovação de venda fora da plataforma | S4.2, S5.4 | campo de referência de evidência | aceitar um tipo de evidência como suficiente |
-| 4 | Cancelamento e contestação | S5.3, S5.4 | estado `disputed` e fluxo de contestação | prazos de contestação |
-| 5 | Provedor de cobrança | S5.5 | interface e provedor simulado em teste | integração e webhooks reais |
-| 6 | Acesso em inadimplência | S3.4, S5.5 | política configurável e testes de cada opção | valor de produção |
-| 7 | Janela de antecipação por plano | S3.2–S3.6 | estrutura de regras | janelas definitivas |
-| 8 | Acesso direto de fornecedores | S1.2, S1.5, S2.8 | papel de fornecedor modelado | habilitar login de fornecedor em produção |
-| 9 | Documentos para aprovação de empresas | S1.5 | status pendente e ativa | lista de documentos obrigatórios |
-| 10 | Regiões e categorias atendidas | S2.2, S2.9 | filtros genéricos | restrições geográficas e por categoria |
-| 11 | Dados públicos, privados e restritos por plano | S2.7, S3.4 | campos privados por padrão | expor campo hoje privado |
-| 12 | Contratos, termos e privacidade | S5.10, S6.8 | páginas com texto provisório marcado | publicar termos ou cobrar |
-
----
-
-# 8. LACUNAS ENCONTRADAS NA ESPECIFICAÇÃO
-
-A especificação exige estes itens, mas não os modela. São decisões técnicas do T2, registradas nos ADRs indicados, exceto quando alteram regra comercial: nesse caso vão para H (§13, regra 6).
-
-| ID | Lacuna | Onde aparece | Resolver em |
-|---|---|---|---|
-| L1 | Manifestação de interesse e origem desde o primeiro contato não têm tabela; existe apenas `transactions.source_type` | §2.1.E, §6.4 × §5 | ADR-0005 |
-| L2 | Histórico de propostas e de alterações de oferta sem estrutura definida | §2.1.B, §5.11 | ADR-0003, ADR-0005 |
-| L3 | `audit_logs` aparece na Sprint 5 do roteiro, mas eventos obrigatórios (permissões, publicação, preço) começam na Sprint 1 | §5.14 × §12 | antecipada na S1.3 |
-| L4 | Idempotência de webhooks exige guardar os eventos recebidos; não há tabela para isso | §6.6 | ADR-0006 |
-| L5 | Papéis de plataforma (administrador, operador) não têm representação; `organization_members.role` é por empresa | §3.1, §5.3, §7.2 #3 | ADR-0002 |
-| L6 | Registro de acessos e de tentativas negadas sem tabela | §2.1.D | ADR-0004 |
-| L7 | Autorização de divulgação exigida para publicar, sem campo em `offers` | §6.1 × §5.6 | ADR-0003 |
-| L8 | Mecanismo de expiração de ofertas não definido, e a operação básica não pode depender do n8n | §5.6, §1.4 princípio 7 | ADR-0003 |
-| L9 | Local da configuração comercial (R$ 1.000) não definido | §5.13 | ADR-0006 |
-| L10 | O token de sessão de um usuário suspenso continua válido até expirar; a revalidação precisa acontecer no servidor e nas políticas | §7.2 #6 | ADR-0002 |
-| L11 | Não há brief visual; o TV só consegue verificar estados obrigatórios e layout mobile-first, não fidelidade visual | §9 | H, se quiser fidelidade visual |
+| Nível | Faz | Nunca faz |
+|---|---|---|
+| T0 | extrai regras da v1.1 em tabelas de decisão; inventaria código a portar; rascunha testes; confere entregas contra critérios | escrever no repositório; decidir arquitetura; resolver ambiguidade |
+| T1 | telas; testes a partir de tabela aprovada; portes de baixo risco (Turnstile, componentes, CI sob revisão); templates; documentação | migrações, RLS, Storage, estado documental, ciência, comissão; push; deploy |
+| T2 | ADRs; migrações; RLS; Storage; regras de estado; operações críticas; integração de worktrees; handoffs | declarar pronto sem evidência; aplicar comportamento de decisão pendente como definitivo; produção sem H |
+| T3 | revisa diff e evidências; tenta quebrar os testes da §7.4 | editar; aprovar só pelo resumo |
+| TV | confere estados obrigatórios e layout | atestar regra de negócio pela tela |
+| AG | revisão externa de riscos, permissões, documentos e estados documentais | substituir o T3 nos módulos críticos |
+| H | decisões, credenciais, projetos, deploy, produção, aceite | — |
 
 ---
 
 # 9. REGISTRO, ESCALONAMENTO E HANDOFF
 
-**Registro:** cada subtarefa concluída gera uma entrada em `docs/workflow/current-task.md` com perfil e modelo usados, subagentes, fallback informado pelo gateway (nunca presumido), testes e resultados, critérios pendentes e motivo de escalonamento.
+**Registro:** cada subtarefa concluída gera uma entrada em `docs/workflow/current-task.md` com:
+- perfil e modelo usados;
+- subagentes;
+- fallback informado pelo gateway (nunca presumido);
+- testes e resultados;
+- critérios pendentes;
+- motivo de escalonamento.
 
-**Sinais de escalonamento deste projeto**, além dos listados no `model-orchestration.md`:
-
+**Sinais de escalonamento deste projeto**, além dos do `model-orchestration.md`:
 - teste negativo que passa com e sem a política correspondente;
-- subagente T1 que tocou migração, política RLS ou Storage de módulo crítico;
-- qualquer necessidade aparente de usar `service_role` em código acessível ao navegador;
-- requisito que só se resolve inventando comportamento coberto pelo §14;
-- divergência entre a resposta de rede e o que a tela mostra num fluxo de acesso restrito.
+- teste de banco pulado ou que só confere texto de SQL;
+- T1 que tocou migração, RLS, Storage, estado documental ou ciência;
+- qualquer necessidade aparente de `service_role` no navegador;
+- resultado de consulta sem fonte, data ou limitações;
+- rótulo de verificação sem a qualificação exigida;
+- requisito que só se resolve inventando comportamento de decisão pendente;
+- divergência entre a resposta de rede e a tela num fluxo de dado restrito.
 
-**Handoff de escalonamento** (no máximo uma página, sem descartar alterações existentes):
+**Handoff** (no máximo uma página, sem descartar alterações):
 
 ```markdown
 ## Handoff: <ID da subtarefa>
