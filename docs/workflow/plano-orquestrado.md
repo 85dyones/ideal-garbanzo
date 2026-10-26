@@ -35,7 +35,7 @@ Este plano traduz o roteiro da seção 12 da v1.1 em subtarefas despacháveis. E
 | Etapa | Status | Gate de saída |
 |---|---|---|
 | Pré-requisitos P1-P6 | P1 concluída; P2-P6 pausadas | ver seção 5 |
-| Inc. 0: Fundação | não iniciado | app local e em homologação; CI verde; testes de banco executam as migrações |
+| Inc. 0: Fundação | em andamento (I0.1 e I0.2 concluídas) | app local e em homologação; CI verde; testes de banco executam as migrações |
 | Inc. 1: Identidade e adesão | não iniciado | testes negativos 1, 2 (empresa), 4, 5 e 13 |
 | Inc. 2: Oferta | não iniciado | publica com pendência e mostra aviso; testes 2 (ofertas e documentos), 6, 11 e 12 (preço) |
 | Inc. 3: Domínio documental | não iniciado | estados conforme §6.4; testes 7 e 10; revisão AG |
@@ -59,6 +59,7 @@ Este plano traduz o roteiro da seção 12 da v1.1 em subtarefas despacháveis. E
 | `outcomes`, `commissions` | Crítico | valores; dependem de C1-C4 | T2 (pós-piloto) | T3 obrigatório |
 | `notifications` | Médio | nunca levar dado restrito (§6.13) | T2 na outbox; T1 nos templates | T3 se tocar dado pessoal |
 | `audit` | Alto | só inclusão; sem segredos (§5.6) | T2 | junto com cada módulo crítico |
+| Infraestrutura self-hosted | Crítico | chaves, exposição, backup e VPS compartilhada com produção de clientes (ADR-0001 §5.1) | H com roteiro do T2 | T3 (I6.9) |
 | Telas (§9) | Médio | estados obrigatórios; linguagem proibida (§6.6) | T1 | TV quando houver screenshot |
 
 **Regra derivada:** módulo crítico não aceita fallback heterogêneo silencioso. Se o modelo do T2 ficar indisponível numa subtarefa crítica, ela pausa com handoff (seção 9).
@@ -74,12 +75,13 @@ Valem para todos os incrementos, independentemente do modelo:
 3. **Testes negativos válidos:** cada teste da §7.4 precisa falhar quando a política correspondente é removida. Essa verificação de mutação é feita pelo T2 ou pelo T3.
 4. **Nunca simular:** nenhuma consulta, resultado ou evidência de exemplo em oferta real. Dados de teste usam `is_test` e ficam identificados (§6.3).
 5. **Linguagem proibida (§6.6):** um teste automatizado varre os textos da interface, dos e-mails e dos guias atrás dos termos proibidos sem a qualificação exigida.
-6. **Separação da Motors (§4.5):** nada de banco, projeto, credencial, conta de provedor ou dado da Motors. Código portado é reescrito para multiempresa e revisado.
+6. **Separação da Motors (§4.5):** nada de banco, projeto, credencial, conta de provedor ou dado da Motors. Código portado é reescrito para multiempresa e revisado. A única exceção é o servidor físico (VPS `srv904277`), com isolamento por projeto do Easypanel.
 7. **Decisões pendentes (§13):** a estrutura pode ser construída; o comportamento definitivo, não. Padrões provisórios ficam marcados no código e na configuração.
 8. **Produção, push e deploy:** só com aprovação H explícita, por ação.
 9. **Dados:** nenhum dado real de cliente em seed, fixture ou teste.
 10. **Entrega de subagente:** resumo, arquivos e diff, testes executados com saída, limitações e riscos. O T2 inspeciona o diff e roda os testes antes de integrar.
 11. **Definição de pronto (§16):** inclui revisão por um segundo agente; nos módulos críticos, T3, e em documental e piloto, também AG.
+12. **Self-hosted (ADR-0001 §3):** nenhuma chave de exemplo do template; nenhum serviço exposto além da API; nenhum teste de banco contra `homolog` ou `prod`; reset só em `dev`.
 
 ---
 
@@ -118,10 +120,10 @@ Enquanto P2-P5 estiverem pausadas, os subagentes herdam o modelo padrão da inst
 
 # 6. INCREMENTOS DECOMPOSTOS
 
-Os caminhos de arquivo são provisórios até a I0.2 fixar a estrutura; depois dela, o T2 atualiza esta seção. Convenção provisória:
-- `app/` para rotas;
-- `src/modules/<módulo>/` para o domínio (§15);
-- `supabase/migrations/` e `supabase/tests/` para o banco;
+Caminhos fixados pelo ADR-0001 §2.8. Nas tabelas, "`app/`" quer dizer `src/app/` e "`supabase/tests/`" quer dizer `supabase/tests/database/`:
+- `src/app/` para rotas, agrupadas por área;
+- `src/modules/<módulo>/` para o domínio (§15), com `rules/`, `schemas/`, `server/`, `queries/` e `ui/`;
+- `supabase/migrations/` e `supabase/tests/database/` para o banco; `tests/integration/` para integração;
 - `tests/e2e/` para testes ponta a ponta;
 - `docs/adr/` para decisões técnicas.
 
@@ -129,24 +131,28 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 
 ## Inc. 0: Fundação
 
-**Aceite (§12):** app sobe localmente e em homologação; CI verde; migrações em banco limpo.  
-**Depende de:** P1. **Decisões:** nenhuma. **Externo (H):** projetos Supabase e Vercel próprios (D1), credenciais em variáveis protegidas.
+**Aceite (§12):** app sobe localmente e em homologação; CI verde; migrações em banco limpo; chaves de exemplo do Supabase substituídas.  
+**Depende de:** P1. **Decisões:** D1 revista (Easypanel na VPS `srv904277`, ADR-0001 §3).  
+**Externo (H):** capacidade da VPS, projetos no Easypanel, túnel SSH, domínios e push.
 
 | ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
 |---|---|---|---|---|
-| I0.1 | Levantar ferramentas instaladas (Node, gerenciador de pacotes, Supabase CLI, Docker, `psql`) → relatório com versões | T0 | nenhum | versões observadas por comando, não presumidas |
-| I0.2 | Decidir estrutura física, gerenciador de pacotes, lint e formatação, testes unitários, testes de banco que **executem** migrações e e2e → ADR-0001 | T2 | `docs/adr/0001-fundacao.md`, este plano | ADR com alternativas e motivo; caminhos deste plano atualizados |
-| I0.3 | Criar os projetos Supabase (desenvolvimento e homologação) e Vercel próprios; cadastrar as credenciais | H | — | projetos existem e são separados da Motors; T2 confere os IDs |
-| I0.4 | Scaffold Next.js, TypeScript estrito, lint, formatação e teste unitário de exemplo | T1 | tudo exceto `supabase/` e `docs/` | `lint`, `typecheck`, `test` e `build` passam no worktree |
-| I0.5 | Supabase local (`supabase init`) e harness de teste de banco executando migrações | T1 | `supabase/**`, configuração do harness | reset em banco limpo; teste de banco roda de verdade (não é pulado) |
+| I0.1 | Levantar ferramentas instaladas (Node, gerenciador de pacotes, Supabase CLI, Docker, `psql`) → relatório com versões | T2 (o T0 não tem Bash; tarefa pequena) | nenhum | **concluída em 26/10**: resultado no ADR-0001 §1.1 |
+| I0.2 | Decidir estrutura física, gerenciador de pacotes, lint e formatação, testes unitários, testes de banco que **executem** migrações e e2e → ADR-0001 | T2 | `docs/adr/0001-fundacao.md`, este plano | **concluída em 26/10**: `docs/adr/0001-fundacao.md`; caminhos deste plano atualizados |
+| I0.3 | Criar no Easypanel os projetos `repasse-dev` e `repasse-homolog` (Supabase self-hosted), seguindo o roteiro da I0.13: chaves novas, Studio protegido, Postgres sem porta pública, limites de recurso | H | — | projetos separados dos demais; T2 confere que a assinatura do JWT não bate com a chave de exemplo do template e que a porta 5432 não responde de fora |
+| I0.4 | Scaffold Next.js, TypeScript 6.0 estrito, ESLint 10, Prettier, Tailwind 4, Vitest, `.gitattributes`, `.nvmrc`, estrutura de pastas do ADR-0001 §2.6 e teste de linguagem proibida (gate 5) | T1 | tudo exceto `supabase/` e `docs/` | `lint`, `typecheck`, `test`, `format:check` e `build` passam no worktree; o teste de linguagem proibida falha num texto proibido de exemplo |
+| I0.5 | `npx supabase init`; reset reproduzível do `dev` sem Docker local; runner pgTAP; harness de integração que falha (não pula) sem banco; trava por `pg_advisory_lock` | T2 (banco compartilhado `dev`) | `supabase/**`, `scripts/**`, `tests/integration/**` | reset e reaplicação das migrações no `dev` comprovados; teste de banco roda de verdade. **Depende da I0.3 e da I0.11** |
 | I0.6 | Migração base: `audit_logs`, `field_history`, `restricted_access_logs`, `platform_settings`, função genérica que barra UPDATE e DELETE em tabela só de inclusão | T2 | `supabase/migrations/**`, `supabase/tests/**` | UPDATE e DELETE recusados nas tabelas só de inclusão (teste 11, parte base) |
 | I0.7 | `.env.example` e `docs/ambiente.md`, separando público de somente servidor | T2 | `.env.example`, `docs/ambiente.md` | nenhum valor real |
-| I0.8 | CI com lint, typecheck, unitários, testes de banco em banco limpo, linguagem proibida e build | T2 | arquivos de CI do ADR-0001 | pipeline verde num commit de teste |
-| I0.9 | Primeiro deploy em homologação | H + T2 | — | app abre na URL de homologação; H aprova |
-| I0.10 | README de instalação local | T1 | `README.md` | T2 segue o README do zero num worktree limpo |
+| I0.8 | CI no GitHub Actions com lint, typecheck, unitários, linguagem proibida, Supabase efêmero (`supabase start` no runner), testes de banco e de integração, e build | T2 | `.github/workflows/**` | pipeline verde num commit de teste (exige push aprovado por H) |
+| I0.9 | `Dockerfile` (Next `standalone`, Node 24) e primeiro deploy do app no projeto `repasse-homolog` pelo GitHub, com domínio e HTTPS | T2 + H | `Dockerfile`, `.dockerignore`, `docs/operacao/**` | app abre na URL de homologação apontando para o Supabase de homologação; H aprova |
+| I0.10 | README de instalação local, incluindo o túnel SSH | T1 | `README.md` | T2 segue o README do zero num worktree limpo |
+| I0.11 | Acesso do T2 ao banco `dev`: chave SSH dedicada, túnel (`ssh -L`) e credenciais em `.env.local` | H | — | T2 conecta pelo túnel e roda uma consulta de leitura |
+| I0.12 | Levantar a capacidade e o uso atual da VPS (RAM, disco, CPU) e a localização do datacenter | H (ou T2 com acesso SSH) | — | números registrados em `current-task.md`; decide se `dev` e `homolog` ficam de pé juntos (ADR-0001 §3.1) |
+| I0.13 | Roteiro do Easypanel: criação dos projetos, geração das chaves, exposição mínima, limites de recurso, conferência pós-criação | T2 | `docs/operacao/easypanel.md` | H consegue seguir o roteiro sem decisão em aberto |
 
-**Paralelismo:** I0.4 ∥ I0.5 (só a I0.5 toca `supabase/`). I0.3 com H em paralelo a tudo.  
-**Gate:** aceite observado; CI verde; prova de que o teste de banco executa migração.
+**Paralelismo:** a I0.4 (T1) e a I0.13 (T2) podem começar já. A I0.12 vem antes da I0.3. A I0.5 e a I0.6 dependem da I0.3 e da I0.11.  
+**Gate:** aceite observado; CI verde; prova de que o teste de banco executa migração; chaves de exemplo substituídas.
 
 ## Inc. 1: Identidade, empresas e adesão
 
@@ -254,14 +260,15 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 
 | ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
 |---|---|---|---|---|
-| I6.1 | Decisões D5 (textos jurídicos), D8 (participantes), D9 e D10; projetos de produção | H | — | decisões registradas em `current-task.md` |
+| I6.1 | Decisões D5 (textos jurídicos), D8 (participantes), D9 e D10; reavaliação da capacidade da VPS; criação do projeto `repasse-prod` no Easypanel pelo roteiro da I0.13 | H | — | decisões registradas em `current-task.md`; chaves de produção novas, distintas das de `dev` e `homolog` |
 | I6.2 | Aplicar os textos aprovados e os valores de D9 e D10 na configuração | T2 | configuração, textos, `docs/**` | nenhum texto provisório restante |
 | I6.3 | E2E do fluxo vertical da §2.2 com dados de teste identificados | T1 | `tests/e2e/**` | T2 roda em homologação e anexa a saída |
-| I6.4 | Observabilidade (§15), roteiro de incidente, backup e teste de restauração | T2 + H | configuração, `docs/operacao/**` | restauração comprovada; H executa a parte de produção |
+| I6.4 | Observabilidade (§15), roteiro de incidente; `pg_dump` diário e cópia do volume de Storage **para fora da VPS**; teste de restauração | T2 + H | configuração, `scripts/**`, `docs/operacao/**` | restauração comprovada a partir da cópia externa; H executa a parte de produção |
 | I6.5 | Revisão de segurança completa: §7.1 e os 13 testes da §7.4 | T3 | leitura | sem crítico aberto |
 | I6.6 | Revisão externa do fluxo completo | AG | leitura e homologação | sem crítico aberto |
 | I6.7 | Conferir os 13 critérios da §10 contra as evidências → relatório de lacunas | T0 | nenhum | cada critério com evidência ou "pendente" |
 | I6.8 | Piloto com oferta real ou de teste identificada; linha de base das métricas da §11; go/no-go | H + T2 | — | decisão registrada |
+| I6.9 | Revisão do self-hosted: chaves, exposição (só a API pública), Studio, portas, limites de recurso, rotina de atualização, convivência com os outros projetos da VPS | T3 (+ H para conferir no painel) | leitura de `docs/operacao/**` e da configuração | sem crítico aberto; riscos do ADR-0001 §5.1 com mitigação comprovada |
 
 **Gate:** T2 declara prontidão técnica com evidências; H aprova o piloto.
 
@@ -298,7 +305,7 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 
 | Nível | Faz | Nunca faz |
 |---|---|---|
-| T0 | extrai regras da v1.1 em tabelas de decisão; inventaria código a portar; rascunha testes; confere entregas contra critérios | escrever no repositório; decidir arquitetura; resolver ambiguidade |
+| T0 | extrai regras da v1.1 em tabelas de decisão; inventaria código a portar; rascunha testes; confere entregas contra critérios | escrever no repositório; decidir arquitetura; resolver ambiguidade; rodar comandos (não tem Bash) |
 | T1 | telas; testes a partir de tabela aprovada; portes de baixo risco (Turnstile, componentes, CI sob revisão); templates; documentação | migrações, RLS, Storage, estado documental, ciência, comissão; push; deploy |
 | T2 | ADRs; migrações; RLS; Storage; regras de estado; operações críticas; integração de worktrees; handoffs | declarar pronto sem evidência; aplicar comportamento de decisão pendente como definitivo; produção sem H |
 | T3 | revisa diff e evidências; tenta quebrar os testes da §7.4 | editar; aprovar só pelo resumo |

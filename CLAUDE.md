@@ -29,12 +29,17 @@ A sessão principal é o orquestrador (T2). Ela despacha subtarefas aos subagent
 - Push, deploy, operações em produção e migrações destrutivas só com aprovação explícita da pessoa responsável, por ação.
 - Não inventar comportamento coberto pelas decisões pendentes da seção 13 da especificação v1.1.
 - Nunca simular consulta, resultado ou evidência. Pendência documental nunca bloqueia publicação. Nenhum rótulo de "verificado" sem a qualificação "nas fontes consultadas".
-- Nada é compartilhado com a Motors: banco, projeto, credenciais, contas de provedor ou dados.
+- Nada é compartilhado com a Motors: banco, projeto, credenciais, contas de provedor ou dados. A exceção é o servidor físico (VPS `srv904277`, Easypanel), com projeto próprio por ambiente.
+- Self-hosted: nunca usar as chaves de exemplo do template do Supabase; testes e reset de banco só no ambiente `dev`, nunca em `homolog` ou `prod`.
 - Não inventar IDs de modelo, credenciais, integrações ou variáveis.
 - Módulos críticos (auth, organizations, access-control, transactions, commissions, subscriptions) não seguem em fallback para modelo menos capaz; pausar com handoff.
 
 ## Estado do projeto
 
 - Repositório Git na branch `main`; remoto `origin` = `https://github.com/85dyones/ideal-garbanzo.git`. Push só com aprovação explícita.
-- Comandos de build, lint e teste: definidos na S0.2; registrar aqui quando existirem.
+- Fundação técnica: `docs/adr/0001-fundacao.md`.
+  - Stack: Node 24, npm, Next 16, Vitest, pgTAP, Playwright.
+  - Infraestrutura: Supabase self-hosted e aplicação no Easypanel; CI com Supabase efêmero no GitHub Actions; sem Docker local.
+  - Comandos concretos de build, lint e teste entram aqui na I0.4.
+- O subagente `fast-helper` (T0) não roda comandos; levantamentos que exigem Bash ficam com o T2 ou com o `builder`.
 - Modelos dos subagentes: não configurados até P3/P4; os subagentes herdam o modelo padrão da instalação.
