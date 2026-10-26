@@ -11,6 +11,11 @@ dist/
 coverage/
 *.tsbuildinfo
 
+# Next.js
+/build
+next-env.d.ts
+*.pem
+
 # Supabase local
 supabase/.branches/
 supabase/.temp/

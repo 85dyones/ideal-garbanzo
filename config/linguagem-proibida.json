@@ -1,0 +1,46 @@
+{
+  "descricao": "Termos que a interface, as notificações e os guias não usam para o veículo ou a oferta sem a qualificação exigida. A busca não diferencia maiúsculas nem acentos e compara palavras inteiras. Uma linha com a qualificação, ou com o marcador de exceção seguido do motivo, não conta como ocorrência.",
+  "referencia": "Especificação v1.1, §6.6; gate 5 do plano orquestrado",
+  "qualificacao": "nas fontes consultadas",
+  "marcadorDeExcecao": "linguagem-permitida:",
+  "termos": [
+    {
+      "termo": "verificado",
+      "variantes": ["verificado", "verificada", "verificados", "verificadas"]
+    },
+    {
+      "termo": "aprovado",
+      "variantes": ["aprovado", "aprovada", "aprovados", "aprovadas"]
+    },
+    {
+      "termo": "certificado",
+      "variantes": [
+        "certificado",
+        "certificada",
+        "certificados",
+        "certificadas"
+      ]
+    },
+    {
+      "termo": "garantido",
+      "variantes": ["garantido", "garantida", "garantidos", "garantidas"]
+    },
+    {
+      "termo": "procedência garantida",
+      "variantes": ["procedência garantida", "procedências garantidas"]
+    },
+    {
+      "termo": "livre de problemas",
+      "variantes": [
+        "livre de problemas",
+        "livres de problemas",
+        "livre de problema",
+        "livres de problema"
+      ]
+    },
+    {
+      "termo": "nada consta",
+      "variantes": ["nada consta", "nada-consta"]
+    }
+  ]
+}
