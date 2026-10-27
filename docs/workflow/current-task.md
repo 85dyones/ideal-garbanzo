@@ -169,3 +169,14 @@
 - **Pendências da I0.9:**
   - a pessoa responsável troca a branch de produção para `producao` (Settings → Environments → Production). Isso precisa ser feito antes de cadastrar variáveis do Supabase; com a `main` como produção, a homologação usaria as variáveis de produção;
   - confirmar `gru1` no próximo deploy.
+- **Segundo deploy (27/10):** a pessoa responsável informou que trocou a branch de produção para `producao` e fez o push do `0988a21`. Deploy `dpl_B9dbjD6kuDGKcsXmKiDmhv22aGBf`:
+  - `READY` em uns 12 segundos;
+  - **região `gru1` confirmada**;
+  - **ainda `target: production`**, com o alias de produção `ideal-garbanzo-six.vercel.app`.
+- **Teste sem login (`curl`):** os cinco endereços (três aliases e as URLs dos dois deploys) respondem 302 para `vercel.com/sso-api`, sem a página. A proteção `all` se mantém.
+- **Branch de produção não pegou:** a branch `producao` não existe no GitHub (`git ls-remote origin producao` vazio). Hipótese: a Vercel não aceita acompanhar uma branch inexistente, ou a troca não foi salva. A integração não lê esse campo.
+- **Próximo passo proposto:**
+  1. criar a `producao` no GitHub apontando para a `main` atual. Enquanto a produção for a `main`, esse push gera um deploy de preview;
+  2. trocar a branch de produção no painel;
+  3. o próximo push na `main` precisa sair como preview.
+  - A `producao` só recebe código novo no Inc. 6, com aprovação H.

@@ -168,7 +168,7 @@ docs/
 - **Projeto:** `ideal-garbanzo` (`prj_tjGFghO2iZmZik0rhaWnAaiuZSxY`), ligado a `85dyones/ideal-garbanzo`, framework Next.js, Node 24.
 - **Branches:**
   - a `main` gera deploys de **preview**, que são a homologação;
-  - a branch de produção é `producao`, criada só no Inc. 6;
+  - a branch de produção é `producao`. Ela é criada já no Inc. 0, apontando para o esqueleto, para a Vercel poder acompanhá-la, e só recebe código novo no Inc. 6, com aprovação H;
   - a troca da branch de produção é feita no painel da Vercel (H), porque a ferramenta de automação não tem esse campo.
 - **Proteção:** autenticação da Vercel em **todos** os deploys (`ssoProtection: all`), inclusive produção, até o Inc. 6. Nada fica público antes do piloto.
 - **Variáveis:** cadastradas no projeto da Vercel por ambiente. `Preview` aponta para `repasse-homolog`; `Production` aponta para `repasse-prod` no Inc. 6. O `.env.example` lista só os nomes.
