@@ -35,7 +35,7 @@ Este plano traduz o roteiro da seção 12 da v1.1 em subtarefas despacháveis. E
 | Etapa | Status | Gate de saída |
 |---|---|---|
 | Pré-requisitos P1-P6 | P1 concluída; P2-P6 pausadas | ver seção 5 |
-| Inc. 0: Fundação | em andamento (I0.1, I0.2, I0.4 e I0.9 concluídas; I0.12 e I0.13 canceladas) | app local e em homologação; CI verde; testes de banco executam as migrações |
+| Inc. 0: Fundação | em andamento (I0.1, I0.2, I0.3, I0.4, I0.7 e I0.9 concluídas; I0.8 parcial; I0.12 e I0.13 canceladas) | app local e em homologação; CI verde; testes de banco executam as migrações |
 | Inc. 1: Identidade e adesão | não iniciado | testes negativos 1, 2 (empresa), 4, 5 e 13 |
 | Inc. 2: Oferta | não iniciado | publica com pendência e mostra aviso; testes 2 (ofertas e documentos), 6, 11 e 12 (preço) |
 | Inc. 3: Domínio documental | não iniciado | estados conforme §6.4; testes 7 e 10; revisão AG |
@@ -81,7 +81,7 @@ Valem para todos os incrementos, independentemente do modelo:
 9. **Dados:** nenhum dado real de cliente em seed, fixture ou teste.
 10. **Entrega de subagente:** resumo, arquivos e diff, testes executados com saída, limitações e riscos. O T2 inspeciona o diff e roda os testes antes de integrar.
 11. **Definição de pronto (§16):** inclui revisão por um segundo agente; nos módulos críticos, T3, e em documental e piloto, também AG.
-12. **Ambientes (ADR-0001 §3):** nenhum teste de banco nem reset contra `homolog` ou `prod`; reset só em `repasse-dev`. Até o Inc. 6, todo deploy da Vercel fica atrás da autenticação da Vercel.
+12. **Ambientes (ADR-0001 §3):** testes de banco e reset só no projeto `gtbncxvaghjfmzcypgul`, que serve a `dev` e homologação e só guarda dados de teste; nunca em produção. Produção não recebe variáveis do Supabase até o Inc. 6. Até lá, todo deploy da Vercel fica atrás da autenticação da Vercel.
 
 ---
 
@@ -139,12 +139,12 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 |---|---|---|---|---|
 | I0.1 | Levantar ferramentas instaladas (Node, gerenciador de pacotes, Supabase CLI, Docker, `psql`) → relatório com versões | T2 (o T0 não tem Bash; tarefa pequena) | nenhum | **concluída em 26/10**: resultado no ADR-0001 §1.1 |
 | I0.2 | Decidir estrutura física, gerenciador de pacotes, lint e formatação, testes unitários, testes de banco que **executem** migrações e e2e → ADR-0001 | T2 | `docs/adr/0001-fundacao.md`, este plano | **concluída em 26/10**: `docs/adr/0001-fundacao.md`; caminhos deste plano atualizados |
-| I0.3 | Criar no Supabase Cloud os projetos `repasse-dev` e `repasse-homolog`, em `sa-east-1`, de preferência numa organização própria do repasse, depois de confirmar plano e custo | H | — | projetos existem e são separados dos da Motors e da V2O5; T2 confere região e nome pela ferramenta do Supabase |
+| I0.3 | Criar no Supabase Cloud os projetos `repasse-dev` e `repasse-homolog`, em `sa-east-1`, de preferência numa organização própria do repasse, depois de confirmar plano e custo | H | — | **concluída com ressalva (27/10):** um único projeto, `gtbncxvaghjfmzcypgul`, no plano gratuito, para `dev` e homologação. A integração não tem acesso a ele; região e organização não conferidas |
 | I0.4 | Scaffold Next.js, TypeScript 6.0 estrito, ESLint 9, Prettier, Tailwind 4, Vitest, `.gitattributes`, `.nvmrc`, estrutura de pastas do ADR-0001 §2.6 e teste de linguagem proibida (gate 5) | T1 | tudo exceto `supabase/` e `docs/` | **concluída em 26/10**: integrada na `main` (`b09297d`); aceite reproduzido pelo T2 a partir de `npm ci` limpo |
 | I0.5 | `npx supabase init`; reset reproduzível do `dev` sem Docker local; runner pgTAP; harness de integração que falha (não pula) sem banco; trava por `pg_advisory_lock` | T2 (banco compartilhado `dev`) | `supabase/**`, `scripts/**`, `tests/integration/**` | reset e reaplicação das migrações no `dev` comprovados; teste de banco roda de verdade. **Depende da I0.3 e da I0.11** |
 | I0.6 | Migração base: `audit_logs`, `field_history`, `restricted_access_logs`, `platform_settings`, função genérica que barra UPDATE e DELETE em tabela só de inclusão | T2 | `supabase/migrations/**`, `supabase/tests/**` | UPDATE e DELETE recusados nas tabelas só de inclusão (teste 11, parte base) |
-| I0.7 | `.env.example` e `docs/ambiente.md`, separando público de somente servidor | T2 | `.env.example`, `docs/ambiente.md` | nenhum valor real |
-| I0.8 | CI no GitHub Actions com lint, typecheck, unitários, linguagem proibida, Supabase efêmero (`supabase start` no runner), testes de banco e de integração, e build | T2 | `.github/workflows/**` | pipeline verde num commit de teste (exige push aprovado por H) |
+| I0.7 | `.env.example` e `docs/ambiente.md`, separando público de somente servidor | T2 | `.env.example`, `docs/ambiente.md` | **concluída em 27/10**: cinco variáveis (duas públicas, uma secreta de servidor, duas de ferramenta local); produção sem variáveis até o Inc. 6 |
+| I0.8 | CI no GitHub Actions com lint, typecheck, unitários, linguagem proibida, Supabase efêmero (`supabase start` no runner), testes de banco e de integração, e build | T2 | `.github/workflows/**` | **parcial (27/10):** `ci.yml` com os jobs `qualidade` (`npm ls`, lint, tipos, testes, formatação) e `build`; comandos verdes localmente. Falta: o job de banco (entra com a I0.5) e o primeiro resultado verde no GitHub (depende de push) |
 | I0.9 | Projeto `repasse` na Vercel ligado ao `ideal-garbanzo`, Node 24, autenticação da Vercel em todos os deploys; push da `main`; deploy de preview; troca da branch de produção para `producao` no painel (H) | T2 + H | — | **concluída em 27/10**, exceto as variáveis do Supabase, que entram depois da I0.3. Projeto `ideal-garbanzo`; push na `main` gera preview (`target: null`); `producao` é a branch de produção; região `gru1`; proteção `all`. Seis endereços testados sem login: todos 302 para o login da Vercel |
 | I0.10 | README de instalação local | T1 | `README.md` | T2 segue o README do zero num worktree limpo |
 | I0.11 | Credenciais do `repasse-dev` em `.env.local` (fora do Git) e teste de conexão pelo pooler | H | — | T2 conecta e roda uma consulta de leitura |

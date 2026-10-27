@@ -196,3 +196,17 @@
   - I0.7 (T2): `.env.example` e `docs/ambiente.md`;
   - I0.8 (T2): CI no GitHub Actions;
   - I0.10 (T1): README.
+
+### 2026-10-27 · I0.3, I0.7 e I0.8
+
+- **I0.3 (pessoa responsável):** um projeto Supabase, `gtbncxvaghjfmzcypgul`, no plano gratuito.
+  - Pedido: "só tenho no plano free, use uma tabela". O T2 interpretou como um único projeto servindo a `dev` e homologação, porque não há como separar ambientes por tabela. A interpretação foi registrada e comunicada.
+  - A integração do Supabase desta sessão recusou `get_project`, `list_tables` e `get_publishable_keys` ("You do not have permission"). Provavelmente o projeto está numa organização nova. Região, status e chaves **não conferidos**.
+  - ADR-0001 §3.1 e §5, gate 12 do plano e `CLAUDE.md` ajustados: reset e testes só nesse projeto, que só guarda dados de teste; produção sem variáveis do Supabase até o Inc. 6.
+- **I0.7 (T2):** `.env.example` com cinco nomes, sem valores: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_PROJECT_REF`, `SUPABASE_DB_URL`. `docs/ambiente.md` traz origem, visibilidade e onde cada ambiente recebe os valores. `git check-ignore` confirma que o `.env.example` é versionável.
+- **I0.8 (T2, parcial):** `.github/workflows/ci.yml`.
+  - **Jobs:** `qualidade` (`npm ci`, `npm ls`, lint, typecheck, testes, `format:check`) e `build`.
+  - **Configuração:** `actions/checkout` e `actions/setup-node` em `v7`, com tags conferidas por `git ls-remote`; Node pelo `.nvmrc`; `permissions: contents: read`; `concurrency`.
+  - **Verificação local na `main`, depois de `npm ci` (0 `ERESOLVE`):** `npm ls`, `lint`, `typecheck`, `test`, `format:check` e `build` com saída 0.
+  - **YAML:** o Prettier analisa o arquivo e passou; um YAML quebrado de propósito deu `SyntaxError` (saída 2).
+  - **Falta:** o job de banco (com a I0.5) e o primeiro resultado no GitHub Actions, que depende de push.

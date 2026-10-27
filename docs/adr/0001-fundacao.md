@@ -152,12 +152,12 @@ docs/
 
 | Ambiente | Banco (Supabase Cloud, `sa-east-1`) | Aplicação (Vercel) | Dados | Quando |
 |---|---|---|---|---|
-| `dev` | projeto `repasse-dev` | máquina local (`npm run dev`) | só de teste; reset livre | Inc. 0 (I0.3) |
-| `homolog` | projeto `repasse-homolog` | deploys de preview gerados por push na `main`, protegidos pela autenticação da Vercel | só de teste, identificados | Inc. 0 (I0.9) |
+| `dev` | projeto `gtbncxvaghjfmzcypgul` (plano gratuito), compartilhado com `homolog` | máquina local (`npm run dev`) | só de teste; reset livre | Inc. 0 (I0.3) |
+| `homolog` | o mesmo projeto do `dev` | deploys de preview gerados por push na `main`, protegidos pela autenticação da Vercel | só de teste, identificados; apagados a cada reset do `dev` | Inc. 0 (I0.9) |
 | `prod` | projeto `repasse-prod` | deploy de produção a partir da branch `producao` | reais | Inc. 6 |
 | CI | Supabase CLI efêmero no runner do GitHub Actions (que tem Docker) | runner | de teste, descartados a cada execução | Inc. 0 (I0.8) |
 
-- Cada ambiente é um projeto separado no Supabase, com chaves e banco próprios.
+- **Projeto único no plano gratuito (decisão da pessoa responsável, 27/10):** `dev` e `homolog` usam o mesmo projeto `gtbncxvaghjfmzcypgul`. Produção exige projeto próprio (`repasse-prod`) no Inc. 6, com plano que tenha backup.
 - Região `sa-east-1` (São Paulo): proximidade dos usuários e dados no Brasil.
 - **Organização do Supabase:** recomendada uma organização própria do repasse, separada da que hospeda `motors-oficial`, `v2o5-site` e `rede-auto`. Isso separa cobrança, acesso e responsabilidade LGPD. A decisão é da pessoa responsável, na I0.3.
 - **Time da Vercel:** o projeto fica no time existente (`dyones-projects`), que também hospeda projetos da Motors e da V2O5. O isolamento é por projeto, com variáveis de ambiente próprias. Reavaliar um time separado no Inc. 6.
@@ -220,14 +220,14 @@ docs/
 | Deploy público antes do piloto | `ssoProtection: all` na Vercel; branch de produção `producao`, que só existe no Inc. 6 | I0.9 |
 | Banco `dev` compartilhado entre agentes | `pg_advisory_lock` no runner; só o T2 roda testes de banco em `dev` | I0.5 |
 | Mistura com projetos da Motors e da V2O5 na mesma organização ou time | projetos e variáveis próprios; organização própria no Supabase (recomendada) | I0.3 |
-| Custo mensal dos projetos do Supabase | a pessoa responsável confirma o plano e o custo antes de criar | I0.3 |
+| Projeto único: reset e testes do `dev` apagam a homologação; plano gratuito pausa por inatividade e não tem os backups do plano pago | o projeto só guarda dados de teste identificados; produção em projeto próprio e plano com backup no Inc. 6 | I0.3; I6.1 |
 | Backup e restauração | backups gerenciados do Supabase; decidir PITR para `prod`; testar a restauração antes do piloto | I6.4 |
 
 ### 5.2. Dependências externas
 
 | Item | Quem | Bloqueia |
 |---|---|---|
-| Projetos `repasse-dev` e `repasse-homolog` no Supabase Cloud, em `sa-east-1`, de preferência numa organização própria | H (I0.3) | I0.5, I0.6, I0.9 |
+| Projeto `gtbncxvaghjfmzcypgul` criado pela pessoa responsável (27/10). A integração desta sessão não tem acesso a ele, então região e organização não foram conferidas | H (I0.3) | — |
 | Senha do banco e chaves de `dev` em `.env.local`; teste de conexão pelo pooler | H (I0.11) | testes de banco locais |
 | Trocar a branch de produção da Vercel para `producao` | H, no painel da Vercel | deploy de produção acidental (mitigado pela proteção) |
 | Push do repositório para o GitHub | H, por ação | I0.8 e I0.9 |
