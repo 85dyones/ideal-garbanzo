@@ -24,7 +24,7 @@ Destino recusado sai com código 2. Nenhum outro projeto é tocado, em hipótese
 
 ## Uma execução por vez
 
-O projeto de desenvolvimento é um só para todos os agentes. Reset e testes pegam o mesmo advisory lock; uma segunda execução espera até 60 s e depois falha com mensagem clara. Só o T2 roda testes de banco no projeto de desenvolvimento.
+O projeto de desenvolvimento é um só para todos os agentes. Reset e testes pegam o mesmo advisory lock; uma segunda execução espera até 60 s e depois falha com mensagem clara. Só o T2 roda testes de banco no projeto de desenvolvimento. O `test:integration` ainda não pega a trava: hoje ele só lê. Quando os testes de integração passarem a gravar dados (Inc. 1), a preparação global deles passa a pegar a mesma trava.
 
 ## Convenções
 

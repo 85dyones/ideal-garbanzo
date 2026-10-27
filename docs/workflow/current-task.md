@@ -2,8 +2,8 @@
 
 **Etapa:** Inc. 0, Fundação (plano v2)  
 **Próximas subtarefas:**
-- **I0.6 (T2):** migração base de auditoria, histórico e configuração; é a primeira migração real, então o gate do Inc. 0 ("teste de banco executa migração") passa a valer no CI.
-- **I0.10 (T1):** README de instalação local.
+- **Push (H)** e CI verde com a migração da I0.6: fecha o gate do Inc. 0.
+- **Inc. 1 (T2 + T0):** começar pela I1.1 (regras de identidade, T0) e pela I1.2 (ADR-0002, T2).
 
 > **Repositório público:** este registro não traz segredos, dados pessoais nem detalhes internos ou de segurança de outros negócios. O registro completo fica em `notas-privadas/`, fora do Git.
 
@@ -184,3 +184,18 @@
   - M3, sem RLS em `audit_logs`: "RLS ligado em audit_logs" falhou.
   - A migração foi restaurada (`cmp` idêntico), e o reset seguido dos testes voltou a passar.
 - Lint, typecheck, `npm test` e `format:check`: saída 0.
+
+### 2026-10-27 · I0.10 · concluída
+
+- `builder` (T1) em worktree isolado, criado a partir do `98fb330`. Entregou o `README.md` (commit `a1a75f9`, integrado na `main` por cherry-pick como `175ac60`). O builder conferiu links, comandos, linguagem proibida e ausência de valores com um script próprio.
+- **Verificação do T2:**
+  - leitura completa;
+  - varredura de dados sensíveis: nada;
+  - **seguindo o README num clone limpo:** `npm ci` (0 `ERESOLVE`), `.env.local` a partir do modelo, `lint`, `typecheck`, `test`, `format:check` e `build` com saída 0;
+  - `npm run dev` pelo painel de pré-visualização (`.claude/launch.json`): página "Repasse de veículos / Plataforma em construção." e `GET / 200`.
+- **Achado do builder, procedente:** o `test:integration` não pega o advisory lock. Hoje ele só lê. Registrado em `supabase/tests/README.md` para o Inc. 1, quando os testes passarem a gravar dados.
+- **Gate do Inc. 0:**
+  - app local e em homologação (preview protegido): ok;
+  - CI verde: ok, no `3139113`;
+  - teste de banco executando migração: ok no projeto de desenvolvimento, e o CI com a migração da I0.6 depende do push;
+  - nenhum deploy público: ok.
