@@ -2,8 +2,7 @@
 
 **Etapa:** Inc. 0, Fundação (plano v2)  
 **Próximas subtarefas:**
-- **I0.11 (H):** credenciais do projeto Supabase `gtbncxvaghjfmzcypgul` em `.env.local`, seguindo `docs/ambiente.md`, e teste de conexão pelo pooler.
-- **I0.5 (T2):** `npx supabase init`, reset reproduzível, runner pgTAP, harness de integração e job de banco no CI. Depende da I0.11.
+- **I0.5 (T2):** `npx supabase init`, reset reproduzível, runner pgTAP com TLS verificado pela CA do Supabase, harness de integração e job de banco no CI. Projeto Supabase: `ralmlmuewullugeqtgoz` (`sa-east-1`).
 - **I0.6 (T2):** migração base de auditoria, histórico e configuração. Depende da I0.5.
 - **I0.10 (T1):** README de instalação local.
 
@@ -119,3 +118,16 @@
 - **Achado:** o host do pooler é de `us-east-1`. O projeto foi criado nos EUA, e não em `sa-east-1` como previa o ADR-0001, enquanto as funções da Vercel estão em `gru1`.
   - Opções: recriar o projeto em `sa-east-1` agora, enquanto está vazio, ou mover as funções para `iad1`, perto do banco.
   - A decisão é da pessoa responsável.
+
+### 2026-10-27 · Projeto Supabase recriado em `sa-east-1`
+
+- A pessoa responsável recriou o projeto em `sa-east-1` e atualizou o `.env`. O projeto novo é `ralmlmuewullugeqtgoz`.
+- **Conferência sem exibir valores:**
+  - URL e chaves do projeto novo (`sb_publishable_` e `sb_secret_`, diferentes entre si);
+  - `SUPABASE_DB_URL` no pooler `aws-1-sa-east-1.pooler.supabase.com`, porta 5432, usuário `postgres.ralmlmuewullugeqtgoz`.
+  - O `SUPABASE_PROJECT_REF` ainda tinha o identificador antigo. O T2 corrigiu só essa linha, que não é segredo, com `sed`, sem ler o arquivo.
+- **API:** `auth` deu 401 sem chave e 200 com a publicável; a raiz REST deu 401 com a publicável e 200 com a secreta.
+- **Banco:** conexão pelo pooler com TLS verificado pela mesma CA (`prod-ca-2021.crt`), dentro de `begin read only`, em 276 ms (contra 1.487 ms no projeto de `us-east-1`). Postgres 17.11, `public` vazio, `auth` e `storage` presentes, `pgtap` e `pg_cron` disponíveis.
+- O identificador antigo foi trocado pelo novo em `CLAUDE.md`, ADR-0001, `docs/ambiente.md` e plano. No histórico acima, o antigo fica como registro.
+- `docs/ambiente.md`: a `SUPABASE_DB_URL` vai **sem** `sslmode`, porque o parâmetro na URL se sobrepõe à configuração de TLS do cliente e descarta a CA.
+- O projeto antigo (`us-east-1`) fica a critério da pessoa responsável (pausar ou excluir); não tem dados do repasse.

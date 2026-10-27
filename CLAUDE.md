@@ -30,7 +30,7 @@ A sessão principal é o orquestrador (T2). Ela despacha subtarefas aos subagent
 - Não inventar comportamento coberto pelas decisões pendentes da seção 13 da especificação v1.1.
 - Nunca simular consulta, resultado ou evidência. Pendência documental nunca bloqueia publicação. Nenhum rótulo de "verificado" sem a qualificação "nas fontes consultadas".
 - Nada é compartilhado com a Motors: banco, projeto, credenciais, contas de provedor ou dados.
-- Testes e reset de banco só no projeto Supabase `gtbncxvaghjfmzcypgul`, que serve a `dev` e homologação e só guarda dados de teste; nunca em produção. A produção da Vercel não recebe variáveis do Supabase até o Inc. 6. Até lá, todo deploy da Vercel fica atrás da autenticação da Vercel.
+- Testes e reset de banco só no projeto Supabase `ralmlmuewullugeqtgoz`, que serve a `dev` e homologação e só guarda dados de teste; nunca em produção. A produção da Vercel não recebe variáveis do Supabase até o Inc. 6. Até lá, todo deploy da Vercel fica atrás da autenticação da Vercel.
 - Não inventar IDs de modelo, credenciais, integrações ou variáveis.
 - **O repositório `ideal-garbanzo` é público** (decisão da pessoa responsável, 27/10). Não versionar segredos, dados pessoais, nem detalhes internos ou de segurança de outros negócios da pessoa responsável: achados, locais de segredos, nomes e IDs de projetos deles, infraestrutura de clientes, IDs de conta. Esses registros ficam em `notas-privadas/` (no `.gitignore`), que os agentes podem ler localmente; nos arquivos versionados, só a descrição genérica.
 - Módulos críticos (auth, organizations, access-control, transactions, commissions, subscriptions) não seguem em fallback para modelo menos capaz; pausar com handoff.
@@ -41,7 +41,7 @@ A sessão principal é o orquestrador (T2). Ela despacha subtarefas aos subagent
 - Fundação técnica: `docs/adr/0001-fundacao.md`.
   - Stack: Node 24, npm, Next 16, Vitest, pgTAP, Playwright.
   - Infraestrutura:
-    - Supabase Cloud, plano gratuito: um projeto (`gtbncxvaghjfmzcypgul`) para `dev` e homologação; `repasse-prod` no Inc. 6;
+    - Supabase Cloud, plano gratuito: um projeto (`ralmlmuewullugeqtgoz`) para `dev` e homologação; `repasse-prod` no Inc. 6;
     - variáveis de ambiente: `.env.example` e `docs/ambiente.md`;
     - CI: `.github/workflows/ci.yml`;
     - Vercel, projeto `ideal-garbanzo`: a `main` gera previews (homologação); a produção sai da branch `producao`;

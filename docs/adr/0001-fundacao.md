@@ -152,12 +152,12 @@ docs/
 
 | Ambiente | Banco (Supabase Cloud, `sa-east-1`) | Aplicação (Vercel) | Dados | Quando |
 |---|---|---|---|---|
-| `dev` | projeto `gtbncxvaghjfmzcypgul` (plano gratuito), compartilhado com `homolog` | máquina local (`npm run dev`) | só de teste; reset livre | Inc. 0 (I0.3) |
+| `dev` | projeto `ralmlmuewullugeqtgoz` (plano gratuito), compartilhado com `homolog` | máquina local (`npm run dev`) | só de teste; reset livre | Inc. 0 (I0.3) |
 | `homolog` | o mesmo projeto do `dev` | deploys de preview gerados por push na `main`, protegidos pela autenticação da Vercel | só de teste, identificados; apagados a cada reset do `dev` | Inc. 0 (I0.9) |
 | `prod` | projeto `repasse-prod` | deploy de produção a partir da branch `producao` | reais | Inc. 6 |
 | CI | Supabase CLI efêmero no runner do GitHub Actions (que tem Docker) | runner | de teste, descartados a cada execução | Inc. 0 (I0.8) |
 
-- **Projeto único no plano gratuito (decisão da pessoa responsável, 27/10):** `dev` e `homolog` usam o mesmo projeto `gtbncxvaghjfmzcypgul`. Produção exige projeto próprio (`repasse-prod`) no Inc. 6, com plano que tenha backup.
+- **Projeto único no plano gratuito (decisão da pessoa responsável, 27/10):** `dev` e `homolog` usam o mesmo projeto `ralmlmuewullugeqtgoz`. Produção exige projeto próprio (`repasse-prod`) no Inc. 6, com plano que tenha backup.
 - Região `sa-east-1` (São Paulo): proximidade dos usuários e dados no Brasil.
 - **Organização do Supabase:** recomendada uma organização própria do repasse, separada da que hospeda projetos de outros negócios. Isso separa cobrança, acesso e responsabilidade LGPD.
 - **Time da Vercel:** o projeto fica num time existente da pessoa responsável, que também hospeda projetos de outros negócios. O isolamento é por projeto, com variáveis de ambiente próprias. Reavaliar um time separado no Inc. 6.
@@ -172,7 +172,7 @@ docs/
   - a troca da branch de produção é feita no painel da Vercel (H), porque a ferramenta de automação não tem esse campo.
 - **Proteção:** autenticação da Vercel em **todos** os deploys (`ssoProtection: all`), inclusive produção, até o Inc. 6. Nada fica público antes do piloto.
 - **Variáveis:** cadastradas no projeto da Vercel por ambiente. `Preview` aponta para `repasse-homolog`; `Production` aponta para `repasse-prod` no Inc. 6. O `.env.example` lista só os nomes.
-- **Região das funções:** `gru1` (São Paulo), aplicada em 27/10 e confirmada no deploy. **Pendente:** o projeto Supabase `gtbncxvaghjfmzcypgul` foi criado em `us-east-1`, não em `sa-east-1` como previsto (o host do pooler mostra a região). Funções e banco estão em continentes diferentes até a decisão sobre a região (ver `current-task`).
+- **Região das funções:** `gru1` (São Paulo), aplicada em 27/10 e confirmada no deploy, junto do banco em `sa-east-1`. O primeiro projeto Supabase tinha sido criado em `us-east-1`; foi recriado em `sa-east-1` em 27/10 (`ralmlmuewullugeqtgoz`).
 - **Achado da I0.9:** a proteção "Standard" (`all_except_custom_domains`) deixou público o domínio de produção `.vercel.app` (HTTP 200). Com `all`, todos os endereços dos deploys passaram a redirecionar para o login da Vercel (HTTP 302).
 - **`output: "standalone"`:** fica no `next.config.ts` (I0.4). A Vercel usa o próprio empacotamento; a I0.9 confirma que o deploy funciona com essa opção.
 - Push e deploy de produção sempre com aprovação H, por ação.
@@ -227,7 +227,7 @@ docs/
 
 | Item | Quem | Bloqueia |
 |---|---|---|
-| Projeto `gtbncxvaghjfmzcypgul` criado pela pessoa responsável (27/10). A integração desta sessão não tem acesso a ele, então região e organização não foram conferidas | H (I0.3) | — |
+| Projeto `ralmlmuewullugeqtgoz` em `sa-east-1`, criado pela pessoa responsável (27/10), no lugar do primeiro projeto, que estava em `us-east-1`. Região conferida pelo host do pooler; conexão verificada com a CA do Supabase | H (I0.3) | — |
 | Senha do banco e chaves de `dev` em `.env.local`; teste de conexão pelo pooler | H (I0.11) | testes de banco locais |
 | Trocar a branch de produção da Vercel para `producao` | H, no painel da Vercel | deploy de produção acidental (mitigado pela proteção) |
 | Push do repositório para o GitHub | H, por ação | I0.8 e I0.9 |

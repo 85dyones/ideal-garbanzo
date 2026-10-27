@@ -12,15 +12,15 @@ Valores reais nunca entram no Git, no chat nem em issue. O `.env.example` lista 
 | `NEXT_PUBLIC_SUPABASE_URL` | pública | URL da API do projeto Supabase | painel do Supabase → Project Settings → API |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | pública | chave publicável (`sb_publishable_…`); em projetos antigos, a chave `anon` | painel do Supabase → Project Settings → API Keys |
 | `SUPABASE_SECRET_KEY` | **somente servidor** | chave secreta (`sb_secret_…`), equivalente à antiga `service_role`; ignora o RLS | painel do Supabase → Project Settings → API Keys |
-| `SUPABASE_PROJECT_REF` | ferramenta local | identificador do projeto (ex.: `gtbncxvaghjfmzcypgul`) | URL do painel do projeto |
-| `SUPABASE_DB_URL` | **ferramenta local, secreta** | conexão Postgres para migrações e testes de banco | painel do Supabase → Connect → *Session pooler*, com a senha do banco e `?sslmode=require` |
+| `SUPABASE_PROJECT_REF` | ferramenta local | identificador do projeto (ex.: `ralmlmuewullugeqtgoz`) | URL do painel do projeto |
+| `SUPABASE_DB_URL` | **ferramenta local, secreta** | conexão Postgres para migrações e testes de banco | painel do Supabase → Connect → *Session pooler* (host `aws-<n>-sa-east-1.pooler.supabase.com`), com a senha do banco codificada para URL e **sem** `sslmode`: o TLS é configurado no cliente com o certificado de CA do Supabase (`prod-ca-2021.crt`) |
 
 ## 2. Onde cada ambiente recebe os valores
 
 | Ambiente | Projeto Supabase | Onde os valores ficam | Variáveis |
 |---|---|---|---|
-| Local (`dev`) | `gtbncxvaghjfmzcypgul` | `.env.local` na raiz, ignorado pelo Git | todas |
-| Homologação (previews da Vercel, branch `main`) | `gtbncxvaghjfmzcypgul` | Vercel → projeto `ideal-garbanzo` → Environment Variables → **Preview** | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e, quando o código precisar, `SUPABASE_SECRET_KEY` |
+| Local (`dev`) | `ralmlmuewullugeqtgoz` | `.env` ou `.env.local` na raiz, ambos ignorados pelo Git | todas |
+| Homologação (previews da Vercel, branch `main`) | `ralmlmuewullugeqtgoz` | Vercel → projeto `ideal-garbanzo` → Environment Variables → **Preview** | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e, quando o código precisar, `SUPABASE_SECRET_KEY` |
 | Produção (branch `producao`) | `repasse-prod`, a criar no Inc. 6 | Vercel → **Production** | **nenhuma até o Inc. 6** |
 | CI (GitHub Actions) | Supabase efêmero no runner | gerado pelo próprio job | nenhuma cadastrada |
 
