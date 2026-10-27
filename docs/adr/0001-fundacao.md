@@ -181,9 +181,9 @@ docs/
 
 - Escritas em `supabase/migrations/` com a Supabase CLI (`npx supabase migration new`).
 - Aplicadas com a CLI pela conexão do projeto (`npx supabase db push`, com `--db-url` ou projeto vinculado), nunca por edição no painel.
-- **Em `dev`:** um reset reproduzível reaplica todas as migrações e remove os usuários de teste. A I0.5 escolhe e prova o mecanismo sem Docker local: `supabase db reset --linked` ou `--db-url` se funcionar sem Docker; senão, script próprio.
+- **Em `dev`:** `npm run db:reset` (`scripts/db-reset.mjs`, decidido na I0.5). Numa transação só, remove os objetos do schema `public` (sem recriar o schema, o que preserva os grants padrão do Supabase), apaga os usuários de teste, zera o histórico compatível com a CLI (`supabase_migrations.schema_migrations`) e reaplica migrações e seed. Antes de conectar, recusa qualquer destino fora de `config/banco-dev.json` ou de banco local.
 - **Em `homolog` e `prod`:** só `push` de migrações novas, nunca reset. Migração destrutiva exige plano e aprovação H.
-- **Conexão a partir da máquina local:** pelo *pooler* do Supabase em modo sessão, com SSL. A conexão direta do Supabase Cloud costuma ser só IPv6; conferir na I0.11. A senha do banco fica em `.env.local`, fora do Git.
+- **Conexão a partir da máquina local:** pelo *pooler* do Supabase em modo sessão, com TLS verificado pelo certificado de CA do Supabase (`supabase/certs/prod-ca-2021.crt`, versionado por ser público). Sem `sslmode` na URL, que anularia a CA. A conexão direta só tem IPv6. A senha do banco fica no `.env`, fora do Git.
 
 ---
 
@@ -200,7 +200,7 @@ docs/
 **Regras:**
 - **Falhar, nunca pular:** as suítes de banco e de integração falham quando o banco não está acessível.
 - **Uma execução por vez em `dev`:** o banco `repasse-dev` é um só para todos os agentes. O runner pega um `pg_advisory_lock` antes do reset e dos testes; os testes de banco em `dev` ficam com o T2, um de cada vez. Subagentes `builder` rodam unitários, lint e typecheck.
-- **pgTAP sem Docker local:** se `supabase test db` exigir Docker, um script Node (`scripts/testes-de-banco`) executa os arquivos `.test.sql` pela conexão e interpreta a saída TAP. A I0.5 decide e registra.
+- **pgTAP sem Docker local:** `npm run test:db` (`scripts/testes-de-banco.mjs`, decidido na I0.5) instala o `pgtap` no schema `extensions`, executa cada `.test.sql` pela conexão e interpreta a saída TAP. Não usa `pg_prove`. O mesmo runner roda no CI, contra o Supabase efêmero.
 - **CI é a referência:** o resultado verde no CI, contra um Supabase limpo, é exigido para integrar na `main`.
 - **Verificação de mutação** dos testes negativos: procedimento em `supabase/tests/README.md`.
 

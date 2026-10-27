@@ -1,5 +1,4 @@
-# CI do repasse (I0.8 do plano orquestrado; ADR-0001 §4).
-# O job de banco (Supabase efêmero e pgTAP) entra na I0.5, quando existir supabase/.
+# CI do repasse (I0.5 e I0.8 do plano orquestrado; ADR-0001 §4).
 name: CI
 
 on:
@@ -48,3 +47,28 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+
+  banco:
+    name: Banco (Supabase efêmero, pgTAP e integração)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Subir o Supabase efêmero
+        run: npx supabase start
+      - name: Exportar as variáveis do Supabase efêmero
+        run: |
+          npx supabase status -o json > "$RUNNER_TEMP/supabase-status.json"
+          node scripts/ci-ambiente-supabase.mjs "$RUNNER_TEMP/supabase-status.json"
+      # Banco local: a trava de destino aceita 127.0.0.1 e a conexão não usa TLS.
+      - run: npm run db:reset
+      - run: npm run test:db
+      - run: npm run test:integration
+      - name: Parar o Supabase
+        if: always()
+        run: npx supabase stop --no-backup

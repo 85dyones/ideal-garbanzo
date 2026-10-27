@@ -1,0 +1,6 @@
+{
+  "descricao": "Destinos em que o reset e os testes de banco podem rodar (gate 12 do plano orquestrado). Qualquer outro destino é recusado antes de conectar.",
+  "projetosPermitidos": ["ralmlmuewullugeqtgoz"],
+  "hostsLocais": ["127.0.0.1", "localhost", "::1"],
+  "esquemasDaAplicacao": ["public"]
+}

@@ -56,8 +56,11 @@ A sessão principal é o orquestrador (T2). Ela despacha subtarefas aos subagent
     | `npm test` | Vitest, incluindo o teste de linguagem proibida |
     | `npm run format:check` | confere a formatação do Prettier |
     | `npm run build` | build do Next (`standalone`) |
+    | `npm run db:reset` | reset do banco de desenvolvimento (só o projeto de `config/banco-dev.json` ou banco local) |
+    | `npm run test:db` | testes pgTAP de `supabase/tests/database/` |
+    | `npm run test:integration` | testes de integração contra a API e o banco |
 
-  - Testes de banco e de integração entram na I0.5.
+  - Banco: só o T2 roda `db:reset`, `test:db` e `test:integration` no projeto de desenvolvimento, um de cada vez (advisory lock). A trava de destino recusa qualquer outro projeto. Convenções e verificação de mutação em `supabase/tests/README.md`.
   - Termos proibidos da §6.6 só aparecem com "nas fontes consultadas" na mesma linha. Uso legítimo leva `linguagem-permitida: <motivo>` na linha (ex.: "Certificado de Registro de Veículo"). A lista fica em `config/linguagem-proibida.json`.
 - O subagente `fast-helper` (T0) não roda comandos; levantamentos que exigem Bash ficam com o T2 ou com o `builder`.
 - Modelos dos subagentes: não configurados até P3/P4; os subagentes herdam o modelo padrão da instalação.

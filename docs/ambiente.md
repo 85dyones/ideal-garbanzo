@@ -13,7 +13,7 @@ Valores reais nunca entram no Git, no chat nem em issue. O `.env.example` lista 
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | pública | chave publicável (`sb_publishable_…`); em projetos antigos, a chave `anon` | painel do Supabase → Project Settings → API Keys |
 | `SUPABASE_SECRET_KEY` | **somente servidor** | chave secreta (`sb_secret_…`), equivalente à antiga `service_role`; ignora o RLS | painel do Supabase → Project Settings → API Keys |
 | `SUPABASE_PROJECT_REF` | ferramenta local | identificador do projeto (ex.: `ralmlmuewullugeqtgoz`) | URL do painel do projeto |
-| `SUPABASE_DB_URL` | **ferramenta local, secreta** | conexão Postgres para migrações e testes de banco | painel do Supabase → Connect → *Session pooler* (host `aws-<n>-sa-east-1.pooler.supabase.com`), com a senha do banco codificada para URL e **sem** `sslmode`: o TLS é configurado no cliente com o certificado de CA do Supabase (`prod-ca-2021.crt`) |
+| `SUPABASE_DB_URL` | **ferramenta local, secreta** | conexão Postgres para migrações e testes de banco | painel do Supabase → Connect → *Session pooler* (host `aws-<n>-sa-east-1.pooler.supabase.com`), com a senha do banco codificada para URL e **sem** `sslmode`: o TLS é configurado no cliente com o certificado de CA do Supabase (`supabase/certs/prod-ca-2021.crt`) |
 
 ## 2. Onde cada ambiente recebe os valores
 

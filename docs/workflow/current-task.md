@@ -2,8 +2,8 @@
 
 **Etapa:** Inc. 0, Fundação (plano v2)  
 **Próximas subtarefas:**
-- **I0.5 (T2):** `npx supabase init`, reset reproduzível, runner pgTAP com TLS verificado pela CA do Supabase, harness de integração e job de banco no CI. Projeto Supabase: `ralmlmuewullugeqtgoz` (`sa-east-1`).
-- **I0.6 (T2):** migração base de auditoria, histórico e configuração. Depende da I0.5.
+- **Push (H)** e primeira execução do job `banco` no CI (fecha a I0.8).
+- **I0.6 (T2):** migração base de auditoria, histórico e configuração.
 - **I0.10 (T1):** README de instalação local.
 
 > **Repositório público:** este registro não traz segredos, dados pessoais nem detalhes internos ou de segurança de outros negócios. O registro completo fica em `notas-privadas/`, fora do Git.
@@ -131,3 +131,28 @@
 - O identificador antigo foi trocado pelo novo em `CLAUDE.md`, ADR-0001, `docs/ambiente.md` e plano. No histórico acima, o antigo fica como registro.
 - `docs/ambiente.md`: a `SUPABASE_DB_URL` vai **sem** `sslmode`, porque o parâmetro na URL se sobrepõe à configuração de TLS do cliente e descarta a CA.
 - O projeto antigo (`us-east-1`) fica a critério da pessoa responsável (pausar ou excluir); não tem dados do repasse.
+
+### 2026-10-27 · I0.5 · concluída (job de banco no CI aguarda a primeira execução)
+
+- **Perfil/modelo:** T2, Claude Opus 5.5. Sem subagentes, porque o banco de desenvolvimento é compartilhado.
+- **Dependências** (versão exata): `supabase` 2.122.0 (CLI; binário em pacotes opcionais, sem script de instalação e sem `allowScripts`), `pg` 8.23.1, `@types/pg` 8.23.1. `npm install` sem `ERESOLVE`.
+- **`npx supabase init`:** `supabase/config.toml` com `project_id = "repasse"` e Postgres 17. O certificado de CA foi para `supabase/certs/prod-ca-2021.crt`, versionado por ser público.
+- **Entregas:**
+  - `config/banco-dev.json` lista os destinos permitidos;
+  - `scripts/lib/` contém ambiente, trava de destino, conexão com TLS e advisory lock, e leitor TAP;
+  - `scripts/db-reset.mjs`, `scripts/testes-de-banco.mjs` e `scripts/ci-ambiente-supabase.mjs`;
+  - `supabase/tests/database/000-fundacao.test.sql` e `supabase/tests/README.md`;
+  - `vitest.integration.config.mts` e `tests/integration/`;
+  - testes unitários `tests/banco-destino.test.ts` e `tests/tap.test.ts`;
+  - scripts `db:reset`, `test:db` e `test:integration`;
+  - job `banco` no `ci.yml`.
+- **Verificação no projeto de desenvolvimento:**
+  - lint, typecheck, `npm test` (60 testes) e `format:check`: saída 0;
+  - trava de destino com URL falsa de outro projeto e com host qualquer: recusado, saída 2, sem conectar;
+  - `db:reset` e `test:db`: ok (6 testes);
+  - migração temporária (tabela, enum, função, view): aplicada e registrada; depois de removida, o reset tirou tudo e zerou o histórico, e os grants do `public` se mantiveram. A migração temporária não foi versionada;
+  - runner contra testes ruins: `not ok`, plano não cumprido e erro de SQL deram FALHA (saída 1); pasta sem testes: saída 1;
+  - `test:integration`: 3 testes ok. Sem a URL ou com destino estranho, a suíte **falha** com a mensagem explícita ("Variáveis ausentes" ou "Destino recusado");
+  - advisory lock: com outro processo segurando a trava por 12 s, o `test:db` esperou e terminou depois da liberação;
+  - `ci-ambiente-supabase.mjs` testado com status falso de nomes novos e antigos (ok) e incompleto (saída 1).
+- **Não verificado:** o job `banco` no GitHub Actions (sem Docker local). Depende do push.
