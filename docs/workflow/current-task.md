@@ -2,8 +2,7 @@
 
 **Etapa:** Inc. 0, Fundação (plano v2)  
 **Próximas subtarefas:**
-- **Push (H)** e primeira execução do job `banco` no CI (fecha a I0.8).
-- **I0.6 (T2):** migração base de auditoria, histórico e configuração.
+- **I0.6 (T2):** migração base de auditoria, histórico e configuração; é a primeira migração real, então o gate do Inc. 0 ("teste de banco executa migração") passa a valer no CI.
 - **I0.10 (T1):** README de instalação local.
 
 > **Repositório público:** este registro não traz segredos, dados pessoais nem detalhes internos ou de segurança de outros negócios. O registro completo fica em `notas-privadas/`, fora do Git.
@@ -156,3 +155,15 @@
   - advisory lock: com outro processo segurando a trava por 12 s, o `test:db` esperou e terminou depois da liberação;
   - `ci-ambiente-supabase.mjs` testado com status falso de nomes novos e antigos (ok) e incompleto (saída 1).
 - **Não verificado:** o job `banco` no GitHub Actions (sem Docker local). Depende do push.
+
+### 2026-10-27 · I0.8 · concluída; I0.5 confirmada no CI
+
+- Push do `3139113` feito pela pessoa responsável.
+- **CI** (execução 40596166065): os jobs "Lint, tipos, testes e formatação", "Build do Next" e **"Banco (Supabase efêmero, pgTAP e integração)"** terminaram com `success`.
+- **Passos do job `banco`, todos `success`:**
+  - `supabase start` (111 s);
+  - exportação das variáveis;
+  - `db:reset`, `test:db` e `test:integration`;
+  - `supabase stop`.
+- O log detalhado do job exige login no GitHub (HTTP 403 sem autenticação); o resultado vem das conclusões dos passos. Os scripts saem com erro quando há falha ou quando falta teste.
+- **Vercel:** preview do `3139113` `READY` (`target: null`).
