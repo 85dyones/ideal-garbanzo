@@ -167,3 +167,20 @@
   - `supabase stop`.
 - O log detalhado do job exige login no GitHub (HTTP 403 sem autenticação); o resultado vem das conclusões dos passos. Os scripts saem com erro quando há falha ou quando falta teste.
 - **Vercel:** preview do `3139113` `READY` (`target: null`).
+
+### 2026-10-27 · I0.6 · concluída
+
+- **Perfil/modelo:** T2, Claude Opus 5.5. Em paralelo, a I0.10 com o `builder`.
+- **Migração `supabase/migrations/20261027224325_base_auditoria.sql`**, criada com `npx supabase migration new`:
+  - `audit_logs`, `field_history` e `restricted_access_logs` só de inclusão, com o gatilho genérico `impedir_alteracao_de_registro()` (UPDATE e DELETE por linha, TRUNCATE por comando);
+  - `platform_settings` **vazia**, sem valor comercial inventado (gate 7);
+  - RLS ligado nas quatro;
+  - todos os privilégios de `anon` e `authenticated` revogados (as políticas de leitura entram no Inc. 1). O `service_role` só lê e insere nas tabelas só de inclusão;
+  - campos de ator sem chave estrangeira até a `profiles` existir (I1.3).
+- **Testes:** `supabase/tests/database/010-base-auditoria.test.sql`, com 29 asserções. `db:reset` aplicou a migração, e `test:db` passou (6 + 29).
+- **Verificação de mutação (gate 3)**, com a migração alterada só temporariamente:
+  - M1, sem o gatilho em `audit_logs`: "UPDATE recusado" e "DELETE recusado" falharam;
+  - M2, sem revogar `anon` e `authenticated`: as 7 checagens de acesso falharam;
+  - M3, sem RLS em `audit_logs`: "RLS ligado em audit_logs" falhou.
+  - A migração foi restaurada (`cmp` idêntico), e o reset seguido dos testes voltou a passar.
+- Lint, typecheck, `npm test` e `format:check`: saída 0.
