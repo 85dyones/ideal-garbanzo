@@ -165,7 +165,7 @@ docs/
 
 ### 3.2. Vercel
 
-- **Projeto:** `repasse`, ligado a `85dyones/ideal-garbanzo`, framework Next.js, Node 24.
+- **Projeto:** `ideal-garbanzo` (`prj_tjGFghO2iZmZik0rhaWnAaiuZSxY`), ligado a `85dyones/ideal-garbanzo`, framework Next.js, Node 24.
 - **Branches:**
   - a `main` gera deploys de **preview**, que são a homologação;
   - a branch de produção é `producao`, criada só no Inc. 6;

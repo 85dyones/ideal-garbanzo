@@ -41,7 +41,7 @@ A sessão principal é o orquestrador (T2). Ela despacha subtarefas aos subagent
   - Stack: Node 24, npm, Next 16, Vitest, pgTAP, Playwright.
   - Infraestrutura:
     - Supabase Cloud em `sa-east-1`: `repasse-dev`, `repasse-homolog` e, no Inc. 6, `repasse-prod`;
-    - Vercel, projeto `repasse`: a `main` gera previews (homologação); a produção sai da branch `producao`;
+    - Vercel, projeto `ideal-garbanzo`: a `main` gera previews (homologação); a produção sai da branch `producao`;
     - CI com Supabase efêmero no GitHub Actions;
     - sem Docker local.
   - Comandos (rodar `npm ci` antes, na pasta onde se trabalha):

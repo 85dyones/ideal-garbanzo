@@ -142,3 +142,15 @@
   - Vercel: um time (`dyones-projects`), com integração GitHub em `85dyones` sem restrição de repositório;
   - Supabase: a organização atual hospeda os projetos da Motors e da V2O5. Por isso a recomendação é uma organização própria do repasse (decisão H na I0.3).
 - **Limite da automação:** a ferramenta da Vercel nesta sessão não altera a branch de produção. Mitigação: autenticação da Vercel em todos os deploys; a troca para `producao` fica com a pessoa responsável, no painel.
+- Commit `23cdf29` com a D1 final e o registro da I0.4.
+- **I0.9, tentativas do T2 em 27/10:**
+  - criar o projeto `repasse` pela integração da Vercel: **403** ("You don't have permission to create the project"). Não repetido;
+  - `git push -u origin main`: **negado** pelo classificador de permissões do modo automático ("Out-of-Place Publication"). Não contornado.
+  - O push e a criação do projeto na Vercel passam para a pessoa responsável. O T2 confere depois, pela leitura do projeto na Vercel e do remoto.
+- **Push feito pela pessoa responsável (27/10):** `git ls-remote origin` mostra `refs/heads/main` e `HEAD` em `23cdf29`, igual à `main` local, que agora acompanha `origin/main`.
+- **Projeto na Vercel:** ainda não existe. Não aparece buscando por "repasse" nem pelo repositório, e `get_project` devolve 404 para `repasse` e `ideal-garbanzo`.
+- **Projeto criado pela pessoa responsável (27/10):** `ideal-garbanzo` (`prj_tjGFghO2iZmZik0rhaWnAaiuZSxY`), no time `dyones-projects`.
+  - Leitura pelo ID: framework `nextjs`; Node `24.x`; `ssoProtection` ligada com `all_except_custom_domains` ("Standard"); nenhum domínio; nenhum deploy (`latestDeployment: null`; `list_deployments` vazio).
+  - Pelo nome com `teamId`, a leitura devolve 404. Só funciona pelo ID ou pela listagem sem `teamId`; a integração parece ter acesso restrito por projeto.
+  - **Não verificáveis pela integração:** a ligação com o Git e a branch de produção. Hipótese: a branch de produção já foi trocada para `producao`, e por isso nenhum deploy saiu ainda. O próximo push na `main` deve gerar o primeiro preview.
+  - **Nome:** o projeto ficou `ideal-garbanzo`, não `repasse` como no ADR-0001 §3.2. Sem impacto técnico; o ADR passa a citar `ideal-garbanzo`.
