@@ -35,7 +35,7 @@ Este plano traduz o roteiro da seção 12 da v1.1 em subtarefas despacháveis. E
 | Etapa | Status | Gate de saída |
 |---|---|---|
 | Pré-requisitos P1-P6 | P1 concluída; P2-P6 pausadas | ver seção 5 |
-| Inc. 0: Fundação | em andamento (I0.1, I0.2 e I0.4 concluídas; I0.12 e I0.13 canceladas) | app local e em homologação; CI verde; testes de banco executam as migrações |
+| Inc. 0: Fundação | em andamento (I0.1, I0.2, I0.4 e I0.9 concluídas; I0.12 e I0.13 canceladas) | app local e em homologação; CI verde; testes de banco executam as migrações |
 | Inc. 1: Identidade e adesão | não iniciado | testes negativos 1, 2 (empresa), 4, 5 e 13 |
 | Inc. 2: Oferta | não iniciado | publica com pendência e mostra aviso; testes 2 (ofertas e documentos), 6, 11 e 12 (preço) |
 | Inc. 3: Domínio documental | não iniciado | estados conforme §6.4; testes 7 e 10; revisão AG |
@@ -145,7 +145,7 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 | I0.6 | Migração base: `audit_logs`, `field_history`, `restricted_access_logs`, `platform_settings`, função genérica que barra UPDATE e DELETE em tabela só de inclusão | T2 | `supabase/migrations/**`, `supabase/tests/**` | UPDATE e DELETE recusados nas tabelas só de inclusão (teste 11, parte base) |
 | I0.7 | `.env.example` e `docs/ambiente.md`, separando público de somente servidor | T2 | `.env.example`, `docs/ambiente.md` | nenhum valor real |
 | I0.8 | CI no GitHub Actions com lint, typecheck, unitários, linguagem proibida, Supabase efêmero (`supabase start` no runner), testes de banco e de integração, e build | T2 | `.github/workflows/**` | pipeline verde num commit de teste (exige push aprovado por H) |
-| I0.9 | Projeto `repasse` na Vercel ligado ao `ideal-garbanzo`, Node 24, autenticação da Vercel em todos os deploys; push da `main`; deploy de preview; troca da branch de produção para `producao` no painel (H) | T2 + H | — | **em andamento (27/10):** projeto `ideal-garbanzo`; build do `32964c4` pronto; proteção `all` comprovada nos quatro endereços. **Falta:** branch de produção `producao` (H), antes das variáveis do Supabase; confirmar a região `gru1` no próximo deploy. As variáveis de homologação entram depois da I0.3 |
+| I0.9 | Projeto `repasse` na Vercel ligado ao `ideal-garbanzo`, Node 24, autenticação da Vercel em todos os deploys; push da `main`; deploy de preview; troca da branch de produção para `producao` no painel (H) | T2 + H | — | **concluída em 27/10**, exceto as variáveis do Supabase, que entram depois da I0.3. Projeto `ideal-garbanzo`; push na `main` gera preview (`target: null`); `producao` é a branch de produção; região `gru1`; proteção `all`. Seis endereços testados sem login: todos 302 para o login da Vercel |
 | I0.10 | README de instalação local | T1 | `README.md` | T2 segue o README do zero num worktree limpo |
 | I0.11 | Credenciais do `repasse-dev` em `.env.local` (fora do Git) e teste de conexão pelo pooler | H | — | T2 conecta e roda uma consulta de leitura |
 | I0.12 | ~~Capacidade da VPS~~ | — | — | **cancelada em 27/10**: o repasse não usa mais a VPS |

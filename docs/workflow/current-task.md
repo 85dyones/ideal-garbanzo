@@ -180,3 +180,19 @@
   2. trocar a branch de produção no painel;
   3. o próximo push na `main` precisa sair como preview.
   - A `producao` só recebe código novo no Inc. 6, com aprovação H.
+
+### 2026-10-27 · I0.9 · concluída (exceto variáveis do Supabase)
+
+- A pessoa responsável criou a `producao` no GitHub (no commit `de26c02`), trocou a branch de produção na Vercel e fez o push do `de26c02` na `main`.
+- **Remoto:** `main` e `producao` em `de26c02`.
+- **Deploys na Vercel, em ordem:**
+  1. `producao`, preview (`dpl_9hVk2fvj6Ps6P2TffemMcPzFf1Yi`, `target: null`): saiu antes da troca de branch;
+  2. **`main`, preview** (`dpl_FxkoB5sME54iwtdy8v73c8xUcduZ`): `target: null`, `READY`, região `gru1`, só com o alias `git-main`;
+  3. **`producao`, produção** (`dpl_72cpTjFFiKSuV2gEiUgoUaBRZFhW`): `source: redeploy`, gerado na troca de branch, não por push; `READY`, `gru1`, com os aliases de produção `ideal-garbanzo-six.vercel.app` e `ideal-garbanzo-dyones-projects-a2f07575.vercel.app`.
+- **Teste sem login (`curl`):** os seis endereços dos deploys atuais (aliases de produção, `git-producao`, `git-main` e as duas URLs de deploy) respondem 302 para `vercel.com/sso-api`, sem a página.
+- **Resultado:** push na `main` gera homologação (preview); produção só a partir da `producao`; tudo protegido por login; funções em `gru1`.
+- **Próximos passos do Inc. 0:**
+  - I0.3 (H): projetos `repasse-dev` e `repasse-homolog` no Supabase Cloud. Depois, as variáveis de `Preview` na Vercel apontam para `repasse-homolog`;
+  - I0.7 (T2): `.env.example` e `docs/ambiente.md`;
+  - I0.8 (T2): CI no GitHub Actions;
+  - I0.10 (T1): README.
