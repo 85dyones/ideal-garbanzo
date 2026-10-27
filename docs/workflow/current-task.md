@@ -2,9 +2,12 @@
 
 **Etapa:** Inc. 0, Fundação (plano v2)  
 **Próximas subtarefas:**
-- **I0.4 (T1, `builder`, worktree):** scaffold Next.js, TypeScript estrito, ESLint, Prettier, Vitest, `.gitattributes`, `.nvmrc` e estrutura de pastas do ADR-0001 §2.6. Arquivos permitidos: tudo exceto `supabase/` e `docs/`. Aceite: `lint`, `typecheck`, `test` e `build` passam; versões de TypeScript e ESLint registradas.
-- **I0.13 (T2):** roteiro do Easypanel em `docs/operacao/easypanel.md`.
-- **I0.12 (H):** capacidade, uso atual e localização da VPS `srv904277`.
+- **I0.9 (T2 + H, em andamento):**
+  - projeto `repasse` na Vercel com autenticação em todos os deploys;
+  - push da `main` e preview;
+  - a pessoa responsável troca a branch de produção para `producao` no painel.
+- **I0.3 (H):** `repasse-dev` e `repasse-homolog` no Supabase Cloud, em `sa-east-1`, de preferência numa organização própria.
+- **I0.7 (T2):** `.env.example` e `docs/ambiente.md`.
 - **I0.3 (H):** projetos `repasse-dev` e `repasse-homolog` no Easypanel, pelo roteiro da I0.13.
 - **I0.11 (H):** chave SSH dedicada e túnel para o banco `dev`. Junto com a I0.3, bloqueia a I0.5 e a I0.6.
 
@@ -94,3 +97,48 @@
   - I6.1, I6.4 (backup externo) e I6.9 (revisão do self-hosted);
   - gate 12; risco "Infraestrutura self-hosted".
 - Evidência sobre o Easypanel atual: documentos locais citam o Easypanel na VPS `srv904277`, com os projetos `automations` (Chatwoot e Postgres 17) e `v2o5-autopilot`, além da Evolution. Capacidade da VPS não levantada.
+- Commitado em `77f6ac4`.
+
+### 2026-10-26 · I0.13 · concluída
+
+- Perfil/modelo: T2, Claude Opus 5.5.
+- Entrega: `docs/operacao/easypanel.md`.
+  - Cobre: segredos gerados por ambiente, URLs e Auth, exposição mínima (só o Kong com domínio; firewall do provedor, porque o Docker passa por fora do `ufw`), limites de recurso, `repasse-homolog`, túnel SSH com chave restrita a encaminhamento de porta, conferência com o T2, registro e desfazer.
+  - Os nomes de variáveis e os valores de exemplo do compose oficial estão marcados como "conferir no template instalado".
+- Verificação: o script de chaves do roteiro foi executado numa pasta temporária. As duas chaves são assinadas com o segredo gerado, **não** batem com o segredo de exemplo e saem com `iss` igual a `supabase`. Os valores gerados foram descartados sem exibição.
+
+### 2026-10-26 · I0.4 · concluída e integrada
+
+- Perfil/modelo: `builder` (T1) em worktree isolado, modelo padrão herdado; T2 (Claude Opus 5.5) verificou e integrou. Fallback informado: nenhum.
+- **Primeira tentativa:** handoff correto. ESLint 10 com `eslint-config-next` 16.4.3 não fecha nas dependências pares: `eslint-plugin-react`, `-import` e `-jsx-a11y` aceitam no máximo o 9. O T2 conferiu por `npm view` e decidiu pelo ESLint 9.39.5 (ADR-0001 §2.4). Também aprovou `vite` 8.3.5 e `@types/node` 24.19.2, porque o Vitest 5 exige o `vite`.
+- **Segunda tentativa:** commit `b09297d`, com 35 arquivos.
+  - O builder recriou sozinho o worktree e o branch, que tinham sido removidos depois do primeiro handoff. A base é a mesma (`77f6ac4`) e a operação foi só local.
+- **Verificação do T2:**
+  - diff só em arquivos permitidos;
+  - configuração e varredor lidos;
+  - a partir de `node_modules` e `.next` apagados: `npm ci` com 0 avisos `ERESOLVE`; `npm ls` 0; `lint` 0; `typecheck` 0; `test` 0 (2 arquivos, 44 testes); `format:check` 0; `build` 0, gerando `.next/standalone/server.js`;
+  - prova de falha refeita: "VERIFICADO" detectado (saída 1); linha com a qualificação e linha com o marcador não acusam;
+  - nenhum segredo nem `service_role` em `src/` ou `config/`.
+- **Integração:** fast-forward da `main` para `b09297d`, sem commit novo.
+  - `skills-lock.json` acrescentado ao `.prettierignore` (par do `.claude/`), porque fazia o `format:check` falhar na `main`. A decisão de versionar ou ignorar esse arquivo continua com a pessoa responsável.
+- **Riscos registrados no ADR:**
+  - ESLint 9.39.5 marcado como sem suporte (risco aceito: ferramenta de desenvolvimento);
+  - o varredor trabalha por linha e não confere a parte "em [data]" da qualificação.
+- O worktree do builder continua em `.claude/worktrees/agent-a49faeaf03b05404c` (ignorado pelo Git); pode ser removido.
+
+### 2026-10-27 · D1 final · Supabase Cloud e Vercel
+
+- A pessoa responsável pediu para "criar um github branch e hospedar na vercel ao invés do easypanel". Ela respondeu a duas perguntas:
+  - banco: "Supabase Cloud (Recomendado)";
+  - branch: "main com deploy de preview (Recomendado)".
+- **Efeitos nos documentos:**
+  - ADR-0001 §1.2, §2.1, §2.3, §2.6, §3, §4 e §5 reescritos para Supabase Cloud em `sa-east-1` e Vercel;
+  - v1.1: cabeçalho e seções 0, 4.2, 4.4, 4.5, 7.1 e 12;
+  - diagnóstico: D1;
+  - plano: I0.3, I0.9, I0.10, I0.11, I6.1, I6.4 e I6.9, gate 12 e risco de infraestrutura; I0.12 e I0.13 canceladas;
+  - `CLAUDE.md`.
+- O roteiro `docs/operacao/easypanel.md` (escrito em 26/10, nunca commitado) foi removido.
+- **Contas consultadas:**
+  - Vercel: um time (`dyones-projects`), com integração GitHub em `85dyones` sem restrição de repositório;
+  - Supabase: a organização atual hospeda os projetos da Motors e da V2O5. Por isso a recomendação é uma organização própria do repasse (decisão H na I0.3).
+- **Limite da automação:** a ferramenta da Vercel nesta sessão não altera a branch de produção. Mitigação: autenticação da Vercel em todos os deploys; a troca para `producao` fica com a pessoa responsável, no painel.

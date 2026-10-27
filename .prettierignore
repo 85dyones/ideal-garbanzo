@@ -6,6 +6,7 @@ operacao-repasse-origem.md
 
 # Configuração do Claude Code e worktrees dos subagentes
 .claude/
+skills-lock.json
 
 # Dependências, build e saídas geradas
 node_modules/

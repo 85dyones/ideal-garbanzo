@@ -29,8 +29,8 @@ A sessão principal é o orquestrador (T2). Ela despacha subtarefas aos subagent
 - Push, deploy, operações em produção e migrações destrutivas só com aprovação explícita da pessoa responsável, por ação.
 - Não inventar comportamento coberto pelas decisões pendentes da seção 13 da especificação v1.1.
 - Nunca simular consulta, resultado ou evidência. Pendência documental nunca bloqueia publicação. Nenhum rótulo de "verificado" sem a qualificação "nas fontes consultadas".
-- Nada é compartilhado com a Motors: banco, projeto, credenciais, contas de provedor ou dados. A exceção é o servidor físico (VPS `srv904277`, Easypanel), com projeto próprio por ambiente.
-- Self-hosted: nunca usar as chaves de exemplo do template do Supabase; testes e reset de banco só no ambiente `dev`, nunca em `homolog` ou `prod`.
+- Nada é compartilhado com a Motors: banco, projeto, credenciais, contas de provedor ou dados.
+- Testes e reset de banco só no `repasse-dev`, nunca em `homolog` ou `prod`. Até o Inc. 6, todo deploy da Vercel fica atrás da autenticação da Vercel.
 - Não inventar IDs de modelo, credenciais, integrações ou variáveis.
 - Módulos críticos (auth, organizations, access-control, transactions, commissions, subscriptions) não seguem em fallback para modelo menos capaz; pausar com handoff.
 
@@ -39,7 +39,22 @@ A sessão principal é o orquestrador (T2). Ela despacha subtarefas aos subagent
 - Repositório Git na branch `main`; remoto `origin` = `https://github.com/85dyones/ideal-garbanzo.git`. Push só com aprovação explícita.
 - Fundação técnica: `docs/adr/0001-fundacao.md`.
   - Stack: Node 24, npm, Next 16, Vitest, pgTAP, Playwright.
-  - Infraestrutura: Supabase self-hosted e aplicação no Easypanel; CI com Supabase efêmero no GitHub Actions; sem Docker local.
-  - Comandos concretos de build, lint e teste entram aqui na I0.4.
+  - Infraestrutura:
+    - Supabase Cloud em `sa-east-1`: `repasse-dev`, `repasse-homolog` e, no Inc. 6, `repasse-prod`;
+    - Vercel, projeto `repasse`: a `main` gera previews (homologação); a produção sai da branch `producao`;
+    - CI com Supabase efêmero no GitHub Actions;
+    - sem Docker local.
+  - Comandos (rodar `npm ci` antes, na pasta onde se trabalha):
+
+    | Comando | O que faz |
+    |---|---|
+    | `npm run lint` | ESLint 9 com as regras do Next e regras de tipo |
+    | `npm run typecheck` | `tsc --noEmit` |
+    | `npm test` | Vitest, incluindo o teste de linguagem proibida |
+    | `npm run format:check` | confere a formatação do Prettier |
+    | `npm run build` | build do Next (`standalone`) |
+
+  - Testes de banco e de integração entram na I0.5.
+  - Termos proibidos da §6.6 só aparecem com "nas fontes consultadas" na mesma linha. Uso legítimo leva `linguagem-permitida: <motivo>` na linha (ex.: "Certificado de Registro de Veículo"). A lista fica em `config/linguagem-proibida.json`.
 - O subagente `fast-helper` (T0) não roda comandos; levantamentos que exigem Bash ficam com o T2 ou com o `builder`.
 - Modelos dos subagentes: não configurados até P3/P4; os subagentes herdam o modelo padrão da instalação.

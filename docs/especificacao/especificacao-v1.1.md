@@ -7,9 +7,9 @@
 **Substitui:** `operacao-repasse-origem.md` (v1.0), mantida como histórico  
 **Fontes:** briefing "Missão 001", diagnóstico `docs/diagnostico/2026-10-26-missao-001.md`, decisões D1 a D4 aprovadas em 26/10/2026  
 **Stack (D2):** Next.js, TypeScript e Supabase. n8n e provedores de mensagem são apoio, nunca fonte da verdade.  
-**Repositório e ambientes (D1 revista em 26/10/2026):** `85dyones/ideal-garbanzo`. Supabase self-hosted e aplicação no Easypanel da VPS `srv904277`, com projetos separados para `dev`, `homolog` e `prod`. Detalhes no ADR-0001 §3. Nada é compartilhado com a Motors além do servidor físico.
+**Repositório e ambientes (D1, decisão final de 27/10/2026):** `85dyones/ideal-garbanzo`. Supabase Cloud em `sa-east-1`, com projetos separados para `dev`, `homolog` e `prod`. Aplicação na Vercel: a `main` gera deploys de homologação (preview), e a produção sai da branch `producao` no Inc. 6. Detalhes no ADR-0001 §3. Nada é compartilhado com a Motors.
 
-**Revisões:** 26/10/2026, aprovação da v1.1; 26/10/2026, D1 revista (Easypanel no lugar de Supabase Cloud e Vercel), com ajuste nas seções 0, 4.2, 4.4, 4.5, 7.1 e 12.
+**Revisões:** 26/10/2026, aprovação da v1.1; 26/10/2026, D1 revista (Easypanel no lugar de Supabase Cloud e Vercel); 27/10/2026, D1 final (Supabase Cloud e Vercel, sem Docker local), com ajuste nas seções 0, 4.2, 4.4, 4.5, 7.1 e 12.
 
 ---
 
@@ -29,7 +29,7 @@
 | Auditoria | Sprint 5 | desde o primeiro incremento | lacuna L3 da v1.0 |
 | Roteiro | sete sprints | seis incrementos até o piloto (seção 12) | diagnóstico §10 |
 | Notificações | e-mail e depois WhatsApp | e-mail no piloto; WhatsApp depende de D6 | briefing §6, item 12 |
-| Infraestrutura | Supabase gerenciado e hospedagem não definida | Supabase self-hosted e aplicação no Easypanel (VPS `srv904277`), um projeto por ambiente | D1 revista pela pessoa responsável |
+| Infraestrutura | Supabase gerenciado e hospedagem não definida | Supabase Cloud (`sa-east-1`) e Vercel, um projeto do Supabase por ambiente; homologação em deploys de preview | D1 final da pessoa responsável (27/10) |
 
 ---
 
@@ -174,7 +174,7 @@ A matriz é regra de negócio. A autorização final é aplicada no servidor e n
 - Supabase PostgreSQL com migrações versionadas, restrições de integridade e Row Level Security em toda tabela acessível ao cliente.
 - Supabase Auth para autenticação.
 - Supabase Storage **privado** para fotos, documentos e evidências. O catálogo é privado, então até as fotos usam URL temporária.
-- Supabase self-hosted no Easypanel (ADR-0001 §3.2), com chaves geradas por ambiente. As chaves de exemplo do template nunca são usadas. Só a API fica pública; o Postgres não tem porta pública; o Studio fica protegido ou desligado em produção.
+- Supabase Cloud em `sa-east-1` (ADR-0001 §3), um projeto por ambiente, com chaves próprias. Chave `service_role` só no servidor e nas variáveis protegidas da Vercel.
 - Documentos sensíveis nunca recebem URL pública permanente.
 
 ## 4.3. Automações
@@ -184,10 +184,10 @@ A matriz é regra de negócio. A autorização final é aplicada no servidor e n
 
 ## 4.4. Ambientes
 
-Cada ambiente tem credenciais, banco, volumes e projeto do Easypanel próprios:
-- **`dev`:** banco self-hosted com reset livre; aplicação na máquina local.
-- **`homolog`:** banco e aplicação no Easypanel, com dados de teste identificados.
-- **`prod`:** banco e aplicação no Easypanel, criado no Inc. 6.
+Cada ambiente tem credenciais e banco próprios:
+- **`dev`:** projeto `repasse-dev` no Supabase Cloud, com reset livre; aplicação na máquina local.
+- **`homolog`:** projeto `repasse-homolog`; aplicação nos deploys de preview da Vercel, protegidos por autenticação; dados de teste identificados.
+- **`prod`:** projeto `repasse-prod`; deploy de produção da Vercel a partir da branch `producao`, criados no Inc. 6.
 - **CI:** Supabase efêmero no GitHub Actions.
 
 Dado real de cliente não vai para teste sem justificativa, autorização e proteção.
@@ -196,7 +196,7 @@ Dado real de cliente não vai para teste sem justificativa, autorização e prot
 
 O produto não usa banco, projeto, credenciais, contas de provedor nem dados da Motors. Padrões e trechos de código do `motors-site-oficial` podem ser portados (diagnóstico §4.1), sempre reescritos para o modelo multiempresa e revisados.
 
-**Exceção aceita (D1 revista):** o servidor físico é o mesmo que hospeda serviços da Motors, da V2O5 e da 16VC. O isolamento é por projeto do Easypanel, com rede, volumes, credenciais e limites de recurso próprios.
+A organização do Supabase e o time da Vercel podem ser da pessoa responsável, desde que os projetos e as variáveis sejam próprios do repasse. Recomenda-se uma organização própria do repasse no Supabase (ADR-0001 §3.1). Contas de provedor da Motors, como a da APIBrasil, não são usadas.
 
 ---
 
@@ -501,8 +501,7 @@ Material para compradores (como ler os estados documentais, limites das consulta
 - Storage privado e URL temporária para fotos, documentos e evidências.
 - Rate limiting e proteção contra robô nas rotas sensíveis e nos formulários públicos.
 - Auditoria das ações administrativas e dos acessos a documento restrito.
-- Backup e procedimento de restauração testado antes do piloto. Como o banco é self-hosted, o backup inclui `pg_dump` diário e o volume de Storage, com cópia **fora da VPS**.
-- Rotina de atualização de segurança do Supabase self-hosted e do servidor, com registro.
+- Backup e procedimento de restauração testado antes do piloto. Usar os backups gerenciados do Supabase, decidir sobre PITR em produção e incluir os arquivos do Storage.
 
 ## 7.2. Dados pessoais
 
@@ -635,7 +634,7 @@ Cada incremento termina com teste e evidência observada. O detalhamento por sub
 
 | Inc. | Entrega | Aceite |
 |---|---|---|
-| 0 | Fundação: scaffold, CI, projetos `repasse-dev` e `repasse-homolog` no Easypanel (criados pela pessoa responsável com roteiro do T2), migração inicial, auditoria | app sobe localmente e em homologação; CI verde; migrações em banco limpo; chaves de exemplo substituídas |
+| 0 | Fundação: scaffold, CI, projetos `repasse-dev` e `repasse-homolog` no Supabase Cloud (criados pela pessoa responsável), projeto na Vercel, migração inicial, auditoria | app sobe localmente e em homologação (preview protegido); CI verde; migrações em banco limpo |
 | 1 | Adesão, empresas, usuários, papéis de plataforma e de empresa, aprovação manual; RLS | testes negativos 1, 2 (parte de empresa), 4, 5 e 13 |
 | 2 | Oferta: veículo, fotos, condições, declarações por categoria, documentos privados, versões, histórico, ciclo de estados | publica com pendência e mostra aviso; testes 2 (ofertas e documentos), 6, 11 e 12 (preço) |
 | 3 | Consultas manuais, revisões documentais, estados calculados, origem da informação, impedimento de transferência | estados conforme a seção 6.4; testes 7 e 10 |
