@@ -76,3 +76,46 @@
 - **CI:** os jobs "Lint, tipos, testes e formatação" e "Build do Next" terminaram com `success`.
 - **Vercel:** o deploy da `main` saiu como preview; a produção continua na `producao`.
 - **Repositório:** `ideal-garbanzo` é público, por decisão da pessoa responsável. Por isso, os documentos foram revisados em 27/10 para tirar detalhes internos e de segurança de outros negócios. Um achado de segurança fora do escopo do repasse foi registrado em `notas-privadas/` e tratado com a pessoa responsável.
+
+### 2026-10-27 · I0.11 · bloqueada: credenciais do projeto errado
+
+- A pessoa responsável colocou um `.env` na raiz, ignorado pelo Git.
+- **Conferência sem exibir valores:** as cinco variáveis estão preenchidas e as chaves são do formato novo. Mas a URL, a conexão do banco e o identificador apontam para **um projeto Supabase de outro negócio, em produção**, não para o `gtbncxvaghjfmzcypgul`. Detalhes em `notas-privadas/`.
+- **O T2 parou antes de qualquer conexão:** nenhuma chamada à API, nenhuma conexão ao banco, nenhum reset.
+- **Outros problemas do arquivo:**
+  - nome da variável repetido na linha da URL;
+  - conexão direta em vez do pooler;
+  - senha com caracteres que precisam de codificação na URL.
+- **Pendente (H):** substituir os valores pelos do `gtbncxvaghjfmzcypgul`, seguindo `docs/ambiente.md`.
+- **Segunda conferência (27/10), depois da troca:**
+  - URL pública e `SUPABASE_PROJECT_REF`: corretas (`gtbncxvaghjfmzcypgul`);
+  - API: `/auth/v1/health` deu 401 sem chave e **200 com a chave publicável**, então URL e chave publicável são válidas. `/rest/v1/` deu 401 com a chave publicável, o que é esperado para a raiz da API com chave publicável;
+  - **ainda com problema:** a `SUPABASE_SECRET_KEY` é idêntica à chave publicável, e a `SUPABASE_DB_URL` usa a conexão direta, com senha não codificada (URL inválida);
+  - **DNS:** o host direto `db.gtbncxvaghjfmzcypgul.supabase.co` só resolve em IPv6. O pooler é obrigatório, inclusive para o CI.
+  - Nenhuma conexão ao banco foi feita.
+- **Terceira conferência (27/10):**
+  - `SUPABASE_DB_URL` válida (senha codificada), mas ainda na conexão direta, com usuário `postgres` e sem `sslmode`. A `SUPABASE_SECRET_KEY` continua idêntica à chave publicável.
+  - TCP por IPv6 até a porta 5432 do host direto: conecta, a partir desta máquina.
+  - Consulta de leitura com `pg` 8.23.1 instalado numa pasta temporária, fora do projeto, com TLS verificado: falhou com `SELF_SIGNED_CERT_IN_CHAIN`. O certificado do banco é assinado pela CA própria do Supabase.
+  - Uma segunda tentativa, sem verificar o certificado, foi barrada pelo classificador de permissões e não foi feita. Decisão: nunca desligar a verificação; usar o certificado de CA do Supabase.
+- **Pendente (H):**
+  - colocar a chave `sb_secret_…` na `SUPABASE_SECRET_KEY`;
+  - trocar a `SUPABASE_DB_URL` pela do pooler (Session pooler, com `?sslmode=require`), necessária para IPv4 e para o CI;
+  - baixar o certificado de CA do projeto (Project Settings → Database → SSL Configuration → Download certificate).
+
+### 2026-10-27 · I0.11 · concluída
+
+- **Certificado:** a pessoa responsável colocou `prod-ca-2021.crt` na raiz. Conferido com `X509Certificate`: "Supabase Root 2021 CA", autoassinado, CA, válido até 26/04/2031. Ainda não versionado; o lugar definitivo é decidido na I0.5.
+- **`.env`:**
+  - URL e `SUPABASE_PROJECT_REF` em `gtbncxvaghjfmzcypgul`;
+  - chave publicável `sb_publishable_` e chave secreta `sb_secret_`, diferentes entre si;
+  - `SUPABASE_DB_URL` no pooler (Session, porta 5432), usuário `postgres.gtbncxvaghjfmzcypgul`, sem `sslmode` na URL (o TLS é configurado pelo cliente, com a CA).
+- **API:** a raiz REST deu 401 com a chave publicável e 200 com a secreta.
+- **Banco:** conexão pelo pooler com TLS verificado pela CA do Supabase (`pg` 8.23.1, numa pasta temporária fora do projeto), dentro de `begin read only`:
+  - Postgres 17.11;
+  - 0 tabelas no `public`;
+  - schemas `auth` e `storage` presentes;
+  - `pgtap` e `pg_cron` disponíveis, não instaladas.
+- **Achado:** o host do pooler é de `us-east-1`. O projeto foi criado nos EUA, e não em `sa-east-1` como previa o ADR-0001, enquanto as funções da Vercel estão em `gru1`.
+  - Opções: recriar o projeto em `sa-east-1` agora, enquanto está vazio, ou mover as funções para `iad1`, perto do banco.
+  - A decisão é da pessoa responsável.
