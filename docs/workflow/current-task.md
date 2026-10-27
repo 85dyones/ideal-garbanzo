@@ -154,3 +154,18 @@
   - Pelo nome com `teamId`, a leitura devolve 404. Só funciona pelo ID ou pela listagem sem `teamId`; a integração parece ter acesso restrito por projeto.
   - **Não verificáveis pela integração:** a ligação com o Git e a branch de produção. Hipótese: a branch de produção já foi trocada para `producao`, e por isso nenhum deploy saiu ainda. O próximo push na `main` deve gerar o primeiro preview.
   - **Nome:** o projeto ficou `ideal-garbanzo`, não `repasse` como no ADR-0001 §3.2. Sem impacto técnico; o ADR passa a citar `ideal-garbanzo`.
+- **Primeiro deploy (27/10):** push do `32964c4` feito pela pessoa responsável. Deploy `dpl_TVNF9iUbxg4QDVb3BWFoAjYRnUXi`:
+  - origem `git`, commit `32964c4`;
+  - `READY` em uns 23 segundos;
+  - `target: production`, ou seja, a branch de produção ainda é a `main`;
+  - região `iad1`.
+- **Teste de acesso sem login (`curl`), com a proteção "Standard":**
+  - o domínio de produção `ideal-garbanzo-six.vercel.app` respondeu **HTTP 200, público**, com a página "Plataforma em construção.";
+  - os outros três endereços responderam 302 para `vercel.com/sso-api`.
+- **Correção pelo T2:** `update_project` com `ssoProtection: all`, aceito pela integração.
+  - **Novo teste:** os quatro endereços respondem 302 para o login, e a página não aparece em nenhum.
+  - Ficou público por uns minutos, só com a página de construção e sem dado nenhum.
+- **Região:** `update_project` com `functionDefaultRegions: ["gru1"]`, aceito pela integração. A resposta não mostra o campo; a confirmação vem no próximo deploy.
+- **Pendências da I0.9:**
+  - a pessoa responsável troca a branch de produção para `producao` (Settings → Environments → Production). Isso precisa ser feito antes de cadastrar variáveis do Supabase; com a `main` como produção, a homologação usaria as variáveis de produção;
+  - confirmar `gru1` no próximo deploy.

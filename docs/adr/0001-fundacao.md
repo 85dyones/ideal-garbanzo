@@ -172,6 +172,8 @@ docs/
   - a troca da branch de produção é feita no painel da Vercel (H), porque a ferramenta de automação não tem esse campo.
 - **Proteção:** autenticação da Vercel em **todos** os deploys (`ssoProtection: all`), inclusive produção, até o Inc. 6. Nada fica público antes do piloto.
 - **Variáveis:** cadastradas no projeto da Vercel por ambiente. `Preview` aponta para `repasse-homolog`; `Production` aponta para `repasse-prod` no Inc. 6. O `.env.example` lista só os nomes.
+- **Região das funções:** `gru1` (São Paulo), junto do banco em `sa-east-1`. O primeiro deploy (27/10) saiu no padrão, `iad1` (EUA). A troca foi aplicada pela integração em 27/10 (`functionDefaultRegions: ["gru1"]`) e se confirma no campo `regions` do próximo deploy.
+- **Achado da I0.9:** a proteção "Standard" (`all_except_custom_domains`) deixou público o domínio de produção `ideal-garbanzo-six.vercel.app` (HTTP 200). Com `all`, os quatro endereços do deploy passaram a redirecionar para o login da Vercel (HTTP 302).
 - **`output: "standalone"`:** fica no `next.config.ts` (I0.4). A Vercel usa o próprio empacotamento; a I0.9 confirma que o deploy funciona com essa opção.
 - Push e deploy de produção sempre com aprovação H, por ação.
 
