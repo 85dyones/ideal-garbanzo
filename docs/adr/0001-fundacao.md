@@ -6,7 +6,7 @@
 **Base:** especificação v1.1 (§4, §7, §15, §16), gates transversais do plano (seção 3), levantamento da I0.1  
 **Histórico da infraestrutura (D1):**
 - 26/10: Supabase Cloud e Vercel;
-- 26/10: revista para Easypanel na VPS `srv904277`;
+- 26/10: revista para servidor próprio com Easypanel;
 - **27/10, decisão final:** Supabase Cloud em `sa-east-1` e aplicação na Vercel, com a `main` gerando deploys de preview.
 - Em todas as versões, a pessoa responsável decidiu não instalar Docker na máquina local.
 
@@ -32,8 +32,8 @@
 
 ### 1.2. Contas de infraestrutura (consultadas em 27/10/2026)
 
-- **Vercel:** um único time, `dyones-projects` (`team_AKoHgpGHOfOR0YOGxDOQIgod`). A integração com o GitHub cobre a conta `85dyones` sem restrição de repositório.
-- **Supabase:** a organização atual hospeda `motors-oficial`, `v2o5-site`, `rede-auto` e `16-vara-civel` (inativo).
+- **Vercel:** o projeto fica num time existente da pessoa responsável; a integração com o GitHub cobre o repositório do repasse.
+- **Supabase:** a organização preexistente hospeda projetos de outros negócios; o repasse usa projeto próprio (§3.1).
 
 ### 1.3. Versões estáveis no registro do npm (26/10/2026)
 
@@ -58,7 +58,7 @@
 - RLS, Storage e Auth testados contra o comportamento real do Supabase (testes negativos da §7.4).
 - Ambientes separados, com credenciais e banco próprios (§4.4).
 - Linguagem proibida verificada automaticamente (gate 5).
-- Código portado do `motors-site-oficial`: Next 16, Supabase, Vitest e npm.
+- Código portado de projeto interno de outro negócio: Next 16, Supabase, Vitest e npm.
 
 ---
 
@@ -104,7 +104,7 @@
 ### 2.5.1. Estilo: Tailwind CSS 4
 
 - **Decisão:** Tailwind CSS 4 (4.3.3 em 26/10) com `@tailwindcss/postcss`; layout mobile-first; sem biblioteca de componentes por enquanto.
-- **Motivo:** é o mesmo dos componentes a portar do `motors-site-oficial` e atende o mobile-first da §4.1.
+- **Motivo:** é o mesmo dos componentes a portar de projeto interno e atende o mobile-first da §4.1.
 
 ### 2.6. Estrutura de pastas
 
@@ -159,13 +159,13 @@ docs/
 
 - **Projeto único no plano gratuito (decisão da pessoa responsável, 27/10):** `dev` e `homolog` usam o mesmo projeto `gtbncxvaghjfmzcypgul`. Produção exige projeto próprio (`repasse-prod`) no Inc. 6, com plano que tenha backup.
 - Região `sa-east-1` (São Paulo): proximidade dos usuários e dados no Brasil.
-- **Organização do Supabase:** recomendada uma organização própria do repasse, separada da que hospeda `motors-oficial`, `v2o5-site` e `rede-auto`. Isso separa cobrança, acesso e responsabilidade LGPD. A decisão é da pessoa responsável, na I0.3.
-- **Time da Vercel:** o projeto fica no time existente (`dyones-projects`), que também hospeda projetos da Motors e da V2O5. O isolamento é por projeto, com variáveis de ambiente próprias. Reavaliar um time separado no Inc. 6.
-- Nada de chave, banco ou conta de provedor da Motors (por exemplo, a conta da APIBrasil) é usado pelo repasse.
+- **Organização do Supabase:** recomendada uma organização própria do repasse, separada da que hospeda projetos de outros negócios. Isso separa cobrança, acesso e responsabilidade LGPD.
+- **Time da Vercel:** o projeto fica num time existente da pessoa responsável, que também hospeda projetos de outros negócios. O isolamento é por projeto, com variáveis de ambiente próprias. Reavaliar um time separado no Inc. 6.
+- Nada de chave, banco ou conta de provedor de outros negócios é usado pelo repasse.
 
 ### 3.2. Vercel
 
-- **Projeto:** `ideal-garbanzo` (`prj_tjGFghO2iZmZik0rhaWnAaiuZSxY`), ligado a `85dyones/ideal-garbanzo`, framework Next.js, Node 24.
+- **Projeto:** `ideal-garbanzo`, ligado ao repositório `85dyones/ideal-garbanzo`, framework Next.js, Node 24.
 - **Branches:**
   - a `main` gera deploys de **preview**, que são a homologação;
   - a branch de produção é `producao`. Ela é criada já no Inc. 0, apontando para o esqueleto, para a Vercel poder acompanhá-la, e só recebe código novo no Inc. 6, com aprovação H;
@@ -173,7 +173,7 @@ docs/
 - **Proteção:** autenticação da Vercel em **todos** os deploys (`ssoProtection: all`), inclusive produção, até o Inc. 6. Nada fica público antes do piloto.
 - **Variáveis:** cadastradas no projeto da Vercel por ambiente. `Preview` aponta para `repasse-homolog`; `Production` aponta para `repasse-prod` no Inc. 6. O `.env.example` lista só os nomes.
 - **Região das funções:** `gru1` (São Paulo), junto do banco em `sa-east-1`. O primeiro deploy (27/10) saiu no padrão, `iad1` (EUA). A troca foi aplicada pela integração em 27/10 (`functionDefaultRegions: ["gru1"]`) e se confirma no campo `regions` do próximo deploy.
-- **Achado da I0.9:** a proteção "Standard" (`all_except_custom_domains`) deixou público o domínio de produção `ideal-garbanzo-six.vercel.app` (HTTP 200). Com `all`, os quatro endereços do deploy passaram a redirecionar para o login da Vercel (HTTP 302).
+- **Achado da I0.9:** a proteção "Standard" (`all_except_custom_domains`) deixou público o domínio de produção `.vercel.app` (HTTP 200). Com `all`, todos os endereços dos deploys passaram a redirecionar para o login da Vercel (HTTP 302).
 - **`output: "standalone"`:** fica no `next.config.ts` (I0.4). A Vercel usa o próprio empacotamento; a I0.9 confirma que o deploy funciona com essa opção.
 - Push e deploy de produção sempre com aprovação H, por ação.
 
@@ -219,7 +219,7 @@ docs/
 |---|---|---|
 | Deploy público antes do piloto | `ssoProtection: all` na Vercel; branch de produção `producao`, que só existe no Inc. 6 | I0.9 |
 | Banco `dev` compartilhado entre agentes | `pg_advisory_lock` no runner; só o T2 roda testes de banco em `dev` | I0.5 |
-| Mistura com projetos da Motors e da V2O5 na mesma organização ou time | projetos e variáveis próprios; organização própria no Supabase (recomendada) | I0.3 |
+| Mistura com projetos de outros negócios na mesma organização ou time | projetos e variáveis próprios; organização própria no Supabase (recomendada) | I0.3 |
 | Projeto único: reset e testes do `dev` apagam a homologação; plano gratuito pausa por inatividade e não tem os backups do plano pago | o projeto só guarda dados de teste identificados; produção em projeto próprio e plano com backup no Inc. 6 | I0.3; I6.1 |
 | Backup e restauração | backups gerenciados do Supabase; decidir PITR para `prod`; testar a restauração antes do piloto | I6.4 |
 

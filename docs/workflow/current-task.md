@@ -2,18 +2,12 @@
 
 **Etapa:** Inc. 0, Fundação (plano v2)  
 **Próximas subtarefas:**
-- **I0.9 (T2 + H, em andamento):**
-  - projeto `repasse` na Vercel com autenticação em todos os deploys;
-  - push da `main` e preview;
-  - a pessoa responsável troca a branch de produção para `producao` no painel.
-- **I0.3 (H):** `repasse-dev` e `repasse-homolog` no Supabase Cloud, em `sa-east-1`, de preferência numa organização própria.
-- **I0.7 (T2):** `.env.example` e `docs/ambiente.md`.
-- **I0.3 (H):** projetos `repasse-dev` e `repasse-homolog` no Easypanel, pelo roteiro da I0.13.
-- **I0.11 (H):** chave SSH dedicada e túnel para o banco `dev`. Junto com a I0.3, bloqueia a I0.5 e a I0.6.
+- **I0.11 (H):** credenciais do projeto Supabase `gtbncxvaghjfmzcypgul` em `.env.local`, seguindo `docs/ambiente.md`, e teste de conexão pelo pooler.
+- **I0.5 (T2):** `npx supabase init`, reset reproduzível, runner pgTAP, harness de integração e job de banco no CI. Depende da I0.11.
+- **I0.6 (T2):** migração base de auditoria, histórico e configuração. Depende da I0.5.
+- **I0.10 (T1):** README de instalação local.
 
-**Verificação da I0.4:** o T2 inspeciona o diff e roda `lint`, `typecheck`, `test` e `build` antes de integrar o worktree.
-
-**Pausada:** P2 (confirmar o FreeLLMAPI). Volta depois da aprovação do diagnóstico.
+> **Repositório público:** este registro não traz segredos, dados pessoais nem detalhes internos ou de segurança de outros negócios. O registro completo fica em `notas-privadas/`, fora do Git.
 
 ## Registro
 
@@ -28,185 +22,57 @@
 
 <!-- Uma entrada por subtarefa concluída: data, ID, resultado, evidência. -->
 
-### 2026-10-22 · P1 · concluída com ressalva
+### 2026-10-22 · P1 · concluída
 
-- Perfil/modelo principal: T2, Claude Opus 5.5 (`claude-opus-5-5`), sessão principal do Claude Code. Sem subagentes, sem gateway.
-- Repositório local na branch `main`, que já existia vazio; commit inicial `303aa17` com os documentos, `CLAUDE.md`, `.claude/agents/` e `.gitignore`.
-- Remoto `origin` = `https://github.com/85dyones/ideal-garbanzo.git`, vazio no GitHub (`git ls-remote` sem refs). Sem push.
-- Identidade do Git configurada só neste repositório: `85dyones <dyones@gmail.com>`.
-- Verificação: `git check-ignore -v` confirma `.env`, `.env.local`, `.env.production`, `.claude/settings.local.json` e `.claude/worktrees/` ignorados; `git check-ignore -q .env.example` retorna 1 (não ignorado).
-- Ressalva: `git status` não está limpo. `skills-lock.json` e `.claude/skills/README.md` (catálogo de skills do Google Cloud, sem relação com o projeto) ficaram fora do commit, à espera de decisão: versionar ou ignorar.
+- Repositório local na `main`, commit inicial com os documentos, `.gitignore` testado com `git check-ignore` (`.env*` ignorados; `.env.example` versionável). Remoto `origin` configurado. Identidade do Git configurada só neste repositório.
 
-### 2026-10-26 · Missão 001 · diagnóstico entregue, aguardando aprovação
+### 2026-10-26 · Missão 001 · diagnóstico
 
-- Perfil/modelo principal: T2, Claude Opus 5.5 (`claude-opus-5-5`).
-- Subagentes: `fast-helper` (T0) auditou o `motors-site-oficial` em leitura; um `general-purpose` pesquisou fontes de consulta veicular na web. Ambos herdaram o modelo padrão da instalação (P3/P4 pendentes); nenhum fallback informado.
-- Validação do T0: amostras conferidas pelo T2 (colunas de `repasses`, trava de dado pessoal em `consultas_de_placa`, modo de homologação da APIBrasil, estados do repasse). Todas conferem.
-- Infraestrutura consultada em leitura: Supabase (lista de projetos; tabelas, migrações e catálogo do `rede-auto`), Vercel (projetos; `motors-plataforma`), n8n (workflows). Listagem de deploys da Vercel negada (403).
-- Testes: nenhum (sem código).
-- Direção da pessoa responsável: o repasse é uma operação separada da Motors e da "plataforma"; produto único, à parte, aproveitando o que se alinha com o briefing.
+- T2 com um subagente T0 (leitura) e um de pesquisa web. Amostras do T0 conferidas pelo T2.
+- Entrega: `docs/diagnostico/2026-10-26-missao-001.md` (versão pública).
+- Direção da pessoa responsável: o repasse é uma operação separada; produto único, à parte.
 
-### 2026-10-26 · Especificação v1.1 · escrita, aguardando aprovação
+### 2026-10-26 · Especificação v1.1 e plano v2
 
-- Decisões aprovadas pela pessoa responsável: D1 (produto separado em `ideal-garbanzo`, com Supabase e Vercel próprios), D2 (Next.js + TypeScript + Supabase), D3 (revisão da especificação e do plano), D4 (consultas começando pelo registro manual).
-- Perfil/modelo: T2, Claude Opus 5.5. Sem subagentes.
-- Entrega: `docs/especificacao/especificacao-v1.1.md`; v1.0 mantida como histórico; plano orquestrado marcado como suspenso; `CLAUDE.md` aponta para a v1.1.
-- Conferência: os 6 estados documentais (§4.5), as 5 origens da informação (§4.4), a ciência versionada (§5), os 16 itens do MVP (§6) e os 13 critérios de aceite (§11) do briefing estão cobertos.
-- Pendente: aprovação da v1.1; decisões D5 a D10 e C1 a C7 (seção 13 da v1.1); criação dos projetos Supabase e Vercel pela pessoa responsável. Nada commitado.
+- D1 a D4 aprovadas. `docs/especificacao/especificacao-v1.1.md` escrita e aprovada; plano orquestrado v2 com incrementos 0 a 6.
+- Conferido: os 6 estados documentais, as 5 origens da informação, a ciência versionada, os 16 itens do MVP e os 13 critérios de aceite do briefing estão cobertos; os 13 testes negativos da §7.4 têm incremento responsável.
 
-### 2026-10-26 · Plano orquestrado v2 · escrito
+### 2026-10-26 · I0.1 e I0.2
 
-- v1.1 aprovada pela pessoa responsável.
-- Perfil/modelo: T2, Claude Opus 5.5. Sem subagentes.
-- Entrega: `docs/workflow/plano-orquestrado.md` reescrito. Tem incrementos 0 a 6 com 56 subtarefas, gates transversais, mapa do que portar do `motors-site-oficial` e decisões pendentes × subtarefas. O plano v1 fica no commit `b34f01e`.
-- Conferência: os 13 testes negativos da §7.4 e os 13 critérios da §10 têm incremento responsável. O teste 12 (comissão) fica para depois do piloto, com o bloco de comissão.
-- Ajuste na v1.1: §12 alinhada aos testes que o plano atribui aos incrementos 1, 2 e 5.
-- Commitado em `9300386`, junto com o diagnóstico e a v1.1.
-
-### 2026-10-26 · I0.1 e I0.2 · concluídas
-
-- Perfil/modelo: T2, Claude Opus 5.5. Sem subagentes.
-- Desvio de nível na I0.1: o plano previa T0, mas o `fast-helper` só tem Read, Grep e Glob e a subtarefa exige rodar comandos. Como era pequena, o T2 executou. Plano corrigido.
-- Resultado da I0.1:
-  - instalados: Node 24.22.1, npm 11.19.1, corepack 0.36.0, Git 2.55.0;
-  - não instalados: Supabase CLI, Docker, `psql`, pnpm, Vercel CLI, `gh`;
-  - WSL presente, sem distribuição; hypervisor ativo; 11,9 GB de RAM.
-- Versões no registro do npm consultadas em 26/10 (ADR-0001 §1.2).
-- Entrega da I0.2: `docs/adr/0001-fundacao.md`.
-  - Escolhas: Node 24, npm, Next 16 com React 19, TypeScript estrito (7.x só se for compatível), ESLint e Prettier, Zod 4.
-  - Testes: Supabase CLI com Docker; pgTAP; integração contra o Supabase local; Playwright; teste de linguagem proibida.
-  - Infraestrutura: CI no GitHub Actions; Vercel só com homologação até o Inc. 6.
-- Nova dependência H: I0.11 (Docker ou runtime compatível), que bloqueia os testes de banco locais. Contingência documentada: testes de banco só no CI, com aceite H.
-- Plano atualizado: nível da I0.1, texto da I0.3 (homologação obrigatória, `sa-east-1`), I0.4 detalhada, I0.5 dependente da I0.11, nova I0.11, caminhos fixados.
-- Testes: nenhum (sem código).
-
-### 2026-10-26 · D1 revista · Easypanel
-
-- Decisão da pessoa responsável, respondendo a duas perguntas:
-  - escopo: "Tudo no Easypanel", inclusive produção;
-  - servidor: "VPS atual (srv904277)".
-- Contexto: a pessoa responsável não quer Docker local.
-- Efeito no ADR-0001, reescrito antes do commit:
-  - Supabase self-hosted e aplicação no Easypanel, um projeto por ambiente (`repasse-dev`, `repasse-homolog`, `repasse-prod`);
-  - CI com Supabase efêmero no GitHub Actions;
-  - testes de banco locais contra o `dev` pelo túnel SSH, uma execução por vez (`pg_advisory_lock`);
-  - riscos do self-hosted e mitigações na §5.1: chaves de exemplo, exposição, backup fora da VPS, VPS compartilhada com produção de clientes, atualizações, localização.
-- Especificação v1.1 ajustada: cabeçalho, seções 0, 4.2, 4.4, 4.5, 7.1 e 12. O diagnóstico registra a revisão no D1.
-- Plano ajustado:
-  - I0.3 (projetos no Easypanel), I0.5 (passa a T2, por ser banco compartilhado), I0.8, I0.9, I0.10, I0.11 (túnel SSH), I0.12 (capacidade da VPS) e I0.13 (roteiro);
-  - I6.1, I6.4 (backup externo) e I6.9 (revisão do self-hosted);
-  - gate 12; risco "Infraestrutura self-hosted".
-- Evidência sobre o Easypanel atual: documentos locais citam o Easypanel na VPS `srv904277`, com os projetos `automations` (Chatwoot e Postgres 17) e `v2o5-autopilot`, além da Evolution. Capacidade da VPS não levantada.
-- Commitado em `77f6ac4`.
-
-### 2026-10-26 · I0.13 · concluída
-
-- Perfil/modelo: T2, Claude Opus 5.5.
-- Entrega: `docs/operacao/easypanel.md`.
-  - Cobre: segredos gerados por ambiente, URLs e Auth, exposição mínima (só o Kong com domínio; firewall do provedor, porque o Docker passa por fora do `ufw`), limites de recurso, `repasse-homolog`, túnel SSH com chave restrita a encaminhamento de porta, conferência com o T2, registro e desfazer.
-  - Os nomes de variáveis e os valores de exemplo do compose oficial estão marcados como "conferir no template instalado".
-- Verificação: o script de chaves do roteiro foi executado numa pasta temporária. As duas chaves são assinadas com o segredo gerado, **não** batem com o segredo de exemplo e saem com `iss` igual a `supabase`. Os valores gerados foram descartados sem exibição.
+- I0.1 executada pelo T2 (o T0 não roda comandos): Node 24.22.1, npm 11.19.1, Git 2.55; sem Supabase CLI, Docker, `psql`, Vercel CLI e `gh`.
+- I0.2: `docs/adr/0001-fundacao.md`.
 
 ### 2026-10-26 · I0.4 · concluída e integrada
 
-- Perfil/modelo: `builder` (T1) em worktree isolado, modelo padrão herdado; T2 (Claude Opus 5.5) verificou e integrou. Fallback informado: nenhum.
-- **Primeira tentativa:** handoff correto. ESLint 10 com `eslint-config-next` 16.4.3 não fecha nas dependências pares: `eslint-plugin-react`, `-import` e `-jsx-a11y` aceitam no máximo o 9. O T2 conferiu por `npm view` e decidiu pelo ESLint 9.39.5 (ADR-0001 §2.4). Também aprovou `vite` 8.3.5 e `@types/node` 24.19.2, porque o Vitest 5 exige o `vite`.
-- **Segunda tentativa:** commit `b09297d`, com 35 arquivos.
-  - O builder recriou sozinho o worktree e o branch, que tinham sido removidos depois do primeiro handoff. A base é a mesma (`77f6ac4`) e a operação foi só local.
-- **Verificação do T2:**
-  - diff só em arquivos permitidos;
-  - configuração e varredor lidos;
-  - a partir de `node_modules` e `.next` apagados: `npm ci` com 0 avisos `ERESOLVE`; `npm ls` 0; `lint` 0; `typecheck` 0; `test` 0 (2 arquivos, 44 testes); `format:check` 0; `build` 0, gerando `.next/standalone/server.js`;
-  - prova de falha refeita: "VERIFICADO" detectado (saída 1); linha com a qualificação e linha com o marcador não acusam;
-  - nenhum segredo nem `service_role` em `src/` ou `config/`.
-- **Integração:** fast-forward da `main` para `b09297d`, sem commit novo.
-  - `skills-lock.json` acrescentado ao `.prettierignore` (par do `.claude/`), porque fazia o `format:check` falhar na `main`. A decisão de versionar ou ignorar esse arquivo continua com a pessoa responsável.
-- **Riscos registrados no ADR:**
-  - ESLint 9.39.5 marcado como sem suporte (risco aceito: ferramenta de desenvolvimento);
-  - o varredor trabalha por linha e não confere a parte "em [data]" da qualificação.
-- O worktree do builder continua em `.claude/worktrees/agent-a49faeaf03b05404c` (ignorado pelo Git); pode ser removido.
+- `builder` (T1) em worktree isolado.
+  - Primeira tentativa: handoff correto, porque o ESLint 10 não fecha com os plugins do `eslint-config-next`. O T2 decidiu pelo ESLint 9.39.5.
+  - Segunda tentativa: esqueleto Next 16, TypeScript 6.0.3, Tailwind 4, Vitest 5 e teste de linguagem proibida.
+- Verificação do T2 a partir de `npm ci` limpo:
+  - 0 `ERESOLVE`; `npm ls`, `lint`, `typecheck`, `test` (44), `format:check` e `build` com saída 0;
+  - prova de falha do teste de linguagem proibida refeita.
+- Integração por fast-forward. Risco aceito no ADR: ESLint 9 marcado como sem suporte.
 
-### 2026-10-27 · D1 final · Supabase Cloud e Vercel
+### 2026-10-26 a 27 · D1 · infraestrutura
 
-- A pessoa responsável pediu para "criar um github branch e hospedar na vercel ao invés do easypanel". Ela respondeu a duas perguntas:
-  - banco: "Supabase Cloud (Recomendado)";
-  - branch: "main com deploy de preview (Recomendado)".
-- **Efeitos nos documentos:**
-  - ADR-0001 §1.2, §2.1, §2.3, §2.6, §3, §4 e §5 reescritos para Supabase Cloud em `sa-east-1` e Vercel;
-  - v1.1: cabeçalho e seções 0, 4.2, 4.4, 4.5, 7.1 e 12;
-  - diagnóstico: D1;
-  - plano: I0.3, I0.9, I0.10, I0.11, I6.1, I6.4 e I6.9, gate 12 e risco de infraestrutura; I0.12 e I0.13 canceladas;
-  - `CLAUDE.md`.
-- O roteiro `docs/operacao/easypanel.md` (escrito em 26/10, nunca commitado) foi removido.
-- **Contas consultadas:**
-  - Vercel: um time (`dyones-projects`), com integração GitHub em `85dyones` sem restrição de repositório;
-  - Supabase: a organização atual hospeda os projetos da Motors e da V2O5. Por isso a recomendação é uma organização própria do repasse (decisão H na I0.3).
-- **Limite da automação:** a ferramenta da Vercel nesta sessão não altera a branch de produção. Mitigação: autenticação da Vercel em todos os deploys; a troca para `producao` fica com a pessoa responsável, no painel.
-- Commit `23cdf29` com a D1 final e o registro da I0.4.
-- **I0.9, tentativas do T2 em 27/10:**
-  - criar o projeto `repasse` pela integração da Vercel: **403** ("You don't have permission to create the project"). Não repetido;
-  - `git push -u origin main`: **negado** pelo classificador de permissões do modo automático ("Out-of-Place Publication"). Não contornado.
-  - O push e a criação do projeto na Vercel passam para a pessoa responsável. O T2 confere depois, pela leitura do projeto na Vercel e do remoto.
-- **Push feito pela pessoa responsável (27/10):** `git ls-remote origin` mostra `refs/heads/main` e `HEAD` em `23cdf29`, igual à `main` local, que agora acompanha `origin/main`.
-- **Projeto na Vercel:** ainda não existe. Não aparece buscando por "repasse" nem pelo repositório, e `get_project` devolve 404 para `repasse` e `ideal-garbanzo`.
-- **Projeto criado pela pessoa responsável (27/10):** `ideal-garbanzo` (`prj_tjGFghO2iZmZik0rhaWnAaiuZSxY`), no time `dyones-projects`.
-  - Leitura pelo ID: framework `nextjs`; Node `24.x`; `ssoProtection` ligada com `all_except_custom_domains` ("Standard"); nenhum domínio; nenhum deploy (`latestDeployment: null`; `list_deployments` vazio).
-  - Pelo nome com `teamId`, a leitura devolve 404. Só funciona pelo ID ou pela listagem sem `teamId`; a integração parece ter acesso restrito por projeto.
-  - **Não verificáveis pela integração:** a ligação com o Git e a branch de produção. Hipótese: a branch de produção já foi trocada para `producao`, e por isso nenhum deploy saiu ainda. O próximo push na `main` deve gerar o primeiro preview.
-  - **Nome:** o projeto ficou `ideal-garbanzo`, não `repasse` como no ADR-0001 §3.2. Sem impacto técnico; o ADR passa a citar `ideal-garbanzo`.
-- **Primeiro deploy (27/10):** push do `32964c4` feito pela pessoa responsável. Deploy `dpl_TVNF9iUbxg4QDVb3BWFoAjYRnUXi`:
-  - origem `git`, commit `32964c4`;
-  - `READY` em uns 23 segundos;
-  - `target: production`, ou seja, a branch de produção ainda é a `main`;
-  - região `iad1`.
-- **Teste de acesso sem login (`curl`), com a proteção "Standard":**
-  - o domínio de produção `ideal-garbanzo-six.vercel.app` respondeu **HTTP 200, público**, com a página "Plataforma em construção.";
-  - os outros três endereços responderam 302 para `vercel.com/sso-api`.
-- **Correção pelo T2:** `update_project` com `ssoProtection: all`, aceito pela integração.
-  - **Novo teste:** os quatro endereços respondem 302 para o login, e a página não aparece em nenhum.
-  - Ficou público por uns minutos, só com a página de construção e sem dado nenhum.
-- **Região:** `update_project` com `functionDefaultRegions: ["gru1"]`, aceito pela integração. A resposta não mostra o campo; a confirmação vem no próximo deploy.
-- **Pendências da I0.9:**
-  - a pessoa responsável troca a branch de produção para `producao` (Settings → Environments → Production). Isso precisa ser feito antes de cadastrar variáveis do Supabase; com a `main` como produção, a homologação usaria as variáveis de produção;
-  - confirmar `gru1` no próximo deploy.
-- **Segundo deploy (27/10):** a pessoa responsável informou que trocou a branch de produção para `producao` e fez o push do `0988a21`. Deploy `dpl_B9dbjD6kuDGKcsXmKiDmhv22aGBf`:
-  - `READY` em uns 12 segundos;
-  - **região `gru1` confirmada**;
-  - **ainda `target: production`**, com o alias de produção `ideal-garbanzo-six.vercel.app`.
-- **Teste sem login (`curl`):** os cinco endereços (três aliases e as URLs dos dois deploys) respondem 302 para `vercel.com/sso-api`, sem a página. A proteção `all` se mantém.
-- **Branch de produção não pegou:** a branch `producao` não existe no GitHub (`git ls-remote origin producao` vazio). Hipótese: a Vercel não aceita acompanhar uma branch inexistente, ou a troca não foi salva. A integração não lê esse campo.
-- **Próximo passo proposto:**
-  1. criar a `producao` no GitHub apontando para a `main` atual. Enquanto a produção for a `main`, esse push gera um deploy de preview;
-  2. trocar a branch de produção no painel;
-  3. o próximo push na `main` precisa sair como preview.
-  - A `producao` só recebe código novo no Inc. 6, com aprovação H.
+- 26/10: revista para servidor próprio com Easypanel. 27/10: **decisão final**, Supabase Cloud e Vercel, sem Docker local; a `main` gera previews e a produção sai da branch `producao`. As subtarefas I0.12 e I0.13 foram canceladas.
+- Limites da automação nesta sessão: a integração da Vercel não cria projetos (403) nem lê a branch de produção; push exige ação ou liberação da pessoa responsável.
 
 ### 2026-10-27 · I0.9 · concluída (exceto variáveis do Supabase)
 
-- A pessoa responsável criou a `producao` no GitHub (no commit `de26c02`), trocou a branch de produção na Vercel e fez o push do `de26c02` na `main`.
-- **Remoto:** `main` e `producao` em `de26c02`.
-- **Deploys na Vercel, em ordem:**
-  1. `producao`, preview (`dpl_9hVk2fvj6Ps6P2TffemMcPzFf1Yi`, `target: null`): saiu antes da troca de branch;
-  2. **`main`, preview** (`dpl_FxkoB5sME54iwtdy8v73c8xUcduZ`): `target: null`, `READY`, região `gru1`, só com o alias `git-main`;
-  3. **`producao`, produção** (`dpl_72cpTjFFiKSuV2gEiUgoUaBRZFhW`): `source: redeploy`, gerado na troca de branch, não por push; `READY`, `gru1`, com os aliases de produção `ideal-garbanzo-six.vercel.app` e `ideal-garbanzo-dyones-projects-a2f07575.vercel.app`.
-- **Teste sem login (`curl`):** os seis endereços dos deploys atuais (aliases de produção, `git-producao`, `git-main` e as duas URLs de deploy) respondem 302 para `vercel.com/sso-api`, sem a página.
-- **Resultado:** push na `main` gera homologação (preview); produção só a partir da `producao`; tudo protegido por login; funções em `gru1`.
-- **Próximos passos do Inc. 0:**
-  - I0.3 (H): projetos `repasse-dev` e `repasse-homolog` no Supabase Cloud. Depois, as variáveis de `Preview` na Vercel apontam para `repasse-homolog`;
-  - I0.7 (T2): `.env.example` e `docs/ambiente.md`;
-  - I0.8 (T2): CI no GitHub Actions;
-  - I0.10 (T1): README.
+- Projeto `ideal-garbanzo` na Vercel, criado pela pessoa responsável; Next.js, Node 24.x.
+- Primeiro deploy saiu como produção: a branch de produção ainda era a `main`. Com a proteção "Standard", o domínio de produção `.vercel.app` ficou público por alguns minutos (só a página de construção, sem dados). O T2 ligou a autenticação da Vercel em todos os deploys (`ssoProtection: all`) e trocou a região das funções para `gru1`.
+- A pessoa responsável criou a branch `producao` e a definiu como branch de produção.
+- Resultado verificado: push na `main` gera preview (`target: null`), em `gru1`; produção só a partir da `producao`. Endereços testados sem login: todos redirecionam para o login da Vercel.
 
 ### 2026-10-27 · I0.3, I0.7 e I0.8
 
-- **I0.3 (pessoa responsável):** um projeto Supabase, `gtbncxvaghjfmzcypgul`, no plano gratuito.
-  - Pedido: "só tenho no plano free, use uma tabela". O T2 interpretou como um único projeto servindo a `dev` e homologação, porque não há como separar ambientes por tabela. A interpretação foi registrada e comunicada.
-  - A integração do Supabase desta sessão recusou `get_project`, `list_tables` e `get_publishable_keys` ("You do not have permission"). Provavelmente o projeto está numa organização nova. Região, status e chaves **não conferidos**.
-  - ADR-0001 §3.1 e §5, gate 12 do plano e `CLAUDE.md` ajustados: reset e testes só nesse projeto, que só guarda dados de teste; produção sem variáveis do Supabase até o Inc. 6.
-- **I0.7 (T2):** `.env.example` com cinco nomes, sem valores: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_PROJECT_REF`, `SUPABASE_DB_URL`. `docs/ambiente.md` traz origem, visibilidade e onde cada ambiente recebe os valores. `git check-ignore` confirma que o `.env.example` é versionável.
-- **I0.8 (T2, parcial):** `.github/workflows/ci.yml`.
-  - **Jobs:** `qualidade` (`npm ci`, `npm ls`, lint, typecheck, testes, `format:check`) e `build`.
-  - **Configuração:** `actions/checkout` e `actions/setup-node` em `v7`, com tags conferidas por `git ls-remote`; Node pelo `.nvmrc`; `permissions: contents: read`; `concurrency`.
-  - **Verificação local na `main`, depois de `npm ci` (0 `ERESOLVE`):** `npm ls`, `lint`, `typecheck`, `test`, `format:check` e `build` com saída 0.
-  - **YAML:** o Prettier analisa o arquivo e passou; um YAML quebrado de propósito deu `SyntaxError` (saída 2).
-  - **Falta:** o job de banco (com a I0.5) e o primeiro resultado no GitHub Actions, que depende de push.
+- **I0.3 (pessoa responsável):** um único projeto Supabase, `gtbncxvaghjfmzcypgul`, no plano gratuito, para `dev` e homologação. A integração desta sessão não tem acesso a ele; região e status não conferidos.
+- **I0.7 (T2):** `.env.example` (cinco nomes, sem valores) e `docs/ambiente.md`. Produção sem variáveis do Supabase até o Inc. 6.
+- **I0.8 (T2, parcial):** `.github/workflows/ci.yml` com os jobs `qualidade` e `build`; comandos verdes localmente; YAML validado pelo Prettier.
+
+### 2026-10-27 · Primeiro CI no GitHub
+
+- Push da `main` feito pela pessoa responsável.
+- **CI:** os jobs "Lint, tipos, testes e formatação" e "Build do Next" terminaram com `success`.
+- **Vercel:** o deploy da `main` saiu como preview; a produção continua na `producao`.
+- **Repositório:** `ideal-garbanzo` é público, por decisão da pessoa responsável. Por isso, os documentos foram revisados em 27/10 para tirar detalhes internos e de segurança de outros negócios. Um achado de segurança fora do escopo do repasse foi registrado em `notas-privadas/` e tratado com a pessoa responsável.

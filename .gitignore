@@ -30,3 +30,6 @@ Thumbs.db
 # Claude Code: configuração pessoal e worktrees dos subagentes
 .claude/settings.local.json
 .claude/worktrees/
+
+# Notas privadas: detalhes internos e de segurança (repositório público)
+notas-privadas/

@@ -70,7 +70,7 @@ Este plano traduz o roteiro da seção 12 da v1.1 em subtarefas despacháveis. E
 
 Valem para todos os incrementos, independentemente do modelo:
 
-1. **Migrações:** versionadas e executadas de verdade num banco limpo antes da integração. Teste que só confere o texto do SQL não conta (lição do `motors-site-oficial`). Migração destrutiva exige plano e aprovação H.
+1. **Migrações:** versionadas e executadas de verdade num banco limpo antes da integração. Teste que só confere o texto do SQL não conta (lição de projeto interno). Migração destrutiva exige plano e aprovação H.
 2. **Políticas de segurança:** nenhuma política RLS ou de Storage é desabilitada ou afrouxada para um teste passar. `service_role` só em código de servidor; o T2 confere com uma busca no código cliente antes de integrar.
 3. **Testes negativos válidos:** cada teste da §7.4 precisa falhar quando a política correspondente é removida. Essa verificação de mutação é feita pelo T2 ou pelo T3.
 4. **Nunca simular:** nenhuma consulta, resultado ou evidência de exemplo em oferta real. Dados de teste usam `is_test` e ficam identificados (§6.3).
@@ -87,22 +87,22 @@ Valem para todos os incrementos, independentemente do modelo:
 
 # 4. MAPA DE REAPROVEITAMENTO
 
-Origem no `motors-site-oficial`, caminhos relativos à raiz desse repositório. Portar significa reescrever no produto novo, nunca importar nem compartilhar.
+Padrões de projetos internos a portar. Portar significa reescrever no produto novo, para o modelo multiempresa, nunca importar nem compartilhar. As referências detalhadas (arquivos e linhas) ficam em `notas-privadas/`, fora do repositório público.
 
-| Origem | O que portar | Destino | Nível do porte |
-|---|---|---|---|
-| `supabase/migrations/20261006180000_consultas_de_placa.sql`, `20261019120000_niveis_da_consulta_de_placa.sql` | registro só de inclusão; trava de chaves de dado pessoal; nova consulta como linha nova | I3.3 (`vehicle_checks`) | T2 |
-| `supabase/migrations/20260924180000_repasse_fundacao.sql:26-91`, `20260924200000` | CHECKs de completude por estado; RLS com GRANT por coluna | I2.3, I4.1 | T2 |
-| `src/lib/transicoesDoRepasse.ts` | transição decidida em função pura, espelhada no banco | I2.2, I2.6 | T2 |
-| `supabase/migrations/20260807190000` (`historico_veiculo`), `20260829120200` (`veiculo_eventos`) | histórico antes e depois por campo; eventos só de inclusão | I0.6 (`field_history`), I2.3 | T2 |
-| `src/components/admin/repasse/EditorDeRepasse.tsx:283-307` e campos da ficha | campos de declaração (laudo, leilão, sinistro, itens de estado) como **declaração do fornecedor** | I2.7 | T1 |
-| `src/lib/turnstile.ts`, `src/proxy.ts:78-101` | Turnstile e rate limit em formulários públicos e rotas sensíveis | I1.6 | T1, revisão T2 |
-| `src/lib/apiBrasil.ts`, `docs/CONSULTA_DE_DOCUMENTOS.md` | conferência de CNPJ com finalidade LGPD declarada | I1.5, só depois de contrato próprio do provedor | T2 |
-| `.github/workflows/testes.yml`, `tests/migracoes-executam.test.ts` | jobs de CI; execução real das migrações | I0.8 | T2 |
-| `conteudo-seo/pacote/guias/01-08, 23` | conteúdo para guias e checklists | pós-piloto | T1 |
-| ideia do `rede-auto` (`version`, `audit_entries`, `membership_applications`) | versão por agregado; pedido de adesão | I2.2, I1.3 | T2 |
+| Padrão | Destino | Nível do porte |
+|---|---|---|
+| Registro de consulta só de inclusão; trava de chaves de dado pessoal no banco; nova consulta como linha nova | I3.3 (`vehicle_checks`) | T2 |
+| CHECKs de completude por estado; RLS com GRANT por coluna | I2.3, I4.1 | T2 |
+| Transição decidida em função pura, espelhada no banco | I2.2, I2.6 | T2 |
+| Histórico antes e depois por campo; eventos só de inclusão | I0.6 (`field_history`), I2.3 | T2 |
+| Campos de declaração do vendedor (laudo, leilão, sinistro, itens de estado) como **declaração do fornecedor** | I2.8 | T1 |
+| Turnstile e rate limit em formulários públicos e rotas sensíveis | I1.6 | T1, revisão T2 |
+| Conferência de CNPJ com finalidade LGPD declarada | I1.5, só com contrato próprio de provedor | T2 |
+| Jobs de CI e execução real das migrações | I0.8, I0.5 | T2 |
+| Conteúdo de guias (laudo cautelar, leilão, sinistro, documentos) | pós-piloto | T1 |
+| Versão por agregado; pedido de adesão com status | I2.2, I1.3 | T2 |
 
-**Não portar:** modelo de uma só empresa, leitura pública do catálogo, feed da RevendaMais, CRM da Motors, modo de homologação da APIBrasil em fluxo real, cliente Evolution (depende de D6).
+**Não portar:** modelo de uma só empresa, leitura pública do catálogo, integrações e contas de outros negócios, modos de simulação de provedor em fluxo real, cliente de WhatsApp não oficial (depende de D6).
 
 ---
 
@@ -144,7 +144,7 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 | I0.5 | `npx supabase init`; reset reproduzível do `dev` sem Docker local; runner pgTAP; harness de integração que falha (não pula) sem banco; trava por `pg_advisory_lock` | T2 (banco compartilhado `dev`) | `supabase/**`, `scripts/**`, `tests/integration/**` | reset e reaplicação das migrações no `dev` comprovados; teste de banco roda de verdade. **Depende da I0.3 e da I0.11** |
 | I0.6 | Migração base: `audit_logs`, `field_history`, `restricted_access_logs`, `platform_settings`, função genérica que barra UPDATE e DELETE em tabela só de inclusão | T2 | `supabase/migrations/**`, `supabase/tests/**` | UPDATE e DELETE recusados nas tabelas só de inclusão (teste 11, parte base) |
 | I0.7 | `.env.example` e `docs/ambiente.md`, separando público de somente servidor | T2 | `.env.example`, `docs/ambiente.md` | **concluída em 27/10**: cinco variáveis (duas públicas, uma secreta de servidor, duas de ferramenta local); produção sem variáveis até o Inc. 6 |
-| I0.8 | CI no GitHub Actions com lint, typecheck, unitários, linguagem proibida, Supabase efêmero (`supabase start` no runner), testes de banco e de integração, e build | T2 | `.github/workflows/**` | **parcial (27/10):** `ci.yml` com os jobs `qualidade` (`npm ls`, lint, tipos, testes, formatação) e `build`; comandos verdes localmente. Falta: o job de banco (entra com a I0.5) e o primeiro resultado verde no GitHub (depende de push) |
+| I0.8 | CI no GitHub Actions com lint, typecheck, unitários, linguagem proibida, Supabase efêmero (`supabase start` no runner), testes de banco e de integração, e build | T2 | `.github/workflows/**` | **parcial (27/10):** `ci.yml` com os jobs `qualidade` e `build`, **verdes no GitHub** (execução 40562306280). Falta o job de banco, que entra com a I0.5 |
 | I0.9 | Projeto `repasse` na Vercel ligado ao `ideal-garbanzo`, Node 24, autenticação da Vercel em todos os deploys; push da `main`; deploy de preview; troca da branch de produção para `producao` no painel (H) | T2 + H | — | **concluída em 27/10**, exceto as variáveis do Supabase, que entram depois da I0.3. Projeto `ideal-garbanzo`; push na `main` gera preview (`target: null`); `producao` é a branch de produção; região `gru1`; proteção `all`. Seis endereços testados sem login: todos 302 para o login da Vercel |
 | I0.10 | README de instalação local | T1 | `README.md` | T2 segue o README do zero num worktree limpo |
 | I0.11 | Credenciais do `repasse-dev` em `.env.local` (fora do Git) e teste de conexão pelo pooler | H | — | T2 conecta e roda uma consulta de leitura |
@@ -268,7 +268,7 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 | I6.6 | Revisão externa do fluxo completo | AG | leitura e homologação | sem crítico aberto |
 | I6.7 | Conferir os 13 critérios da §10 contra as evidências → relatório de lacunas | T0 | nenhum | cada critério com evidência ou "pendente" |
 | I6.8 | Piloto com oferta real ou de teste identificada; linha de base das métricas da §11; go/no-go | H + T2 | — | decisão registrada |
-| I6.9 | Revisão da infraestrutura: avisos de segurança do Supabase, configuração do Auth, variáveis por ambiente na Vercel, proteção dos deploys, separação dos projetos da Motors e da V2O5 | T3 (+ H para conferir no painel) | leitura da configuração | sem crítico aberto; riscos do ADR-0001 §5.1 com mitigação comprovada |
+| I6.9 | Revisão da infraestrutura: avisos de segurança do Supabase, configuração do Auth, variáveis por ambiente na Vercel, proteção dos deploys, separação dos projetos de outros negócios | T3 (+ H para conferir no painel) | leitura da configuração | sem crítico aberto; riscos do ADR-0001 §5.1 com mitigação comprovada |
 
 **Gate:** T2 declara prontidão técnica com evidências; H aprova o piloto.
 
@@ -290,7 +290,7 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 |---|---|---|---|
 | D5 (jurídico) | I2.3, I4.1, I5.2, I6.1 | documentos ocultos ao comprador; texto provisório marcado | piloto; abrir evidência ao comprador |
 | D6 (WhatsApp) | pós-piloto | e-mail | qualquer envio por WhatsApp |
-| D7 (`rede-auto`, `motors-plataforma`) | nenhuma | — | usar esses projetos |
+| D7 (projetos de tentativas anteriores) | nenhuma | — | usar esses projetos |
 | D8 (participantes) | I6.8 | dados de teste identificados | piloto com dados reais |
 | D9 (impedimento de transferência) | I3.2, I3.3, I6.2 | padrão provisório: impedimento ativo não publica | valor definitivo |
 | D10 (revisão antes de publicar) | I2.2, I2.9, I6.2 | configuração com valor provisório | valor do piloto |

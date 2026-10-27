@@ -194,9 +194,9 @@ Dado real de cliente não vai para teste sem justificativa, autorização e prot
 
 ## 4.5. Separação da Motors
 
-O produto não usa banco, projeto, credenciais, contas de provedor nem dados da Motors. Padrões e trechos de código do `motors-site-oficial` podem ser portados (diagnóstico §4.1), sempre reescritos para o modelo multiempresa e revisados.
+O produto não usa banco, projeto, credenciais, contas de provedor nem dados da Motors ou de outros negócios. Padrões e trechos de código de projetos internos podem ser portados (diagnóstico §4), sempre reescritos para o modelo multiempresa e revisados.
 
-A organização do Supabase e o time da Vercel podem ser da pessoa responsável, desde que os projetos e as variáveis sejam próprios do repasse. Recomenda-se uma organização própria do repasse no Supabase (ADR-0001 §3.1). Contas de provedor da Motors, como a da APIBrasil, não são usadas.
+A organização do Supabase e o time da Vercel podem ser da pessoa responsável, desde que os projetos e as variáveis sejam próprios do repasse. Recomenda-se uma organização própria do repasse no Supabase (ADR-0001 §3.1). Contas de provedor de outros negócios não são usadas.
 
 ---
 
@@ -294,7 +294,7 @@ A declaração mais recente de cada categoria é a vigente.
 - `performed_at`, `performed_by` (quem consultou), `recorded_by` (quem registrou)
 - `result`: `awaiting_result`, `no_occurrence_in_source`, `has_occurrence` ou `inconclusive`
 - `result_summary`
-- `details` (jsonb): o banco recusa chaves de dado pessoal, padrão portado de `consultas_de_placa`
+- `details` (jsonb): o banco recusa chaves de dado pessoal (padrão já testado em projeto interno)
 - `evidence_document_id`, `protocol`
 - `known_limitations`: obrigatório; o que a fonte não cobre
 - `is_test`, `supersedes_check_id`
@@ -486,7 +486,7 @@ A interface, as notificações e os guias não usam, para o veículo ou a oferta
 
 ## 6.14. Guias e checklists
 
-Material para compradores (como ler os estados documentais, limites das consultas, conferências antes de fechar) e para fornecedores (como declarar, que evidência anexar). O conteúdo do `motors-site-oficial` sobre laudo cautelar, leilão, sinistro e chassi remarcado serve de fonte, adaptado ao comprador profissional e sem linguagem de garantia.
+Material para compradores (como ler os estados documentais, limites das consultas, conferências antes de fechar) e para fornecedores (como declarar, que evidência anexar). Conteúdo interno já produzido sobre laudo cautelar, leilão, sinistro e chassi remarcado serve de fonte, adaptado ao comprador profissional e sem linguagem de garantia.
 
 ---
 
@@ -654,7 +654,7 @@ Estruturas técnicas podem ser construídas antes. O comportamento definitivo em
 |---|---|---|
 | D5 | Jurídico: modelo de intermediação, termos de uso, texto da ciência, política de privacidade, visibilidade de resultados e evidências ao comprador (Portaria 139/2025) | piloto; seção 7.3 |
 | D6 | WhatsApp: API oficial ou outro provedor | notificações por WhatsApp |
-| D7 | Destino dos projetos `rede-auto` (Supabase) e `motors-plataforma` (Vercel) | nada neste produto; é limpeza |
+| D7 | Destino de projetos de tentativas anteriores (banco e aplicação) | nada neste produto; é limpeza |
 | D8 | Primeiros fornecedores e compradores reais | incremento 6 |
 | D9 | Oferta com impedimento de transferência: publicar com aviso ou recusar | seção 6.11 |
 | D10 | Revisão da plataforma antes de publicar: sim ou não no piloto | uso do estado `under_review` |

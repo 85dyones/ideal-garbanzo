@@ -32,6 +32,7 @@ A sessão principal é o orquestrador (T2). Ela despacha subtarefas aos subagent
 - Nada é compartilhado com a Motors: banco, projeto, credenciais, contas de provedor ou dados.
 - Testes e reset de banco só no projeto Supabase `gtbncxvaghjfmzcypgul`, que serve a `dev` e homologação e só guarda dados de teste; nunca em produção. A produção da Vercel não recebe variáveis do Supabase até o Inc. 6. Até lá, todo deploy da Vercel fica atrás da autenticação da Vercel.
 - Não inventar IDs de modelo, credenciais, integrações ou variáveis.
+- **O repositório `ideal-garbanzo` é público** (decisão da pessoa responsável, 27/10). Não versionar segredos, dados pessoais, nem detalhes internos ou de segurança de outros negócios da pessoa responsável: achados, locais de segredos, nomes e IDs de projetos deles, infraestrutura de clientes, IDs de conta. Esses registros ficam em `notas-privadas/` (no `.gitignore`), que os agentes podem ler localmente; nos arquivos versionados, só a descrição genérica.
 - Módulos críticos (auth, organizations, access-control, transactions, commissions, subscriptions) não seguem em fallback para modelo menos capaz; pausar com handoff.
 
 ## Estado do projeto
