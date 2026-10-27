@@ -35,8 +35,8 @@ Este plano traduz o roteiro da seção 12 da v1.1 em subtarefas despacháveis. E
 | Etapa | Status | Gate de saída |
 |---|---|---|
 | Pré-requisitos P1-P6 | P1 concluída; P2-P6 pausadas | ver seção 5 |
-| Inc. 0: Fundação | subtarefas concluídas (I0.12 e I0.13 canceladas); gate fecha com o CI verde aplicando a migração da I0.6 | app local e em homologação; CI verde; testes de banco executam as migrações |
-| Inc. 1: Identidade e adesão | não iniciado | testes negativos 1, 2 (empresa), 4, 5 e 13 |
+| Inc. 0: Fundação | **concluído em 27/10** (I0.12 e I0.13 canceladas); gate cumprido, com CI verde aplicando a migração (execução 40598516010) | app local e em homologação; CI verde; testes de banco executam as migrações |
+| Inc. 1: Identidade e adesão | próximo | testes negativos 1, 2 (empresa), 4, 5 e 13 |
 | Inc. 2: Oferta | não iniciado | publica com pendência e mostra aviso; testes 2 (ofertas e documentos), 6, 11 e 12 (preço) |
 | Inc. 3: Domínio documental | não iniciado | estados conforme §6.4; testes 7 e 10; revisão AG |
 | Inc. 4: Catálogo privado | não iniciado | critérios 4, 6, 7 e 10 da §10 |

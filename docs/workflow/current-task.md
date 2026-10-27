@@ -1,9 +1,9 @@
 # Tarefa atual
 
-**Etapa:** Inc. 0, Fundação (plano v2)  
+**Etapa:** Inc. 1, Identidade e adesão (plano v2); Inc. 0 concluído  
 **Próximas subtarefas:**
-- **Push (H)** e CI verde com a migração da I0.6: fecha o gate do Inc. 0.
-- **Inc. 1 (T2 + T0):** começar pela I1.1 (regras de identidade, T0) e pela I1.2 (ADR-0002, T2).
+- **I1.1 (T0):** extrair §3.3, §5.1, §6.1 e os testes negativos 1, 2, 4, 5 e 13 em tabela de decisão e casos de teste.
+- **I1.2 (T2):** ADR-0002 de identidade (funções de autorização, revalidação de usuário suspenso, adesão atômica), a partir da I1.1.
 
 > **Repositório público:** este registro não traz segredos, dados pessoais nem detalhes internos ou de segurança de outros negócios. O registro completo fica em `notas-privadas/`, fora do Git.
 
@@ -199,3 +199,14 @@
   - CI verde: ok, no `3139113`;
   - teste de banco executando migração: ok no projeto de desenvolvimento, e o CI com a migração da I0.6 depende do push;
   - nenhum deploy público: ok.
+
+### 2026-10-27 · Inc. 0 · concluído
+
+- Push do `100575f` feito pela pessoa responsável.
+- **CI** (execução 40598516010): "Lint, tipos, testes e formatação", "Build do Next" e "Banco (Supabase efêmero, pgTAP e integração)" com `success`. No job `banco`, todos os passos deram `success`: `supabase start` (100 s) já aplica a migração da I0.6, depois `db:reset`, `test:db` e `test:integration`.
+- **Vercel:** preview do `100575f` `READY` (`target: null`). Sem login, preview, alias da `main` e domínio de produção respondem 302.
+- **Gate do Inc. 0 cumprido:**
+  - app local e em homologação;
+  - CI verde;
+  - teste de banco executando migração, no projeto de desenvolvimento e no CI;
+  - nenhum deploy público.
