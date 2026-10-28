@@ -24,7 +24,7 @@ Destino recusado sai com código 2. Nenhum outro projeto é tocado, em hipótese
 
 ## Uma execução por vez
 
-O projeto de desenvolvimento é um só para todos os agentes. Reset e testes pegam o mesmo advisory lock; uma segunda execução espera até 60 s e depois falha com mensagem clara. Só o T2 roda testes de banco no projeto de desenvolvimento. O `test:integration` ainda não pega a trava: hoje ele só lê. Quando os testes de integração passarem a gravar dados (Inc. 1), a preparação global deles passa a pegar a mesma trava.
+O projeto de desenvolvimento é um só para todos os agentes. Reset, testes de banco e testes de integração pegam o mesmo advisory lock; uma segunda execução espera até 60 s e depois falha com mensagem clara. Só o T2 roda testes de banco no projeto de desenvolvimento. Desde o Inc. 1 o `test:integration` grava dados: a preparação global (`tests/integration/preparacao-global.ts`) pega a trava numa conexão própria antes do primeiro teste e a solta no encerramento da suíte. Os dados da integração ficam no banco até o próximo reset (usuários com auditoria não podem ser apagados; ADR-0002 §2.8), com e-mails `@repasse-teste.invalid` e um sufixo por execução.
 
 ## Convenções
 

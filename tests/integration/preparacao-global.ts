@@ -1,26 +1,55 @@
 /**
  * Preparação dos testes de integração: exige as variáveis, confere o destino
  * (gate 12) e a disponibilidade da API. Qualquer problema falha a suíte.
+ *
+ * Desde o Inc. 1 a suíte grava dados no banco de desenvolvimento: durante toda
+ * a execução ela segura a mesma trava (advisory lock) do reset e dos testes de
+ * banco, numa conexão própria, e a solta no encerramento.
  */
+import type pg from "pg";
 import {
   carregarAmbiente,
   exigirVariaveis,
 } from "../../scripts/lib/ambiente.mjs";
+import {
+  adquirirTrava,
+  conectar,
+  liberarTrava,
+  mensagemSegura,
+} from "../../scripts/lib/banco.mjs";
 import {
   carregarConfiguracao,
   lerDestino,
   verificarDestinoPermitido,
 } from "../../scripts/lib/destino.mjs";
 
-export default async function preparar() {
+export default async function preparar(): Promise<() => Promise<void>> {
+  let cliente: pg.Client | undefined;
   try {
     await verificarAmbiente();
+    ({ cliente } = await conectar());
+    cliente.on("error", (erro) => {
+      // Se a conexão cair, a trava se solta com ela; a suíte segue, mas avisa.
+      console.error(
+        `\n[integração] a conexão que segura a trava caiu: ${mensagemSegura(erro)}\n`,
+      );
+    });
+    await adquirirTrava(cliente);
   } catch (erro) {
+    await cliente?.end().catch(() => undefined);
     // O Vitest pode esconder a mensagem ao montar a pilha; ela sai aqui antes.
-    const mensagem = erro instanceof Error ? erro.message : String(erro);
+    const mensagem = mensagemSegura(erro);
     console.error(`\n[integração] ${mensagem}\n`);
     throw new Error(mensagem);
   }
+  const conexao = cliente;
+  return async () => {
+    try {
+      await liberarTrava(conexao);
+    } finally {
+      await conexao.end();
+    }
+  };
 }
 
 async function verificarAmbiente() {

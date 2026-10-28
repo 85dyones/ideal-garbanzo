@@ -44,15 +44,19 @@ export async function conectar() {
   };
 }
 
-/** Executa `tarefa` com a trava; espera até `esperaMs` se outra execução estiver em curso. */
-export async function comTrava(cliente, tarefa, esperaMs = 60_000) {
+/**
+ * Pega a trava na sessão de `cliente`; espera até `esperaMs` se outra
+ * execução estiver em curso. A trava fica com a conexão até `liberarTrava`
+ * ou até a conexão fechar.
+ */
+export async function adquirirTrava(cliente, esperaMs = 60_000) {
   const limite = Date.now() + esperaMs;
   for (;;) {
     const { rows } = await cliente.query(
       "select pg_try_advisory_lock($1) as obtida",
       [CHAVE_DA_TRAVA],
     );
-    if (rows[0].obtida) break;
+    if (rows[0].obtida) return;
     if (Date.now() > limite) {
       throw new Error(
         "Outra execução de reset ou de testes de banco está em andamento; tente de novo depois.",
@@ -60,10 +64,20 @@ export async function comTrava(cliente, tarefa, esperaMs = 60_000) {
     }
     await new Promise((resolver) => setTimeout(resolver, 2_000));
   }
+}
+
+/** Solta a trava pega por `adquirirTrava` na mesma conexão. */
+export async function liberarTrava(cliente) {
+  await cliente.query("select pg_advisory_unlock($1)", [CHAVE_DA_TRAVA]);
+}
+
+/** Executa `tarefa` com a trava; espera até `esperaMs` se outra execução estiver em curso. */
+export async function comTrava(cliente, tarefa, esperaMs = 60_000) {
+  await adquirirTrava(cliente, esperaMs);
   try {
     return await tarefa();
   } finally {
-    await cliente.query("select pg_advisory_unlock($1)", [CHAVE_DA_TRAVA]);
+    await liberarTrava(cliente);
   }
 }
 
