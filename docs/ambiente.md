@@ -42,3 +42,36 @@ Por decisão da pessoa responsável (27/10), `dev` e homologação usam o mesmo 
 - **Reset e testes de banco** apagam também os dados de homologação. Por isso o projeto só guarda dados de teste identificados.
 - **Pausa por inatividade:** projetos gratuitos pausam depois de um período sem uso; reativar pelo painel. Conferir os limites atuais do plano na página de preços do Supabase.
 - **Produção:** exige um projeto próprio (`repasse-prod`) no Inc. 6.
+
+## 5. Auth no painel do Supabase (dev e homologação)
+
+Projeto `ralmlmuewullugeqtgoz`, painel → **Authentication**. Valores da I1.6 (ADR-0002 §2.8 e §2.16).
+
+| Onde | Campo | Valor |
+|---|---|---|
+| URL Configuration | Site URL | `http://localhost:3000`, onde os testes acontecem hoje. Quando a homologação entrar em uso, passa a ser o alias da `main` na Vercel. |
+| URL Configuration | Redirect URLs | `http://localhost:3000/**` e `https://ideal-garbanzo-*-<slug-do-time>.vercel.app/**`. O slug do time aparece no endereço dos previews. O padrão cobre só os previews deste projeto, e não os de outros projetos do mesmo time. |
+| Sign In / Providers → Email | Confirm email | ligado. Em 28/10, a API pública de configurações do Auth respondia `mailer_autoconfirm: false` |
+| Emails → SMTP Settings | servidor | host `smtp.hostinger.com`, porta 465 (SSL), conforme a documentação da Hostinger. Se a porta 465 der erro de criptografia, usar 587 (STARTTLS). Conferir no hPanel → Emails → Connect Apps & Devices. |
+| Emails → SMTP Settings | usuário e senha | usuário = endereço completo da caixa. A senha é cadastrada pela pessoa responsável direto no painel, sem passar pelo repositório nem pelo chat. |
+| Emails → SMTP Settings | remetente | a caixa provisória (exceção à §4.5 até o Inc. 6; detalhes em `notas-privadas/`); nome do remetente `EntrePátios` |
+| Rate Limits | e-mails por hora | 30, o valor que o Supabase impõe ao ligar o SMTP próprio; não aumentar em `dev` |
+| Attack Protection | captcha | desligado em `dev` e homologação. Liga no `repasse-prod` no Inc. 6, com widget de uma conta do Cloudflare própria do repasse (ADR-0002 §2.16) |
+| Emails → Templates | modelos | tabela abaixo; Magic link e Reauthentication ficam no padrão, porque o repasse não usa esses fluxos |
+
+| Modelo no painel | Arquivo | Assunto | Link |
+|---|---|---|---|
+| Confirm sign up | `supabase/templates/confirmacao-de-cadastro.html` | Confirme seu e-mail no EntrePátios | `{{ .RedirectTo }}&token_hash=…&type=email` |
+| Invite user | `supabase/templates/convite.html` | Você recebeu um convite para o EntrePátios | `{{ .SiteURL }}/auth/confirmar?token_hash=…&type=invite` |
+| Reset password | `supabase/templates/recuperacao-de-senha.html` | Redefinição de senha do EntrePátios | `{{ .RedirectTo }}&token_hash=…&type=recovery` |
+| Change email address | `supabase/templates/troca-de-email.html` | Confirme o novo e-mail no EntrePátios | `{{ .SiteURL }}/auth/confirmar?token_hash=…&type=email_change` |
+
+**Duas formas de link:**
+
+- **Cadastro e recuperação:** a tela manda a URL de retorno `<origem>/auth/confirmar?proximo=…` (`src/app/_apoio/origem.ts`). O modelo acrescenta só o token. Assim, o link volta para o endereço em que a pessoa estava, seja local ou preview.
+  - Se a origem não estiver nas Redirect URLs, o Supabase troca a URL de retorno pela Site URL, e esse link sai quebrado. Por isso, a lista precisa cobrir todo endereço que mostra as telas.
+- **Convite e troca de e-mail:** o convite (`inviteUserByEmail`) não manda URL de retorno, e ainda não existe tela de troca de e-mail. Por isso, esses links usam a Site URL, e o destino vem do tipo: convite vai para `/nova-senha`.
+
+**Ponto para a I1.7:** alguns provedores de e-mail abrem os links antes da pessoa, como o Safe Links do Microsoft Defender. A documentação do Supabase ("Email prefetching") avisa que isso consome o token. A rota `/auth/confirmar` confere o token já no GET. Avaliar se vale trocar por uma página com botão de confirmação.
+
+**Testes:** nenhum teste envia e-mail. Os usuários são criados pela API administrativa, já confirmados, e o convite de quem não tem conta é trocado por uma criação sem envio. Por isso, ligar o SMTP não manda mensagens para os endereços `.invalid` dos testes.

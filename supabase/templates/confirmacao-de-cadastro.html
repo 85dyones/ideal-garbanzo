@@ -1,0 +1,45 @@
+<!--
+  Supabase Auth → Emails → Confirm sign up.
+  Assunto: Confirme seu e-mail no EntrePátios
+  O cadastro manda `emailRedirectTo` = <origem>/auth/confirmar?proximo=...,
+  então o link acrescenta só o token (docs/ambiente.md §5).
+-->
+<div
+  style="
+    font-family: Arial, Helvetica, sans-serif;
+    color: #1f2933;
+    line-height: 1.5;
+    max-width: 560px;
+  "
+>
+  <p style="font-size: 20px; font-weight: bold; margin: 0 0 4px">EntrePátios</p>
+  <p style="color: #52606d; margin: 0 0 24px">O repasse que conecta pátios</p>
+
+  <p>
+    Recebemos um cadastro com este e-mail. Para ativar a conta, confirme o
+    endereço:
+  </p>
+
+  <p style="margin: 24px 0">
+    <a
+      href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email"
+      style="
+        background: #1f2933;
+        color: #ffffff;
+        padding: 12px 20px;
+        border-radius: 6px;
+        text-decoration: none;
+        display: inline-block;
+      "
+      >Confirmar e-mail</a
+    >
+  </p>
+
+  <p style="color: #52606d; font-size: 14px">
+    O link vale por tempo limitado e só pode ser usado uma vez. Ter conta não dá
+    acesso à rede: depois de entrar, envie o pedido de adesão da sua empresa.
+  </p>
+  <p style="color: #52606d; font-size: 14px">
+    Se você não fez esse cadastro, ignore esta mensagem.
+  </p>
+</div>

@@ -1,10 +1,10 @@
 # Tarefa atual
 
-**Etapa:** Inc. 1, Identidade e adesão (plano v2). A I1.1 a I1.6 foram entregues; a I1.6 está sem commit.  
+**Etapa:** Inc. 1, Identidade e adesão (plano v2). A I1.1 a I1.6 foram entregues; a I1.6 está no commit `2560dbf`.  
 **Próxima subtarefa:**
-- **I1.7 (T3):** revisão independente do diff, das políticas e do ADR-0002. A pessoa responsável vai solicitar. O gate do Inc. 1 depende dela.
+- **I1.7 (T3):** revisão independente do diff, das políticas e do ADR-0002. A pessoa responsável solicitou. O gate do Inc. 1 depende dela.
 
-**Configurações pendentes nos painéis (pessoa responsável):** veja a entrada da I1.6.
+**Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
 > **Repositório público:** este registro não traz segredos, dados pessoais nem detalhes internos ou de segurança de outros negócios. O registro completo fica em `notas-privadas/`, fora do Git.
 
@@ -367,7 +367,7 @@
   - id inexistente mostra "Registro inexistente" para a equipe;
   - o requerente vê "Sem permissão" na administração e no comprador;
   - o layout de celular (375 px) não tem rolagem horizontal.
-- **Configurações pendentes da pessoa responsável:**
+- **Configurações pendentes da pessoa responsável** (feitas em 28/10, menos o captcha; veja a entrada seguinte):
   - **Supabase, Authentication:**
     - Site URL;
     - Redirect URLs: `http://localhost:3000/**` e o padrão dos previews da Vercel;
@@ -379,3 +379,30 @@
     Com o captcha ligado no projeto de desenvolvimento, o login dos testes de integração e do E2E falha. Fica para decidir junto com o widget.
   - **Cloudflare:** widget Turnstile próprio do repasse; a chave do site vai em `NEXT_PUBLIC_TURNSTILE_SITE_KEY` na Vercel.
 - **Fora desta entrega:** configuração e auditoria (telas), termos e privacidade, edição do próprio perfil na tela, paginação das listas da administração (até 200 itens) e logotipo.
+
+### 2026-10-28 · I1.6 · configuração do Auth nos painéis
+
+- **Feito pelo T2 no navegador do app, com o login e a senha da caixa a cargo da pessoa responsável.** Projeto `ralmlmuewullugeqtgoz`. Valores e motivos estão em `docs/ambiente.md` §5.
+- **Site URL:** já estava `http://localhost:3000`; não mudou.
+- **Redirect URLs:** `http://localhost:3000/**` e o padrão dos previews do `ideal-garbanzo` na Vercel. O padrão não aceita previews de outros projetos do mesmo time.
+- **Confirmação de e-mail:** já estava ligada (`mailer_autoconfirm: false` na API pública de configurações do Auth, antes e depois).
+- **SMTP:**
+  - SMTP próprio ligado: Hostinger (`smtp.hostinger.com`, porta 465), remetente "EntrePátios";
+  - a caixa provisória e a senha foram preenchidas pela pessoa responsável;
+  - limite do Supabase: 30 e-mails por hora e 60 segundos entre envios para a mesma pessoa.
+- **Modelos:** confirmação de cadastro, convite, recuperação de senha e troca de e-mail.
+  - O conteúdo foi copiado de `supabase/templates/` (novo).
+  - Depois de recarregar o painel, cada um mostra o assunto em português e o link para `/auth/confirmar`.
+  - Magic link e reautenticação ficaram no padrão.
+- **Turnstile:** não foi criado.
+  - A conta do Cloudflare disponível é de outro negócio, e a exceção à §4.5 cobre só a caixa de e-mail.
+  - Decisão da pessoa responsável: criar no Inc. 6, numa conta própria do repasse, e ligar o captcha só no `repasse-prod`. Isso entrou no ADR-0002 §2.16 e na I6.1.
+  - Em `dev`, o captcha fica desligado, e o login dos testes continua funcionando.
+- **Teste de ponta a ponta:** a pessoa responsável fez um cadastro em `localhost:3000/cadastro`, com um endereço próprio. O e-mail chegou pela caixa provisória, e o link levou ao início, já logado. O banco confirma, sem exibir o endereço:
+  - confirmação enviada no mesmo instante do cadastro;
+  - e-mail confirmado 42 s depois;
+  - entrada registrada;
+  - perfil `active`.
+  
+  A conta é dado de teste de `dev` e sai no próximo reset. Recuperação e convite não foram testados com e-mail real.
+- **Ponto para a I1.7:** pré-abertura de links por provedores de e-mail, que consome o token (`docs/ambiente.md` §5).

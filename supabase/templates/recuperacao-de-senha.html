@@ -1,0 +1,45 @@
+<!--
+  Supabase Auth → Emails → Reset password.
+  Assunto: Redefinição de senha do EntrePátios
+  A recuperação manda `redirectTo` = <origem>/auth/confirmar?proximo=/nova-senha,
+  então o link acrescenta só o token (docs/ambiente.md §5).
+-->
+<div
+  style="
+    font-family: Arial, Helvetica, sans-serif;
+    color: #1f2933;
+    line-height: 1.5;
+    max-width: 560px;
+  "
+>
+  <p style="font-size: 20px; font-weight: bold; margin: 0 0 4px">EntrePátios</p>
+  <p style="color: #52606d; margin: 0 0 24px">O repasse que conecta pátios</p>
+
+  <p>
+    Recebemos um pedido para redefinir a senha da conta ligada a este e-mail.
+    Para escolher uma nova senha:
+  </p>
+
+  <p style="margin: 24px 0">
+    <a
+      href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=recovery"
+      style="
+        background: #1f2933;
+        color: #ffffff;
+        padding: 12px 20px;
+        border-radius: 6px;
+        text-decoration: none;
+        display: inline-block;
+      "
+      >Redefinir senha</a
+    >
+  </p>
+
+  <p style="color: #52606d; font-size: 14px">
+    O link vale por tempo limitado e só pode ser usado uma vez.
+  </p>
+  <p style="color: #52606d; font-size: 14px">
+    Se você não pediu a redefinição, ignore esta mensagem: a senha atual
+    continua valendo.
+  </p>
+</div>

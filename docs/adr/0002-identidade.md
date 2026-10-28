@@ -178,7 +178,7 @@ O vínculo do requerente, criado na aprovação da adesão (seção 2.5), já na
 
 ### 2.8. Conta, perfil e e-mail
 
-- **Cadastro:** cadastro aberto no Supabase Auth com confirmação de e-mail e Turnstile do próprio Auth (configurado na I1.6). Ter conta não dá acesso ao produto.
+- **Cadastro:** cadastro aberto no Supabase Auth com confirmação de e-mail e Turnstile do próprio Auth. As telas ficaram prontas na I1.6, e o captcha liga no Inc. 6 (§2.16). Ter conta não dá acesso ao produto.
 - **Pedido:** a tela pública leva ao cadastro e depois ao formulário do pedido.
 - **Sem vínculo ativo em empresa ativa**, o usuário só lê o próprio perfil e envia e acompanha os próprios pedidos.
 - **Perfil:** nasce por gatilho na inclusão em `auth.users` (função em `private`), com `status = 'active'`. `full_name` vem do metadado do cadastro só como texto de exibição.
@@ -308,6 +308,8 @@ O primeiro bucket entra no Inc. 1, então a convenção do `supabase/tests/READM
   - O verificador de servidor do projeto interno, que confere host e ação, fica para quando houver formulário público fora do Auth.
   - Sem `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, as telas não mostram o widget, como no `dev` e no E2E.
   - Em produção, o widget próprio do repasse não deve aceitar `localhost` na lista de domínios (lição do projeto interno).
+  - **Quando liga:** só no Inc. 6, no `repasse-prod`, com o widget criado numa conta do Cloudflare própria do repasse (decisões da pessoa responsável em 28/10). A conta do Cloudflare disponível hoje é de outro negócio, e a exceção à §4.5 cobre só a caixa de e-mail.
+  - **Até lá:** o captcha fica desligado no projeto de `dev` e homologação, e o login dos testes continua funcionando. Ali, a proteção do Auth fica com três coisas: os limites desta seção, o teto de e-mails por hora do Supabase e a autenticação da Vercel nos previews.
 
 ---
 

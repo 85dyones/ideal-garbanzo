@@ -1,0 +1,45 @@
+<!--
+  Supabase Auth → Emails → Change email address.
+  Assunto: Confirme o novo e-mail no EntrePátios
+  Ainda não há tela de troca de e-mail; o link usa a Site URL, sem depender
+  de URL de retorno (docs/ambiente.md §5).
+-->
+<div
+  style="
+    font-family: Arial, Helvetica, sans-serif;
+    color: #1f2933;
+    line-height: 1.5;
+    max-width: 560px;
+  "
+>
+  <p style="font-size: 20px; font-weight: bold; margin: 0 0 4px">EntrePátios</p>
+  <p style="color: #52606d; margin: 0 0 24px">O repasse que conecta pátios</p>
+
+  <p>
+    Recebemos um pedido para trocar o e-mail da sua conta de {{ .Email }} para
+    {{ .NewEmail }}. Para confirmar:
+  </p>
+
+  <p style="margin: 24px 0">
+    <a
+      href="{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&type=email_change"
+      style="
+        background: #1f2933;
+        color: #ffffff;
+        padding: 12px 20px;
+        border-radius: 6px;
+        text-decoration: none;
+        display: inline-block;
+      "
+      >Confirmar troca de e-mail</a
+    >
+  </p>
+
+  <p style="color: #52606d; font-size: 14px">
+    O link vale por tempo limitado e só pode ser usado uma vez.
+  </p>
+  <p style="color: #52606d; font-size: 14px">
+    Se você não pediu essa troca, ignore esta mensagem e avise a equipe do
+    EntrePátios.
+  </p>
+</div>
