@@ -1,9 +1,9 @@
 # Tarefa atual
 
-**Etapa:** Inc. 1, Identidade e adesão (plano v2); I1.1, I1.2 e I1.3 entregues  
+**Etapa:** Inc. 1, Identidade e adesão (plano v2); I1.1 a I1.5 entregues (I1.4 e I1.5 sem commit)  
 **Próximas subtarefas:**
-- **I1.4 (T1):** testes de banco (`supabase/tests/database/110-` em diante) e de integração a partir do anexo A do ADR-0002; o T2 faz a verificação de mutação.
-- **I1.5 (T2):** operações de servidor, em paralelo com a I1.4.
+- **I1.6 (T1):** telas de adesão, login, recuperação, painel de adesões, empresa e membros, sobre as operações da I1.5; inclui a decisão de SMTP com a pessoa responsável.
+- **I1.7 (T3):** revisão independente do diff, das políticas e do ADR-0002.
 
 > **Repositório público:** este registro não traz segredos, dados pessoais nem detalhes internos ou de segurança de outros negócios. O registro completo fica em `notas-privadas/`, fora do Git.
 
@@ -255,3 +255,62 @@
   - `test:db`: 000 (6), 010 (29, com as quatro leituras de `authenticated` trocadas de "sem permissão" para "0 linhas") e 100 (34) passaram;
   - `lint`, `typecheck`, `npm test` (62), `format:check` e `test:integration` (3) passaram.
 - Não conferido: os avisos de segurança do Supabase (o conector recusou acesso ao projeto) e o job de banco do CI, que roda no próximo push.
+
+### 2026-10-28 · I1.4 · entregue (revisão na I1.7)
+
+- Despachada ao `builder` (T1) em worktree a partir do commit das dependências, com escopo sem operações de servidor (essas ficaram com a I1.5) e sem acesso ao banco. A entrega veio em commit local na branch do worktree e foi trazida para a árvore de trabalho sem commit.
+- Entrega:
+  - nove arquivos pgTAP: `110-adesao`, `120-revisao`, `130-papeis-da-plataforma`, `140-membros`, `150-perfil-e-empresa`, `160-suspensao`, `170-isolamento-e-catalogo`, `180-configuracao` e `190-auditoria`, com 380 asserções. Cada recusa confere o errcode e a mensagem da camada que recusa; cada negativo tem contraste;
+  - três arquivos de integração contra a API real: `identidade-metadado` (CT4.6, papel em `user_metadata`), `identidade-suspensao` (CT5.1, CT5.4, D40b e `request_id`) e `identidade-evidencia` (políticas do Storage);
+  - a preparação global da integração passa a segurar a trava do reset durante a suíte (`adquirirTrava` e `liberarTrava` em `scripts/lib/banco.mjs`, sem mudar o comportamento do `comTrava`).
+- O builder validou fora do projeto, num Postgres embutido com stubs do Supabase, e rodou 113 mutações.
+- Validação pelo T2 no projeto de desenvolvimento:
+  - `test:db` passou nos três estados: com os dados da integração, depois do `db:reset` (caminho do primeiro administrador) e depois de duas rodadas de integração. São 12 arquivos e 449 asserções;
+  - `test:integration` passou: 47 testes em 5 arquivos;
+  - lint, tipos, formatação e testes unitários passaram.
+- Verificação de mutação da camada de banco (gate 3):
+  - Como foi feita: o T2 reaplicou no dev as 113 mutações do builder. Cada mutação entrou na transação do próprio arquivo de teste, e o `rollback` do arquivo a desfez, então o banco nunca ficou afrouxado. O `test:db` depois confirmou o banco intacto.
+  - Resultado: 110 mutações foram detectadas, com as mesmas asserções que no harness. As 4 divergências não mudam o resultado: três são só o texto da asserção, reescrito depois do harness; uma é uma asserção a mais em cascata, porque o dev já tinha outros administradores.
+  - As 3 não detectadas, também no harness: o WITH CHECK do UPDATE de `platform_staff` e de `organization_members`, que repete o USING, e a política de INSERT do pedido, que repete o gatilho. O ADR registra as três no anexo A, com a mutação que conta.
+- Achados registrados no ADR-0002:
+  - CT4.7: pela API, o GRANT recusa antes; o gatilho é testado contornando o GRANT;
+  - mutações literais do anexo A que não derrubam o teste;
+  - leitura da própria situação pelo suspenso (§2.9);
+  - claims sempre definidas no pgTAP (§3).
+- Pendentes da I1.6: CT1.1 e CT1.4 pela página e D47 pela URL.
+
+### 2026-10-28 · I1.5 · entregue (revisão na I1.7)
+
+- Dependências fixadas antes de abrir as frentes paralelas (commit próprio): `@supabase/supabase-js` 2.118.0, `@supabase/ssr` 0.12.7 e `zod` 4.6.7 (tabela do ADR-0001 §1.3), mais `server-only` 0.0.1.
+- Operações de servidor, todas com a mesma moldura (`src/modules/auth/server/operacao.ts`): carregam o contexto do usuário do banco a cada chamada (sessão validada no Auth, status do perfil, papel e vínculos), validam o payload com esquema Zod estrito e gravam com a sessão do usuário, com `x-request-id` e, quando há, `x-audit-reason`. O resultado é sempre previsível (`src/lib/operacao/resultado.ts`).
+  - `membership`: enviar pedido; mover para análise (administrador ou operador); gravar conferência; enviar evidência (assinatura do arquivo conferida, sha256 no servidor); decidir; URL temporária da evidência com registro em `restricted_access_logs` antes de devolver.
+  - `organizations`: suspender, reativar e encerrar empresa; alterar nome e contatos; convidar, aceitar ou recusar convite, suspender, reativar, remover, cancelar convite e trocar papel.
+  - `auth`: suspender e reativar perfil (banco primeiro, bloqueio no Auth depois, `falha_parcial` se o Auth falhar); alterar o próprio nome e telefone; conceder e revogar papel; liberar a leitura da auditoria; alterar configuração.
+  - `audit`: rastreio por cabeçalho e registro de acesso restrito.
+  - `src/lib/supabase/servidor.ts` (`server-only`) monta as dependências a partir dos cookies; as operações recebem as dependências prontas e rodam fora do Next nos testes.
+- Sonda na API real do projeto de desenvolvimento, que confirmou:
+  - o Auth aceita e-mail `.invalid`;
+  - sem `x-audit-reason`, a suspensão é recusada; com ele, `x-request-id` e o motivo acentuado (enviado em bytes UTF-8) chegam íntegros a `audit_logs`;
+  - com o bloqueio no Auth, `getUser` e novo login respondem `user_banned`, mas o token anterior continua aceito pelo PostgREST: quem barra é o banco.
+- ADR-0002 atualizado: quarto uso da chave secreta (ler o perfil pelo e-mail no convite, depois da checagem do servidor), codificação do motivo e o comportamento do bloqueio no Auth.
+- Testes:
+  - unitários (`src/**`): CNPJ (exemplo oficial alfanumérico), assinatura de arquivo, esquemas estritos, permissões, tradução de erros e rastreio;
+  - integração (`tests/integration/operacoes/`, 24 casos): o fluxo da adesão até a empresa, membros, suspensão com o token antigo (CT5.2, CT5.2b sem o bloqueio do Auth, CT5.4), papel por `user_metadata` (CT4.6), configuração pelo operador (CT13.3) e empresa alheia pelo id (CT2.5). Cada negativo confere que o servidor recusou antes de abrir a tabela-alvo ou a chave secreta, com contraste do acesso legítimo.
+- Verificação de mutação da camada de servidor (T2; uma checagem afrouxada por vez, banco intacto; arquivo restaurado depois de cada execução):
+
+  | Mutação | Caso derrubado |
+  |---|---|
+  | esquema do pedido sem `strict` | CT4.4 (e mais 15 em cascata: o pedido gravado muda o estado do fluxo) |
+  | configuração sem checagem de administrador | CT13.3 |
+  | convite sem checagem de gestão, antes da chave secreta | CT2.5 |
+  | contexto sem o status do perfil no banco | CT5.2b |
+  | contexto sem o tratamento do bloqueio do Auth | CT5.2 |
+  | decisão sem checagem de administrador | CT4.5 |
+  | gestão de membro sem checagem | D28 e CT5.4 |
+  | status do perfil sem checagem de administrador | D41 |
+  | concessão de papel sem checagem de administrador | CT4.6 |
+  | URL da evidência sem checagem de administrador | URL temporária |
+  | conferência sem checagem de administrador | D10 |
+
+  Sem mutação, os 24 passam. A camada de banco foi conferida com as mutações da I1.4 (entrada acima).
+- Não conferido: os avisos de segurança do Supabase (o conector continua sem acesso ao projeto) e o job de banco do CI, que roda no próximo push. A tela que monta as dependências pelos cookies (`criarDependencias`) só é exercitada na I1.6.

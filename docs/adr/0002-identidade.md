@@ -63,6 +63,8 @@ O teste 1 se apoia em `pode_ver_catalogo()`. O catálogo só existe no Inc. 4; a
 
 A ordem é: muda o status no banco, depois o bloqueio no Auth. Se o bloqueio falhar, a operação devolve erro previsível e pode ser repetida; o banco já está bloqueando.
 
+Conferido em 28/10 no projeto de desenvolvimento (I1.5): com o bloqueio, `getUser` e um novo login respondem `user_banned`, mas o token anterior continua aceito pelo PostgREST até vencer. Quem barra esse token é o banco (camada 1), o que confirma a escolha de não depender do Auth.
+
 **Empresa suspensa:** os membros perdem o acesso àquela empresa, calculado na hora pelas funções. O status dos vínculos não muda em cascata, então reativar a empresa devolve o estado anterior. Quem tem vínculo ativo com outra empresa ativa continua operando nela.
 
 Suspender e reativar são do administrador da plataforma, com motivo obrigatório no servidor, gravado na auditoria (por analogia com a suspensão de oferta, §6.10).
@@ -203,6 +205,7 @@ O vínculo do requerente, criado na aprovação da adesão (seção 2.5), já na
 - O CNPJ e os contatos são de acesso restrito (§5.1). No Inc. 1 ninguém lê empresa alheia, então quem lê a linha pode lê-los. Quando o catálogo mostrar o fornecedor ao comprador (Inc. 4), a leitura passa por uma visão sem CNPJ e sem contatos.
 - O operador lê empresas, vínculos, perfis, pedidos de adesão e conferências, e prepara a revisão movendo o pedido de `submitted` para `under_review` (resposta à Q2). Aprovar, rejeitar, gravar a conferência, suspender e qualquer outra mudança em identidade continuam só com o administrador (§3.1, §3.3).
 - Convidado com vínculo `pending` não é colega: a empresa vê o vínculo, mas não o perfil, até o aceite.
+- **Leitura da própria situação (esclarecido na I1.4):** o usuário suspenso continua lendo o próprio perfil, e quem tem perfil ativo continua lendo o próprio vínculo, qualquer que seja o status do vínculo ou da empresa. É assim que a tela mostra "acesso suspenso" ou "vínculo removido". A recusa da D43 ("qualquer leitura ou escrita do produto") vale para os dados da empresa, dos colegas e de terceiros, que os testes 160 conferem.
 - Quem tem papel na plataforma pode ser membro de empresa. Os conflitos de interesse (por exemplo, o operador revisar oferta da própria empresa) são tratados nos incrementos em que o staff age sobre ofertas.
 
 ### 2.10. Status
@@ -223,14 +226,16 @@ Nenhuma dessas tabelas tem DELETE para `anon`, `authenticated` ou `service_role`
 - Ator: `auth.uid()`. Empresa: a da linha alterada.
 - `request_id`: o servidor envia o cabeçalho `x-request-id`, e o gatilho lê `request.headers`, que o PostgREST preenche. Fora da API (SQL direto), fica nulo.
 - O motivo de suspensão, reativação e encerramento vai na auditoria. O servidor envia o motivo pelo cabeçalho `x-audit-reason`, lido do mesmo jeito; o gatilho recusa a mudança de status sem motivo quando ela vem pela API.
+- O cabeçalho leva o motivo em bytes UTF-8 (`src/modules/audit/server/rastreio.ts`), porque o `fetch` do Node só aceita um byte por caractere no cabeçalho. Conferido em 28/10 pela API do projeto de desenvolvimento: sem o cabeçalho, a suspensão é recusada; com ele, `x-request-id` e o motivo acentuado chegam íntegros a `audit_logs`.
 - `metadata` não leva senha, token nem dado pessoal além do necessário (§5.6). CNPJ, e-mail e telefone não vão para `metadata`; vão só os ids e os campos alterados.
 - A I1.3 acrescenta as chaves estrangeiras de ator (`actor_profile_id`, `actor_organization_id`, `changed_by`, `updated_by`) para `profiles` e `organizations`, restritivas (seção 2.8).
 
 ### 2.12. Escrita pelo servidor com a sessão do usuário
 
 - As operações de servidor da I1.5 escrevem com o cliente da sessão do usuário (chave publicável e cookie). Assim, toda escrita passa pelas políticas e pelos gatilhos com o ator verdadeiro.
-- A chave secreta (`service_role`) fica restrita a três usos, todos em código de servidor:
+- A chave secreta (`service_role`) fica restrita a quatro usos, todos em código de servidor:
   - API administrativa do Auth (bloqueio, desbloqueio e convite);
+  - leitura do perfil pelo e-mail no convite de membro, depois de o servidor conferir que quem convida gere a empresa (I1.5): a sessão de quem convida não enxerga perfis fora da empresa, e a resposta é a mesma exista ou não a conta. A gravação do vínculo continua com a sessão de quem convida;
   - inclusão em `restricted_access_logs`;
   - preparação e limpeza dos testes de integração.
 - Cada caminho com `service_role` tem teste próprio da checagem do servidor, porque ali a RLS não vale.
@@ -277,6 +282,7 @@ O primeiro bucket entra no Inc. 1, então a convenção do `supabase/tests/READM
 - **Atuar como usuário no pgTAP:** a fixture insere o usuário em `auth.users` dentro da transação do teste (o gatilho cria o perfil) e usa `set local role authenticated` com `request.jwt.claims` contendo o `sub`. O papel `postgres` ignora a RLS, então toda asserção de acesso roda como `authenticated`.
 - **Administrador na fixture:** pelo caminho do primeiro administrador (seção 2.13) ou, se o banco já tiver um ativo (dados de integração), concedido por ele, com a sessão dele. O `100-identidade-estrutura` tem o bloco de referência.
 - **Chamada pela API no pgTAP:** a fixture preenche `request.headers` (por exemplo, `x-audit-reason`) para simular a requisição do PostgREST.
+- **Claims sempre definidas no pgTAP (achado da I1.4):** sob `set local role`, o `session_user` continua `postgres`, então `private.manutencao()` vale para `authenticated` ou `service_role` sem claims. Todo bloco de teste define as claims, inclusive `{"role": "service_role"}` sem `sub`. Pela API, a sessão é `authenticator`, e `anon`, `authenticated` e `service_role` não fazem login direto no banco. Ponto para a revisão da I1.7.
 - **Integração (`tests/integration/`):** usuários reais criados pela API administrativa, login de verdade e chamadas pela API com o token. Casos que só a integração prova:
   - teste 4: o usuário grava `{ "role": "admin" }` no próprio `user_metadata` e continua sem acesso administrativo;
   - teste 5: o usuário entra, é suspenso, e a requisição seguinte com o mesmo token é recusada.
@@ -515,7 +521,8 @@ Em todos os casos, "recusado" pode ser erro de permissão ou zero linhas afetada
 | CT2.6 | a1 | altera papel ou status de b1 | recusado; b1 inalterado |
 
 - Contraste: a2 lê A e os membros de A; a1 suspende e reativa a2; X lê A e B.
-- Mutação: predicado `true` no SELECT de `organizations`, `organization_members` ou `profiles`, ou tirar o filtro de vínculo de `empresas_do_usuario()`, derruba CT2.1 a CT2.4; WITH CHECK `true` no INSERT e no UPDATE de `organization_members` derruba CT2.5 e CT2.6.
+- Mutação: predicado `true` no SELECT de `organizations`, `organization_members` ou `profiles`, ou tirar o filtro de vínculo de `empresas_do_usuario()`, derruba CT2.1 a CT2.4; WITH CHECK `true` no INSERT de `organization_members` derruba CT2.5 (com o gatilho de proteção desligado na transação do teste, porque no caminho normal o gatilho recusa antes da política); USING `true` no UPDATE derruba D28, D31 e CT4.8.
+- Achado da I1.4: o WITH CHECK do UPDATE repete o USING e depende só do ator, então afrouxá-lo sozinho não muda nenhum resultado; a mutação que conta é a do USING. O CT2.6 em si não cai com ela, porque a política de SELECT também tira as linhas de B do alcance de a1.
 
 **Teste 4** (§7.4.4). Preparo: P, perfil ativo sem papel; O, operador; X1 e X2, administradores; M, `member` de uma empresa ativa.
 
@@ -527,13 +534,14 @@ Em todos os casos, "recusado" pode ser erro de permissão ou zero linhas afetada
 | CT4.4 | P | envia pedido com `status: approved`, `reviewed_by`, papel ou requerente alheio | recusado; nenhuma linha em `platform_staff` nem vínculo |
 | CT4.5 | P | aprova um pedido | recusado; pedido inalterado |
 | CT4.6 | P | grava `role: admin` no próprio `user_metadata` e chama operação de administrador | recusado (integração) |
-| CT4.7 | X1 | concede papel a P com `granted_by = X2` no payload | gravado `granted_by = X1` |
+| CT4.7 | X1 | concede papel a P com `granted_by = X2` no payload | pela API, recusado pelo GRANT por coluna; contornando o GRANT, o gatilho grava `granted_by = X1` (as duas camadas são testadas) |
 | CT4.8 | M | muda o próprio papel para `org_admin` | recusado |
 | CT4.9 | P | altera o próprio `profiles.status` ou `profiles.email` | recusado |
 | CT4.10 | C, convidado como `member` | aceita o convite mudando o papel para `org_admin` | recusado; vínculo continua `pending` e `member` |
 
 - Contraste: X1 concede `operator` a P; a linha tem `granted_by = X1`, e P age como operador na operação seguinte. X1 revoga, e P perde o papel na operação seguinte. C aceita o convite sem mudar o papel e passa a ler a empresa.
-- Mutação: WITH CHECK `true` em `platform_staff` ou tirar a exigência de administrador ativo derruba CT4.1 a CT4.3; desligar o gatilho de autoalteração derruba CT4.2, CT4.8 e CT4.10; ampliar o GRANT de `profiles` derruba CT4.9; tirar do servidor o esquema estrito derruba CT4.4 pela operação de servidor.
+- Mutação: WITH CHECK `true` no INSERT de `platform_staff` (com o gatilho desligado na transação do teste) ou tirar a exigência de administrador ativo derruba CT4.1 a CT4.3; USING `true` no UPDATE derruba CT4.2; desligar o gatilho de autoalteração derruba CT4.2, CT4.8 e CT4.10; ampliar o GRANT de `profiles` derruba CT4.9; tirar do servidor o esquema estrito derruba CT4.4 pela operação de servidor.
+- Achado da I1.4: a política de INSERT de `membership_applications` repete o que o gatilho já exige (requerente = `auth.uid()` e perfil ativo); afrouxá-la sozinha não muda nenhum resultado. Fica como segunda camada, sem teste que a isole.
 
 **Teste 5** (§7.4.5). Preparo: empresa E ativa; u1, `org_admin` de E; u2, `member` de E. Os tokens são emitidos **antes** da suspensão e continuam válidos; token emitido depois não prova nada.
 
