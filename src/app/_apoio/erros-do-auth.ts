@@ -21,7 +21,7 @@ export type Desfecho =
     };
 
 export const MENSAGEM_DO_CADASTRO =
-  "Se for possível concluir o cadastro, enviamos um link de confirmação para o e-mail informado. Confirme seu e-mail para continuar. Se você já tem conta, entre ou recupere o acesso.";
+  "Se for possível concluir o cadastro, enviamos um link de confirmação para o e-mail informado. Confirme seu e-mail e, em seguida, crie sua senha. Se você já tem conta, entre ou recupere o acesso.";
 
 export const MENSAGEM_DA_RECUPERACAO =
   "Se houver conta com este e-mail, enviamos um link para criar uma nova senha. Confira também a caixa de spam.";

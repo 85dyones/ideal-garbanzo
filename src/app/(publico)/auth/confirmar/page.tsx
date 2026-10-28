@@ -20,12 +20,14 @@ const TEXTOS: Readonly<
 > = {
   signup: {
     titulo: "Confirmar e-mail",
-    texto: "Confirme que este e-mail é seu para ativar a conta.",
+    texto:
+      "Confirme que este e-mail é seu para ativar a conta. Em seguida, você cria sua senha.",
     botao: "Confirmar e-mail",
   },
   email: {
     titulo: "Confirmar e-mail",
-    texto: "Confirme que este e-mail é seu para ativar a conta.",
+    texto:
+      "Confirme que este e-mail é seu para ativar a conta. Em seguida, você cria sua senha.",
     botao: "Confirmar e-mail",
   },
   invite: {

@@ -10,6 +10,8 @@ export const metadata: Metadata = { title: "Entrar" };
 const AVISOS: Readonly<Record<string, string>> = {
   "link-invalido":
     "O link é inválido ou expirou. Entre com sua senha ou peça um novo link em Recuperar acesso.",
+  "cadastro-incompleto":
+    "Seu e-mail foi confirmado, mas não foi possível concluir a criação da conta. Peça um link em Recuperar acesso para criar sua senha.",
 };
 
 function primeiro(valor: string | string[] | undefined): string | undefined {

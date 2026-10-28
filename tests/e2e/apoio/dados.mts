@@ -118,6 +118,64 @@ export async function novoUsuario(
   return usuario;
 }
 
+/**
+ * Conta de cadastro ainda sem confirmação, com a senha de quem a criou, como
+ * faria um cadastro direto na API do Auth (R8), sem mandar e-mail.
+ */
+export async function contaSemConfirmacao(
+  papel: string,
+): Promise<{ readonly email: string; readonly senha: string }> {
+  const { url, chaveSecreta } = lerAmbiente();
+  const email = `e2e-${papel}-${SUFIXO}@${DOMINIO_DE_TESTE}`;
+  const senha = `${randomBytes(18).toString("base64url")}aA1!`;
+  const { error } = await createClient<Database>(
+    url,
+    chaveSecreta,
+    SEM_SESSAO_GUARDADA,
+  ).auth.admin.createUser({ email, password: senha, email_confirm: false });
+  if (error !== null) {
+    throw new Error(`O Auth recusou criar ${email}: ${error.message}`);
+  }
+  return { email, senha };
+}
+
+/** `token_hash` de confirmação do cadastro, sem mandar e-mail e sem trocar a senha. */
+export async function tokenDeCadastro(email: string): Promise<string> {
+  const { url, chaveSecreta } = lerAmbiente();
+  const resposta = await createClient<Database>(
+    url,
+    chaveSecreta,
+    SEM_SESSAO_GUARDADA,
+  ).auth.admin.generateLink({
+    type: "signup",
+    email,
+    password: `${randomBytes(18).toString("base64url")}aA1!`,
+  });
+  const { properties } = exigirDados(resposta, "generateLink de cadastro");
+  if (properties === null) {
+    throw new Error("generateLink de cadastro: resposta sem token");
+  }
+  return properties.hashed_token;
+}
+
+/** Entrada pela API, fora do navegador, como faria outra pessoa ou outro aparelho. */
+export async function entrarPelaApi(
+  email: string,
+  senha: string,
+): Promise<{ readonly cliente: Cliente; readonly erro: string | null }> {
+  const { url, chavePublicavel } = lerAmbiente();
+  const cliente = createClient<Database>(
+    url,
+    chavePublicavel,
+    SEM_SESSAO_GUARDADA,
+  );
+  const { error } = await cliente.auth.signInWithPassword({
+    email,
+    password: senha,
+  });
+  return { cliente, erro: error === null ? null : (error.code ?? "erro") };
+}
+
 /** `token_hash` de recuperação pela API administrativa, sem mandar e-mail. */
 export async function tokenDeRecuperacao(email: string): Promise<string> {
   const { url, chaveSecreta } = lerAmbiente();

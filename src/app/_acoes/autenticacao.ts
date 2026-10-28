@@ -26,6 +26,7 @@ import {
   criarClienteAdministrativo,
   criarClienteDaSessao,
 } from "@/lib/supabase/servidor";
+import { senhaAleatoria } from "@/modules/auth/server/cadastro";
 import {
   MENSAGEM_DA_RECUPERACAO,
   MENSAGEM_DO_CADASTRO,
@@ -44,7 +45,7 @@ import {
   type EstadoDoFormulario,
 } from "../_apoio/formulario";
 import { origemDaRequisicao, urlDeRetorno } from "../_apoio/origem";
-import { DESTINO_PADRAO, caminhoSeguro } from "../_apoio/proximo";
+import { caminhoSeguro } from "../_apoio/proximo";
 import { ipDoVisitante } from "../_apoio/visitante";
 
 const senha = z
@@ -53,10 +54,10 @@ const senha = z
   .max(72, { error: "Use no máximo 72 caracteres." });
 
 const esquemaDoLogin = z.object({ email, senha });
+/** Sem senha: a pessoa cria a senha depois de confirmar o e-mail (ADR-0002 §8, R8). */
 const esquemaDoCadastro = z.object({
   nome: textoObrigatorio(200),
   email,
-  senha,
 });
 const esquemaDaRecuperacao = z.object({ email });
 
@@ -137,7 +138,6 @@ export async function cadastrarAcao(
   const lido = esquemaDoCadastro.safeParse({
     nome: texto(dados, "nome"),
     email: texto(dados, "email"),
-    senha: texto(dados, "senha"),
   });
   if (!lido.success) {
     return estadoDoResultado(anterior, entradaInvalida(lido.error), "", {
@@ -152,13 +152,15 @@ export async function cadastrarAcao(
   const sessao = await criarClienteDaSessao();
   const { error } = await sessao.auth.signUp({
     email: lido.data.email,
-    password: lido.data.senha,
+    // O Auth exige senha no cadastro; esta ninguém conhece, e a confirmação
+    // troca de novo antes de a pessoa criar a dela (R8).
+    password: senhaAleatoria(),
     options: {
       // Só texto de exibição do perfil; nunca entra em decisão de acesso.
       data: { full_name: lido.data.nome },
       emailRedirectTo: urlDeRetorno(
         origemDaRequisicao(await headers()),
-        DESTINO_PADRAO,
+        "/nova-senha",
       ),
       ...opcoesDoCaptcha(dados),
     },

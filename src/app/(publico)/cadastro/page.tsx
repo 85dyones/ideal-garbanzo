@@ -13,8 +13,8 @@ export default function PaginaDeCadastro() {
         <h1 className="text-2xl font-semibold">Criar conta</h1>
         <p className="text-gray-700">
           Ter conta não dá acesso ao catálogo. Depois de confirmar o e-mail,
-          você envia o pedido de adesão da sua empresa, que passa pela análise
-          da plataforma.
+          você cria sua senha e envia o pedido de adesão da sua empresa, que
+          passa pela análise da plataforma.
         </p>
       </div>
       <FormularioDeCadastro

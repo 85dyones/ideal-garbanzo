@@ -57,6 +57,11 @@ export async function definirNovaSenhaAcao(
       ...(desfecho.campos === undefined ? {} : { campos: desfecho.campos }),
     });
   }
+  // Senha nova encerra as outras sessões da conta: quem entrou com a senha
+  // anterior, inclusive uma senha posta por outra pessoa antes da confirmação
+  // do cadastro, sai (ADR-0002 §8, R8). O Auth já faz isso na troca de senha;
+  // a chamada é a segunda camada. Se ela falhar, a pessoa segue.
+  await sessao.auth.signOut({ scope: "others" });
   redirect(DESTINO_PADRAO);
 }
 

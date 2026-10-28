@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 1 (identidade e adesão) **concluído em 28/10**. O gate foi cumprido e o ADR-0002 foi aceito, com as ressalvas R1 a R7 na §8.  
 **Próximas subtarefas:**
-- **I1.8 (T2):** R1 a R5 corrigidas em 28/10. Falta conferir a R8, com um endereço de e-mail da pessoa responsável, antes de usuários reais.
+- **I1.8 (T2):** concluída em 28/10, com R1 a R5 e R8 corrigidas. A R6 (versionar a lista de mutações) fica para o Inc. 2, e a R7 para a I6.9.
 - **Inc. 2, I2.1 (T0):** extrair as transições da §6.2 e os requisitos de publicação.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
@@ -529,3 +529,51 @@
   - `test:e2e`: 8 passaram;
   - lint, tipos, 156 testes unitários e build passaram.
 - O reset apagou os dados de teste do dev, inclusive a conta do teste de cadastro da pessoa responsável.
+
+### 2026-10-28 · I1.8 · R8 confirmada (cadastro prévio com e-mail alheio)
+
+- **Teste no `dev`:** a pessoa responsável fez os cadastros pelas telas, com um endereço próprio. O T2 fotografou a conta no banco sem exibir e-mail, senha nem hash; a impressão digital do hash ficou no scratchpad, e só a comparação foi exibida.
+  - O segundo cadastro com o mesmo endereço e outra senha mostrou a mensagem normal, não criou conta e só reenviou a confirmação. A senha e o nome continuaram os do primeiro cadastro.
+  - Depois da confirmação pelo dono, a senha 2 foi recusada e a senha 1 entrou, com duas sessões abertas na mesma conta.
+  - Detalhes no ADR-0002 §8.
+- **Tentativas descartadas:**
+  - uma conta foi confirmada por engano antes do segundo cadastro;
+  - um segundo cadastro usou outro apelido do mesmo endereço e criou outra conta.
+
+  As fotos dessas tentativas ficaram à parte no scratchpad.
+- **Opções de correção** (decisão da pessoa responsável):
+  1. **Senha só depois da confirmação** (recomendada).
+     - O cadastro pede só nome e e-mail. O servidor cria a conta com uma senha aleatória que ninguém vê.
+     - Na confirmação do cadastro, a ação do botão troca a senha da conta por outra aleatória e encerra as outras sessões. Assim, a senha de quem tenha se cadastrado antes pela API deixa de valer naquele instante. Só depois a pessoa vai para `/nova-senha` e escolhe a própria.
+     - Custo: o cadastro muda de forma, e a chave secreta passa a ter mais um uso, só no servidor.
+  2. **Fechar o cadastro público do Auth.** Nesse caso, as contas nascem pelo servidor, com convite do Auth, e a senha é definida pelo dono do e-mail no link.
+     - Fecha também o cadastro direto pela API.
+     - Custo: muda mais coisas, porque pede outro modelo de e-mail e o controle de abuso todo no servidor.
+  3. **Aceitar o risco até o Inc. 6** e decidir lá.
+
+### 2026-10-28 · I1.8 · R8 corrigida (senha só depois da confirmação)
+
+- **Decisão da pessoa responsável:** opção 1. O cadastro pede só nome e e-mail, a confirmação troca a senha por outra aleatória e encerra as outras sessões, e a senha é criada em `/nova-senha`.
+- **Implementação:**
+  - `src/modules/auth/server/cadastro.ts`, com `senhaAleatoria` e `concluirConfirmacaoDoCadastro`. A troca é feita com a sessão da confirmação, então a chave secreta não ganhou uso novo;
+  - o cadastro deixou de pedir senha, e o retorno vai para `/nova-senha`;
+  - a ação do botão conclui a confirmação nos tipos `signup` e `email`. Se falhar, encerra todas as sessões e mostra o aviso `cadastro-incompleto` em `/entrar`;
+  - `definirNovaSenhaAcao` encerra as outras sessões;
+  - os textos do cadastro e da confirmação foram ajustados.
+- **Sondas no `dev`** (domínio `.invalid`, sem e-mail):
+  - `generateLink` do tipo `signup` para conta sem confirmação devolve o token e não troca a senha, o que reproduz a R8 pela API;
+  - a troca de senha pela própria sessão encerra as outras sessões no Auth (`refresh_token_not_found`), com controle sem troca.
+- **Testes:**
+  - integração `operacoes/cadastro.test.ts` (2), com o contraste da falha e a correção com a corrida de quem cadastrou antes;
+  - 3 E2E em `confirmacao.spec.mts`.
+- **Mutação:**
+  - detectadas: sem a troca de senha na conclusão, e sem chamar a conclusão na confirmação;
+  - equivalentes: sem o encerramento explícito das sessões, porque o Auth já encerra. A chamada fica como segunda camada.
+
+  Os arquivos foram restaurados e conferidos.
+- **Evidência no dev:**
+  - lint, tipos, 156 unitários e build passaram;
+  - `test:integration`: 54 passaram;
+  - `test:e2e`: 11 passaram;
+  - no navegador do app, `/cadastro` mostra só nome e e-mail.
+- **Pendente:** a pessoa responsável sai da conta do teste da R8, que ficou com duas sessões, no outro navegador. As contas de teste do `dev` saem no próximo reset.

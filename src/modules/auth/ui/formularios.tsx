@@ -108,15 +108,7 @@ export function FormularioDeCadastro({
         required
         defaultValue={estado.valores?.email}
         erros={estado.campos.email}
-      />
-      <Campo
-        nome="senha"
-        rotulo="Senha"
-        type="password"
-        autoComplete="new-password"
-        required
-        maxLength={72}
-        erros={estado.campos.senha}
+        dica="A senha você cria depois de confirmar o e-mail."
       />
       <AntiRobo chave={chaveDoTurnstile} rodada={estado.envios} />
       <MensagemDoFormulario estado={estado} />

@@ -182,6 +182,7 @@ O vínculo do requerente, criado na aprovação da adesão (seção 2.5), já na
 ### 2.8. Conta, perfil e e-mail
 
 - **Cadastro:** cadastro aberto no Supabase Auth com confirmação de e-mail e Turnstile do próprio Auth. As telas ficaram prontas na I1.6, e o captcha liga no Inc. 6 (§2.16). Ter conta não dá acesso ao produto.
+  - Desde a I1.8 (R8, seção 8), o cadastro pede só nome e e-mail, e a senha é criada depois da confirmação. Assim, quem cadastrar antes o e-mail de outra pessoa não fica com uma senha que valha.
 - **Pedido:** a tela pública leva ao cadastro e depois ao formulário do pedido.
 - **Sem vínculo ativo em empresa ativa**, o usuário só lê o próprio perfil e envia e acompanha os próprios pedidos.
 - **Perfil:** nasce por gatilho na inclusão em `auth.users` (função em `private`), com `status = 'active'`. `full_name` vem do metadado do cadastro só como texto de exibição.
@@ -445,7 +446,31 @@ Nenhuma das duas achou problema crítico ou alto, e o gate do Inc. 1 (crítico b
 
 | ID | Severidade | Ressalva | Ação | Quando |
 |---|---|---|---|---|
-| R8 | a avaliar | **Cadastro prévio com e-mail alheio.** É uma hipótese a conferir no projeto de `dev`, levantada na reavaliação do convite: pelo comportamento conhecido do Auth do Supabase, um segundo cadastro com o mesmo e-mail ainda sem confirmação não troca a senha. Se a pessoa dona do e-mail confirmar depois, quem fez o primeiro cadastro entraria com a própria senha. A checagem do convite reduz o efeito, mas não resolve, porque a conta confirmada passa a valer. | Conferir o comportamento com um endereço controlado pela pessoa responsável. Se confirmado, avaliar com ela: encerrar as outras sessões e exigir nova senha na primeira entrada depois da confirmação, ou outra saída do próprio Auth. | antes de usuários reais (Inc. 6) |
+| R8 | média, com impacto alto | **Cadastro prévio com e-mail alheio, confirmado no `dev` em 28/10.** Quem conhece o e-mail de um lojista e se cadastra antes dele, com a própria senha, entra na conta depois que o dono a confirma. Isso inclui a empresa e o catálogo, se o dono for aprovado, e acontece em paralelo com a sessão do dono. A checagem do convite (R1) reduz o efeito, mas não resolve, porque a conta confirmada passa a valer. Detalhes do teste na observação abaixo. | Opção 1, escolhida pela pessoa responsável: a senha só é criada depois da confirmação. | **corrigida em 28/10 (I1.8):** veja a observação depois do teste |
+
+**Teste da R8 (28/10, projeto de `dev`):**
+- **Como foi feito:** a pessoa responsável fez dois cadastros pelas telas, com um endereço próprio e duas senhas diferentes. Depois de cada passo, o T2 fotografou a conta no banco sem exibir e-mail, senha nem hash: guardou a impressão digital do hash fora do repositório e comparou só a igualdade.
+- **Resultados:**
+  1. O primeiro cadastro, com a senha 1, criou a conta sem confirmação e sem sessão.
+  2. O segundo cadastro, com o mesmo endereço e a senha 2, mostrou a mensagem normal na tela. Não criou outra conta e só reenviou a confirmação: a senha e o nome continuaram os do primeiro cadastro.
+  3. A pessoa confirmou pelo e-mail mais recente. A conta ficou confirmada, ainda com a senha 1.
+  4. Ao entrar, a senha 2 foi recusada e a senha 1 entrou. A conta ficou com duas sessões ao mesmo tempo.
+- **Tentativas que não valeram:** uma conta foi confirmada por engano antes do segundo cadastro, e um segundo cadastro usou outro apelido do mesmo endereço, o que criou outra conta.
+
+**Correção da R8 (I1.8, 28/10; opção 1 da pessoa responsável):**
+- **Cadastro:** a tela pede só nome e e-mail. A ação manda ao Auth uma senha aleatória, que ninguém conhece (`senhaAleatoria`, em `src/modules/auth/server/cadastro.ts`), e o retorno vai para `/nova-senha`.
+- **Confirmação do cadastro** (tipos `signup` e `email`):
+  - A ação do botão chama `concluirConfirmacaoDoCadastro`, que troca a senha por outra aleatória com a sessão aberta pela confirmação e encerra as outras sessões. Só depois a pessoa cria a própria senha em `/nova-senha`.
+  - Se o Auth recusar, todas as sessões são encerradas, e a pessoa vai para `/entrar` com o aviso de criar a senha pela recuperação.
+  - A chave secreta não ganhou uso novo, porque a troca é feita com a sessão.
+  - O link PKCE (`code`) não diz o tipo e fica fora; os modelos versionados usam o token.
+- **Nova senha:** `definirNovaSenhaAcao` também encerra as outras sessões.
+- **Testes:**
+  - integração `operacoes/cadastro.test.ts`: o contraste mostra a falha do Auth reproduzida pela API, sem e-mail. Com a conclusão, a senha de quem cadastrou antes deixa de entrar, a sessão aberta por essa pessoa na corrida não renova, e a do dono continua;
+  - 3 E2E em `confirmacao.spec.mts`: o cadastro sem campo de senha; a senha de quem cadastrou antes recusada logo depois do clique, e o dono criando a dele; a nova senha encerrando as outras sessões.
+- **Mutação:**
+  - sem a troca de senha na conclusão, ou sem chamar a conclusão na confirmação, os testes falham;
+  - sem o encerramento explícito das sessões, na conclusão ou na nova senha, os testes passam. O motivo foi conferido no `dev`, com controle: o próprio Auth encerra as outras sessões quando a senha muda (`refresh_token_not_found`) e mantém a sessão que trocou. A chamada explícita é a segunda camada, como as mutações equivalentes do anexo A.
 
 Conclusões que não viram ação:
 - **ACH-I1.7-01, IP por `x-forwarded-for`:** não procede na Vercel (§2.16).
