@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 1 (identidade e adesão) **concluído em 28/10**. O gate foi cumprido e o ADR-0002 foi aceito, com as ressalvas R1 a R7 na §8.  
 **Próximas subtarefas:**
-- **I1.8 (T2):** correções das ressalvas R1 a R5, começando pela R2 (parâmetro repetido no link de confirmação). Tudo antes de usuários reais.
+- **I1.8 (T2):** correções das ressalvas R1, R3, R4 e R5, antes de usuários reais. A R2 foi corrigida em 28/10.
 - **Inc. 2, I2.1 (T0):** extrair as transições da §6.2 e os requisitos de publicação.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
@@ -447,3 +447,25 @@
   - Os textos do §3 e do anexo A foram corrigidos.
   - A I1.8 entrou no plano para R1 a R5, e a R7 entrou na I6.9.
 - **Arquivo do relatório externo:** `relatorio-auditoria-i1.7.md` ficou fora do Git, porque tem links com caminhos locais.
+
+### 2026-10-28 · I1.8 · R2, parâmetro repetido no link de confirmação
+
+- **Correção:** `lerConfirmacao` (`src/app/_apoio/confirmacao.ts`) devolve `invalido` em dois casos:
+  - quando `token_hash`, `type`, `code` ou `proximo` aparecem mais de uma vez;
+  - quando `code` e `token_hash` vêm juntos.
+
+  Assim, um `token_hash` posto na URL de retorno não passa na frente do token do e-mail. A rota leva o link recusado para `/entrar?aviso=link-invalido`, como os outros links inválidos.
+- **Testes:** 4 casos novos em `confirmacao.test.ts`:
+  - o contraste: o link montado pelo modelo a partir da URL de retorno continua valendo;
+  - o ataque descrito pelo T3;
+  - cada parâmetro repetido, inclusive `token%5Fhash`;
+  - código e token juntos.
+- **Mutação:**
+  - sem a recusa, os 3 negativos falham e o contraste passa;
+  - sem só a regra de código e token, sem `proximo` na lista ou sem `type` na lista, cai o negativo correspondente;
+  - o arquivo foi restaurado depois de cada mutação.
+- **Evidência:**
+  - lint e tipos passaram;
+  - 152 testes unitários em 23 arquivos passaram;
+  - a formatação só acusa o relatório externo, que está fora do Git;
+  - no navegador do app, o link do ataque caiu em `/entrar?aviso=link-invalido`.

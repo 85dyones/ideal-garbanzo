@@ -7,8 +7,23 @@
  * - `token_hash` com `type`: quando o modelo de e-mail aponta direto para
  *   `/auth/confirmar?token_hash={{ .TokenHash }}&type=...`. É o único que serve
  *   ao convite do Auth, que não aceita PKCE, e funciona em qualquer navegador.
+ *
+ * Link com parâmetro repetido, ou com código e token juntos, é inválido. Quem
+ * chama a API do Auth escolhe a URL de retorno (dentro da lista do projeto), e
+ * o modelo acrescenta o token depois dela: um `token_hash` posto na URL de
+ * retorno viria primeiro e levaria a pessoa à conta de quem o pôs (ADR-0002
+ * §8, R2).
  */
 import { DESTINO_PADRAO, caminhoSeguro } from "./proximo";
+
+const PARAMETROS_UNICOS = ["token_hash", "type", "code", "proximo"] as const;
+
+function linkAmbiguo(parametros: URLSearchParams): boolean {
+  if (PARAMETROS_UNICOS.some((nome) => parametros.getAll(nome).length > 1)) {
+    return true;
+  }
+  return parametros.has("code") && parametros.has("token_hash");
+}
 
 export const TIPOS_DE_CONFIRMACAO = [
   "signup",
@@ -50,6 +65,7 @@ export type PedidoDeConfirmacao =
 export function lerConfirmacao(
   parametros: URLSearchParams,
 ): PedidoDeConfirmacao {
+  if (linkAmbiguo(parametros)) return { forma: "invalido" };
   const tipo = tipoDeConfirmacao(parametros.get("type"));
   const destino = caminhoSeguro(parametros.get("proximo"), destinoDoTipo(tipo));
   const codigo = parametros.get("code");
