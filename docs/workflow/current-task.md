@@ -1,8 +1,9 @@
 # Tarefa atual
 
-**Etapa:** Inc. 1, Identidade e adesão (plano v2). A I1.1 a I1.6 foram entregues; a I1.6 está no commit `2560dbf`.  
-**Próxima subtarefa:**
-- **I1.7 (T3):** revisão independente do diff, das políticas e do ADR-0002. A pessoa responsável solicitou. O gate do Inc. 1 depende dela.
+**Etapa:** Inc. 1 (identidade e adesão) **concluído em 28/10**. O gate foi cumprido e o ADR-0002 foi aceito, com as ressalvas R1 a R7 na §8.  
+**Próximas subtarefas:**
+- **I1.8 (T2):** correções das ressalvas R1 a R5, começando pela R2 (parâmetro repetido no link de confirmação). Tudo antes de usuários reais.
+- **Inc. 2, I2.1 (T0):** extrair as transições da §6.2 e os requisitos de publicação.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -406,3 +407,43 @@
   
   A conta é dado de teste de `dev` e sai no próximo reset. Recuperação e convite não foram testados com e-mail real.
 - **Ponto para a I1.7:** pré-abertura de links por provedores de e-mail, que consome o token (`docs/ambiente.md` §5).
+
+### 2026-10-28 · I1.7 · revisão independente recebida (integração pelo T2)
+
+- **Relatório:** revisor T3 externo, sobre o commit `b6530dc` (diff desde `59c73b4`).
+  - Veredito: "aprovado com ressalvas", sem achado crítico nem alto.
+  - Ele rodou tipos, lint, formatação, unitários, `test:db`, integração e build, todos passando. O E2E ficou bloqueado, porque faltava o navegador na máquina do revisor.
+- **Conferência do T2:**
+  - **Números:** o total de pgTAP do relatório (446) é erro de soma. As linhas do próprio relatório somam 466, igual à soma dos `plan()` dos 13 arquivos.
+  - **Código:** entre `2560dbf` e `b6530dc` só mudaram documentos e modelos de e-mail.
+  - **E2E:** o T2 rodou o E2E sobre o `b6530dc`, no dev, e os 6 testes passaram, entre eles CT1.1, CT1.3 (amostra), CT1.4 e o fluxo da adesão. Isso cobre o que o revisor não conseguiu rodar.
+- **ACH-I1.7-01 (média, IP pelo `x-forwarded-for`): não procede na Vercel.**
+  - A documentação da Vercel ("Request headers") diz que ela sobrescreve o `x-forwarded-for` e não repassa IPs externos, para impedir falsificação. Ela também diz que `x-real-ip` e `x-vercel-forwarded-for` são idênticos ao `x-forwarded-for`.
+  - Trocar a ordem dos cabeçalhos não acrescenta proteção na Vercel. Fora dela, daria peso a um cabeçalho que o próprio cliente envia.
+  - Isso fecha o ponto que o ADR-0002 §2.16 deixou para a I1.7.
+  - Resta um caso: se um proxy for posto na frente da Vercel, todos os visitantes passam a contar pelo IP do proxy. Reavaliar se isso acontecer no Inc. 6.
+- **ACH-I1.7-02 (baixa, reconvite em dois UPDATEs): procede.**
+  - Em `membros.ts`, o reconvite volta o vínculo para `pending` e depois troca o papel.
+  - Se a segunda escrita falhar, o convite fica reaberto com o papel anterior, e a operação devolve erro em vez de `falha_parcial`.
+  - Fica como pendência; não bloqueia o gate.
+- **ACH-I1.7-03 (informativo, redundância entre política e gatilho):** mantida como defesa em profundidade.
+- **Pontos pedidos para a I1.7 que o relatório não cobre:**
+  - **`private.manutencao()` e claims no pgTAP (ADR-0002 §3):** a validade dos testes de RLS depende de todo bloco definir as claims. A segurança depende de essa saída não ser alcançável pela API.
+  - **Mutações não detectáveis do anexo A.**
+  - **Pré-abertura dos links de e-mail** (`docs/ambiente.md` §5).
+- **Complemento T3:** a pessoa responsável pediu, e o T2 despachou o `reasoning-review`, só leitura, só nesses três pontos e sem acesso ao banco.
+  - Resultado: sem achado crítico nem alto.
+  - **Média:** a pré-abertura dos links consome o token e confirma o cadastro sem ação humana. Junto com o convite ligado ao perfil existente, isso permite receber convite para um e-mail alheio.
+  - **Baixa:**
+    - parâmetro repetido no link de confirmação, que permitiria login na conta de quem atacou;
+    - blocos pgTAP sem claims em `010` e `110`.
+  - **Informativas:**
+    - `manutencao()` usa lista de exclusão e vale para escritas da API do Auth, embora hoje nenhum gatilho dessa cadeia a chame;
+    - motivos imprecisos no anexo A;
+    - cuidados de produção.
+- **Conferência do T2:** confirmou no código os usos de `manutencao()`, os blocos sem claims, a primeira ocorrência em `lerConfirmacao` e o convite ligado ao perfil pelo e-mail.
+- **Gate do Inc. 1 cumprido**, porque o critério é "T3 sem crítico aberto". Por decisão da pessoa responsável, ele foi fechado depois do complemento.
+  - O ADR-0002 foi aceito, e as ressalvas R1 a R7 estão na §8.
+  - Os textos do §3 e do anexo A foram corrigidos.
+  - A I1.8 entrou no plano para R1 a R5, e a R7 entrou na I6.9.
+- **Arquivo do relatório externo:** `relatorio-auditoria-i1.7.md` ficou fora do Git, porque tem links com caminhos locais.

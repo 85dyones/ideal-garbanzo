@@ -1,6 +1,6 @@
 # ADR-0002: Identidade, empresas e adesão
 
-**Status:** proposto pelo T2. O aceite depende da revisão independente (I1.7). As perguntas da seção 6 foram respondidas pela pessoa responsável em 28/10.  
+**Status:** **aceito em 28/10/2026**, depois da revisão independente da I1.7: relatório externo e complemento T3, ambos sem achado crítico nem alto. As ressalvas estão na seção 8. As perguntas da seção 6 foram respondidas pela pessoa responsável em 28/10.  
 **Data:** 2026-10-28  
 **Subtarefa:** I1.2 do plano orquestrado v2  
 **Base:** especificação v1.1 (§1.4, §3, §5.1, §5.6, §6.1, §7.1, §7.4, §8, §9, §13), tabela de decisão da I1.1 (anexo A), ADR-0001, migração `20261027224325_base_auditoria`
@@ -300,7 +300,7 @@ O primeiro bucket entra no Inc. 1, então a convenção do `supabase/tests/READM
 
   - Entrar e recuperar contam por e-mail e, à parte, por IP, porque contar só o par IP e e-mail deixaria um IP testar muitos e-mails.
   - O IP é o primeiro item de `x-forwarded-for`, preenchido pela Vercel. Sem esse cabeçalho, como na máquina local, as tentativas contam juntas.
-  - Ponto para a I1.7: conferir se a Vercel sobrescreve o `x-forwarded-for` enviado pelo cliente. Se não sobrescrever, o limite por IP pode ser contornado trocando o cabeçalho, e o limite por e-mail continua valendo.
+  - Fechado na I1.7: segundo a documentação da Vercel ("Request headers"), ela sobrescreve o `x-forwarded-for` e não repassa IPs externos, para impedir falsificação. O `x-real-ip` e o `x-vercel-forwarded-for` são idênticos a ele. Se um proxy for posto na frente da Vercel, todos os visitantes passam a contar pelo IP do proxy (seção 8).
   - Esses limites valem nas ações de servidor das telas de autenticação. A API do Auth é pública, então ela também conta com os limites nativos do Supabase Auth.
 - **Turnstile:** fica no captcha do próprio Supabase Auth, nas telas de cadastro, entrada e recuperação.
   - A API do Auth é pública, e só a verificação dentro dele protege de verdade.
@@ -319,7 +319,10 @@ O primeiro bucket entra no Inc. 1, então a convenção do `supabase/tests/READM
 - **Atuar como usuário no pgTAP:** a fixture insere o usuário em `auth.users` dentro da transação do teste (o gatilho cria o perfil) e usa `set local role authenticated` com `request.jwt.claims` contendo o `sub`. O papel `postgres` ignora a RLS, então toda asserção de acesso roda como `authenticated`.
 - **Administrador na fixture:** pelo caminho do primeiro administrador (seção 2.13) ou, se o banco já tiver um ativo (dados de integração), concedido por ele, com a sessão dele. O `100-identidade-estrutura` tem o bloco de referência.
 - **Chamada pela API no pgTAP:** a fixture preenche `request.headers` (por exemplo, `x-audit-reason`) para simular a requisição do PostgREST.
-- **Claims sempre definidas no pgTAP (achado da I1.4):** sob `set local role`, o `session_user` continua `postgres`, então `private.manutencao()` vale para `authenticated` ou `service_role` sem claims. Todo bloco de teste define as claims, inclusive `{"role": "service_role"}` sem `sub`. Pela API, a sessão é `authenticator`, e `anon`, `authenticated` e `service_role` não fazem login direto no banco. Ponto para a revisão da I1.7.
+- **Claims sempre definidas no pgTAP (achado da I1.4):** sob `set local role`, o `session_user` continua `postgres`, então `private.manutencao()` vale para `authenticated` ou `service_role` sem claims. Todo bloco de teste deve definir as claims, inclusive `{"role": "service_role"}` sem `sub`.
+  - **Pelo PostgREST**, a sessão é sempre `authenticator`, e `anon`, `authenticated` e `service_role` não fazem login direto no banco.
+  - **Correção da I1.7:** a API do Auth escreve em `auth.users` com o papel administrativo dela, sem claims, e nesse caminho `manutencao()` vale. Hoje nenhum gatilho da cadeia de `auth.users` chama a função, que só aparece na inclusão em `platform_staff` e na escrita em `platform_settings`. Ressalva R5 da seção 8.
+  - **Blocos sem claims:** `010-base-auditoria` e `110-adesao` ainda têm blocos assim. Nenhum passa por causa de `manutencao()`, mas contrariam a regra. Ressalva R4.
 - **Integração (`tests/integration/`):** usuários reais criados pela API administrativa, login de verdade e chamadas pela API com o token. Casos que só a integração prova:
   - teste 4: o usuário grava `{ "role": "admin" }` no próprio `user_metadata` e continua sem acesso administrativo;
   - teste 5: o usuário entra, é suspenso, e a requisição seguinte com o mesmo token é recusada.
@@ -405,6 +408,29 @@ Respondidas pela pessoa responsável em 28/10.
 | A33 | nascimento do perfil | gatilho em `auth.users`; e-mail vem de `auth.users.email` | 2.8 |
 | A34 | dados de teste | `is_test` no pedido e na empresa, marcado pelo administrador | 2.5 |
 | A35 | e-mail de aprovação | Inc. 5, com a outbox; no Inc. 1 só os e-mails do Auth | 2.8 |
+
+## 8. Revisão independente da I1.7: ressalvas
+
+A revisão aconteceu em 28/10, sobre o commit `b6530dc`, em duas partes:
+- **relatório externo:** cobriu o diff, os testes e os testes negativos 1, 2, 4, 5 e 13;
+- **complemento T3 (`reasoning-review`):** cobriu três pontos que o relatório não tratou: `manutencao()` e claims no pgTAP, as mutações do anexo A e os links de e-mail.
+
+Nenhuma das duas achou problema crítico ou alto, e o gate do Inc. 1 (crítico bloqueia) foi cumprido. O T2 conferiu cada achado no código antes de registrar.
+
+| ID | Severidade | Ressalva | Ação | Quando |
+|---|---|---|---|---|
+| R1 | média | **Pré-abertura dos links de e-mail.** `/auth/confirmar` consome o token já no GET, então um filtro de e-mail (como o Safe Links) ou a prévia de link de um aplicativo de mensagens pode usá-lo antes da pessoa. Na recuperação e no convite, a pessoa recebe "link inválido". No cadastro, o e-mail fica confirmado sem ação humana. E como o convite se liga ao perfil que já existe com aquele e-mail (`membros.ts`), quem cadastrou o e-mail alheio pode receber o convite. | O GET passa a só mostrar uma página com botão, com `Cache-Control: no-store` e `Referrer-Policy: no-referrer`. O botão confirma por ação de servidor, com `verifyOtp`. Também reavaliar o convite que se liga a perfil existente sem aviso a quem controla o e-mail. | I1.8, antes de usuários reais |
+| R2 | baixa; média com usuários reais | **Parâmetro repetido no link.** `lerConfirmacao` usa a primeira ocorrência, e o modelo põe `{{ .RedirectTo }}` antes do token. Quem chama a API do Auth escolhe o `redirect_to` dentro da lista permitida, e pode pôr ali um `token_hash` próprio. A vítima entraria logada na conta de quem atacou. | Recusar o link quando `token_hash`, `type`, `code` ou `proximo` vierem repetidos, ou quando `code` e `token_hash` vierem juntos. Cobrir com testes unitários. | I1.8 |
+| R3 | baixa | **Reconvite em duas escritas** (ACH-I1.7-02). Se a troca de papel falhar, o convite fica reaberto com o papel anterior, e a operação devolve erro. | Devolver `falha_parcial` ou passar a transição para uma função no `private`. | I1.8 |
+| R4 | baixa | **Blocos pgTAP sem claims** em `010-base-auditoria` (`anon`, `authenticated` e `service_role`) e `110-adesao` (`anon`). Nenhum passa por causa de `manutencao()`, e o bloco `authenticated` de `010` prova menos do que o nome diz, porque roda sem `sub`. | Definir as claims nesses blocos e pôr no CI uma checagem de asserção sob `set local role` com claims vazias. | I1.8 |
+| R5 | informativa | **`manutencao()` usa lista de exclusão** (`session_user <> 'authenticator'`). A API do Auth, que escreve com o papel administrativo dela e sem claims, entra no ramo de manutenção. Hoje nenhum gatilho dessa cadeia chama a função, mas um uso futuro em `profiles` abriria esse caminho para dados escolhidos no cadastro. | Usar uma lista permitida de `session_user`, conferida no projeto; exigir `pg_trigger_depth() = 1`; corrigir o comentário da migração; criar um teste pgTAP que fixe as duas funções que chamam `manutencao()`. | I1.8 |
+| R6 | informativa | **Registro das mutações.** Os textos do anexo A foram corrigidos nesta revisão, e os WITH CHECK equivalentes por construção foram listados. A lista das 113 mutações da I1.4 não está versionada. | Versionar a lista no próximo ciclo de mutação. | Inc. 2 |
+| R7 | informativa | **Produção.** O curinga dos previews na lista de Redirect URLs e um preview gerado por PR de fork, com o repositório público, receberiam links com token. Um proxy na frente da Vercel mudaria o IP usado nos limites (§2.16). | No `repasse-prod`, lista de Redirect URLs sem curinga e proteção de forks da Vercel ligada. Reavaliar os limites por IP se houver proxy. | Inc. 6 (I6.9) |
+
+Conclusões que não viram ação:
+- **ACH-I1.7-01, IP por `x-forwarded-for`:** não procede na Vercel (§2.16).
+- **ACH-I1.7-03, redundância entre política e gatilho:** fica como defesa em profundidade.
+- **CT4.7 e a política de INSERT do pedido (anexo A):** a justificativa foi confirmada.
 
 ---
 
@@ -559,7 +585,7 @@ Em todos os casos, "recusado" pode ser erro de permissão ou zero linhas afetada
 
 - Contraste: a2 lê A e os membros de A; a1 suspende e reativa a2; X lê A e B.
 - Mutação: predicado `true` no SELECT de `organizations`, `organization_members` ou `profiles`, ou tirar o filtro de vínculo de `empresas_do_usuario()`, derruba CT2.1 a CT2.4; WITH CHECK `true` no INSERT de `organization_members` derruba CT2.5 (com o gatilho de proteção desligado na transação do teste, porque no caminho normal o gatilho recusa antes da política); USING `true` no UPDATE derruba D28, D31 e CT4.8.
-- Achado da I1.4: o WITH CHECK do UPDATE repete o USING e depende só do ator, então afrouxá-lo sozinho não muda nenhum resultado; a mutação que conta é a do USING. O CT2.6 em si não cai com ela, porque a política de SELECT também tira as linhas de B do alcance de a1.
+- Achado da I1.4, com o motivo corrigido na I1.7: o WITH CHECK do UPDATE lê `organization_id` e `profile_id`, que não mudam no UPDATE. Duas camadas impedem a mudança, e as duas são testadas em `140-membros`: o GRANT por coluna e o gatilho. Por isso, afrouxar só o WITH CHECK não muda nenhum resultado, e a mutação que conta é a do USING. O CT2.6 em si não cai com ela, porque a política de SELECT também tira as linhas de B do alcance de a1.
 
 **Teste 4** (§7.4.4). Preparo: P, perfil ativo sem papel; O, operador; X1 e X2, administradores; M, `member` de uma empresa ativa.
 
@@ -579,6 +605,10 @@ Em todos os casos, "recusado" pode ser erro de permissão ou zero linhas afetada
 - Contraste: X1 concede `operator` a P; a linha tem `granted_by = X1`, e P age como operador na operação seguinte. X1 revoga, e P perde o papel na operação seguinte. C aceita o convite sem mudar o papel e passa a ler a empresa.
 - Mutação: WITH CHECK `true` no INSERT de `platform_staff` (com o gatilho desligado na transação do teste) ou tirar a exigência de administrador ativo derruba CT4.1 a CT4.3; USING `true` no UPDATE derruba CT4.2; desligar o gatilho de autoalteração derruba CT4.2, CT4.8 e CT4.10; ampliar o GRANT de `profiles` derruba CT4.9; tirar do servidor o esquema estrito derruba CT4.4 pela operação de servidor.
 - Achado da I1.4: a política de INSERT de `membership_applications` repete o que o gatilho já exige (requerente = `auth.uid()` e perfil ativo); afrouxá-la sozinha não muda nenhum resultado. Fica como segunda camada, sem teste que a isole.
+  - A I1.7 confirmou que só passaria sem aviso a regressão dupla, do gatilho e da política juntos. Isso porque `110-adesao` espera a mensagem do gatilho. Importância baixa.
+- Achado da I1.7: o WITH CHECK do UPDATE de `platform_staff` repete o USING e só depende do ator. É uma mutação equivalente pura, porque afrouxá-lo nunca tem efeito.
+  - Pelo mesmo motivo, também são equivalentes por construção os WITH CHECK de UPDATE de `profiles`, `organizations`, `membership_applications` (revisão), `membership_application_reviews` e `platform_settings`.
+  - A lista das 113 mutações da I1.4 não está versionada (ressalva R6).
 
 **Teste 5** (§7.4.5). Preparo: empresa E ativa; u1, `org_admin` de E; u2, `member` de E. Os tokens são emitidos **antes** da suspensão e continuam válidos; token emitido depois não prova nada.
 

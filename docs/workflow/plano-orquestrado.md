@@ -36,7 +36,7 @@ Este plano traduz o roteiro da seção 12 da v1.1 em subtarefas despacháveis. E
 |---|---|---|
 | Pré-requisitos P1-P6 | P1 concluída; P2-P6 pausadas | ver seção 5 |
 | Inc. 0: Fundação | **concluído em 27/10** (I0.12 e I0.13 canceladas); gate cumprido, com CI verde aplicando a migração (execução 40598516010) | app local e em homologação; CI verde; testes de banco executam as migrações |
-| Inc. 1: Identidade e adesão | em andamento: I1.1 a I1.6 entregues; testes 1, 2, 4, 5 e 13 com mutação no dev; falta a revisão T3 (I1.7) | testes negativos 1, 2 (empresa), 4, 5 e 13 |
+| Inc. 1: Identidade e adesão | **concluído em 28/10**: gate cumprido, com os testes 1, 2, 4, 5 e 13 com mutação no dev e a I1.7 sem crítico nem alto. As ressalvas estão no ADR-0002 §8, e as correções ficam na I1.8 | testes negativos 1, 2 (empresa), 4, 5 e 13 |
 | Inc. 2: Oferta | não iniciado | publica com pendência e mostra aviso; testes 2 (ofertas e documentos), 6, 11 e 12 (preço) |
 | Inc. 3: Domínio documental | não iniciado | estados conforme §6.4; testes 7 e 10; revisão AG |
 | Inc. 4: Catálogo privado | não iniciado | critérios 4, 6, 7 e 10 da §10 |
@@ -168,7 +168,8 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 | I1.4 | Testes de banco e de integração a partir da I1.1 (anexo A do ADR-0002) | T1 | `supabase/tests/database/1*.test.sql` a partir de `110-` (o runner não lê subpastas; o `100-` é da I1.3), `tests/integration/**`, testes de `src/modules/{auth,organizations,membership}/**` | testes passam; T2 afrouxa cada regra e confirma a falha do negativo, com o contraste passando (ADR-0002 §3). **Entregue em 28/10:** pgTAP 110 a 190 (380 asserções) e 3 arquivos de integração; no dev, 449 asserções e 47 testes de integração passando; 110 de 113 mutações detectadas, as 3 restantes registradas no anexo A; revisão na I1.7 |
 | I1.5 | Operações de servidor: enviar e revisar adesão (com registro da conferência de CNPJ e evidência), suspender e reativar, gerenciar membros; auditoria | T2 | `src/modules/{auth,organizations,membership,audit}/**`; na entrega, também `src/lib/{operacao,supabase}/**` e `tests/integration/operacoes/**` | payload manipulado não concede papel (teste 4); suspenso é barrado na operação seguinte (teste 5). **Entregue em 28/10:** operações dos quatro módulos, 24 casos de integração com o servidor recusando antes de escrever, mutação da camada de servidor; revisão na I1.7 |
 | I1.6 | Telas: pedido de adesão (com Turnstile e rate limit portados), login, recuperação, painel de adesões, empresa e membros | T1 | rotas de autenticação, adesão e admin em `app/`, componentes, `src/lib/` do porte | estados do §9; nenhuma autorização só na interface. **Entregue em 28/10:** telas do Inc. 1, checagem de acesso em cada página, limite de tentativas no banco (decisão de 28/10), 6 E2E passando (teste 1 com mutação); revisão na I1.7 |
-| I1.7 | Revisão independente do diff, das políticas e do ADR-0002 | T3 | leitura | achado crítico bloqueia o gate |
+| I1.7 | Revisão independente do diff, das políticas e do ADR-0002 | T3 | leitura | achado crítico bloqueia o gate. **Entregue em 28/10:** relatório externo e complemento T3 (`reasoning-review`), sem achado crítico nem alto. O ADR-0002 foi aceito, com as ressalvas R1 a R7 na §8 |
+| I1.8 | Correções das ressalvas R1 a R5 da I1.7: página com botão em `/auth/confirmar` e convite ligado a perfil existente (R1); parâmetro repetido no link (R2); reconvite em duas escritas (R3); claims nos blocos pgTAP e checagem no CI (R4); lista permitida em `manutencao()` (R5) | T2 | `src/app/auth/**`, `src/app/_apoio/confirmacao.ts`, `src/modules/organizations/server/membros.ts`, `supabase/migrations/**`, `supabase/tests/**` | fora do gate do Inc. 1; R2 primeiro; tudo antes de usuários reais (Inc. 6), com teste negativo e mutação para cada correção |
 
 **Paralelismo:** I1.4 roda enquanto o T2 executa a I1.5. A I1.6 começa com os contratos da I1.5 integrados.  
 **Gate:** testes 1, 2 (empresa), 4, 5 e 13 com verificação de mutação; T3 sem crítico aberto.
@@ -268,7 +269,7 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 | I6.6 | Revisão externa do fluxo completo | AG | leitura e homologação | sem crítico aberto |
 | I6.7 | Conferir os 13 critérios da §10 contra as evidências → relatório de lacunas | T0 | nenhum | cada critério com evidência ou "pendente" |
 | I6.8 | Piloto com oferta real ou de teste identificada; linha de base das métricas da §11; go/no-go | H + T2 | — | decisão registrada |
-| I6.9 | Revisão da infraestrutura: avisos de segurança do Supabase, configuração do Auth, variáveis por ambiente na Vercel, proteção dos deploys, separação dos projetos de outros negócios | T3 (+ H para conferir no painel) | leitura da configuração | sem crítico aberto; riscos do ADR-0001 §5.1 com mitigação comprovada |
+| I6.9 | Revisão da infraestrutura: avisos de segurança do Supabase, configuração do Auth, variáveis por ambiente na Vercel, proteção dos deploys, separação dos projetos de outros negócios; ressalva R7 da I1.7 (Redirect URLs sem curinga em produção, proteção de forks da Vercel, limites por IP com proxy) | T3 (+ H para conferir no painel) | leitura da configuração | sem crítico aberto; riscos do ADR-0001 §5.1 com mitigação comprovada |
 
 **Gate:** T2 declara prontidão técnica com evidências; H aprova o piloto.
 
