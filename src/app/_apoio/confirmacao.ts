@@ -1,5 +1,7 @@
 /**
- * Links dos e-mails do Auth (rota `/auth/confirmar`).
+ * Links dos e-mails do Auth (página `/auth/confirmar`). A página só mostra o
+ * botão; o token é usado pela ação do botão, então um filtro de e-mail ou a
+ * prévia de um aplicativo que abre o link não o consome (ADR-0002 §8, R1).
  *
  * Dois formatos chegam:
  * - `code`: fluxo PKCE, quando o e-mail usa o link padrão do Supabase e volta
@@ -17,6 +19,34 @@
 import { DESTINO_PADRAO, caminhoSeguro } from "./proximo";
 
 const PARAMETROS_UNICOS = ["token_hash", "type", "code", "proximo"] as const;
+
+/**
+ * Só os parâmetros do link, com as repetições preservadas, para
+ * `lerConfirmacao` recusar o link ambíguo. A página recebe a consulta já
+ * separada pelo Next (repetição vira lista); a ação recebe o formulário.
+ */
+export function parametrosDaPagina(
+  consulta: Readonly<Record<string, string | readonly string[] | undefined>>,
+): URLSearchParams {
+  const parametros = new URLSearchParams();
+  for (const nome of PARAMETROS_UNICOS) {
+    const valor = consulta[nome];
+    for (const item of typeof valor === "string" ? [valor] : (valor ?? [])) {
+      parametros.append(nome, item);
+    }
+  }
+  return parametros;
+}
+
+export function parametrosDoFormulario(dados: FormData): URLSearchParams {
+  const parametros = new URLSearchParams();
+  for (const nome of PARAMETROS_UNICOS) {
+    for (const item of dados.getAll(nome)) {
+      if (typeof item === "string") parametros.append(nome, item);
+    }
+  }
+  return parametros;
+}
 
 function linkAmbiguo(parametros: URLSearchParams): boolean {
   if (PARAMETROS_UNICOS.some((nome) => parametros.getAll(nome).length > 1)) {

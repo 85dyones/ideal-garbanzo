@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 1 (identidade e adesão) **concluído em 28/10**. O gate foi cumprido e o ADR-0002 foi aceito, com as ressalvas R1 a R7 na §8.  
 **Próximas subtarefas:**
-- **I1.8 (T2):** correções das ressalvas R1, R3, R4 e R5, antes de usuários reais. A R2 foi corrigida em 28/10.
+- **I1.8 (T2):** correções das ressalvas R3, R4 e R5, e a conferência da R8, antes de usuários reais. A R2 e a R1 foram corrigidas em 28/10.
 - **Inc. 2, I2.1 (T0):** extrair as transições da §6.2 e os requisitos de publicação.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
@@ -469,3 +469,31 @@
   - 152 testes unitários em 23 arquivos passaram;
   - a formatação só acusa o relatório externo, que está fora do Git;
   - no navegador do app, o link do ataque caiu em `/entrar?aviso=link-invalido`.
+
+### 2026-10-28 · I1.8 · R1, página com botão na confirmação e convite a conta existente
+
+- **Página com botão:**
+  - A rota `src/app/auth/confirmar/route.ts`, que usava o token já no GET, saiu.
+  - No lugar dela, entrou a página `src/app/(publico)/auth/confirmar/page.tsx`. Ela só mostra título, texto e botão por tipo de link, com o aviso "nada é confirmado sem o clique no botão".
+  - O token é usado pela ação `src/app/_acoes/confirmacao.ts`, que lê e valida de novo o formulário com a mesma regra da R2. Os parâmetros repetidos são preservados por `parametrosDaPagina` e `parametrosDoFormulario`.
+- **Cabeçalhos:**
+  - `Cache-Control` `no-store`, porque a página é dinâmica;
+  - `Referrer-Policy: same-origin`, definido em `next.config.ts`. A T3 sugeriu `no-referrer`, mas com ele o navegador manda `Origin: null` no POST, e o Next recusaria a ação do botão.
+- **Convite (reavaliação):** `convidarMembro` só se liga a uma conta existente se o e-mail dela foi confirmado ou se ela nasceu de um convite do Auth.
+  - A conta de cadastro sem confirmação recebe a mesma recusa genérica da conta suspensa.
+  - O ADR-0002 §2.6 e §2.12 foram atualizados.
+- **Testes novos:**
+  - 2 unitários em `confirmacao.test.ts`;
+  - 1 de integração em `operacoes/identidade.test.ts`, que usa `generateLink` para criar a conta convidada sem mandar e-mail;
+  - 2 E2E em `confirmacao.spec.mts`. O link é aberto duas vezes fora do navegador, sem clique, e o botão ainda confirma e leva a `/nova-senha`. O mesmo link, confirmado de novo, dá o aviso fixo. O link com token repetido vai direto para o aviso.
+- **Mutação:**
+  - com a página usando o token ao abrir, o E2E da R1 caiu em "link inválido";
+  - sem a checagem da conta, o teste de integração do convite falhou;
+  - os arquivos foram restaurados e conferidos com `cmp`.
+- **Evidência no dev:**
+  - lint e tipos passaram;
+  - 154 testes unitários passaram;
+  - o build passou, com `/auth/confirmar` dinâmica;
+  - `test:integration`: 51 testes passaram;
+  - `test:e2e`: 8 passaram.
+- **Nova ressalva R8 (a conferir):** cadastro prévio com e-mail alheio. A hipótese, pelo comportamento conhecido do Auth, é que a senha do primeiro cadastro continua depois de a pessoa dona do e-mail confirmar. Não foi testado, porque o teste manda e-mail e precisa de um endereço controlado pela pessoa responsável. Está registrada no ADR-0002 §8.

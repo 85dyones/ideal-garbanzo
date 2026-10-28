@@ -7,6 +7,7 @@
  * alheia pelo id no payload (teste 2). Os testes rodam em sequência e
  * compartilham o estado: o fluxo é o de uma adesão de verdade.
  */
+import { randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
 import { mudarStatusDoPerfil } from "@/modules/auth/server/perfis";
@@ -336,6 +337,54 @@ describe("membros pelo servidor", () => {
     );
     expect(semConta.ok).toBe(true);
     expect(Object.keys(semConta)).toEqual(Object.keys(existente));
+  });
+
+  it("R1: conta de cadastro sem e-mail confirmado não recebe convite; a nascida de convite recebe", async () => {
+    async function vinculosDe(email: string): Promise<number | undefined> {
+      return comBanco(async (cliente) => {
+        const { rows } = await cliente.query<{ total: number }>(
+          "select count(*)::int as total from public.organization_members where invited_email = $1",
+          [email],
+        );
+        return rows[0]?.total;
+      });
+    }
+
+    // Cadastro com o e-mail de outra pessoa: senha conhecida, e-mail sem confirmação.
+    const deCadastro = emailDeTeste("cadastro-sem-confirmacao");
+    const criada = await clienteAdministrativo().auth.admin.createUser({
+      email: deCadastro,
+      password: randomBytes(18).toString("base64url"),
+      email_confirm: false,
+    });
+    expect(criada.error).toBeNull();
+    const recusa = await convidarMembro(dependencias(requerente.sessao), {
+      empresaId,
+      email: deCadastro,
+      papel: "member",
+    });
+    expect(recusa).toEqual({
+      ok: false,
+      erro: "regra_violada",
+      mensagem: "Não foi possível convidar este e-mail.",
+    });
+    expect(await vinculosDe(deCadastro)).toBe(0);
+
+    // Contraste: conta criada pelo convite do Auth (sem senha, ainda sem
+    // confirmação). O `generateLink` cria a conta sem mandar e-mail.
+    const deConvite = emailDeTeste("nascida-de-convite");
+    const link = await clienteAdministrativo().auth.admin.generateLink({
+      type: "invite",
+      email: deConvite,
+    });
+    expect(link.error).toBeNull();
+    const aceito = await convidarMembro(dependencias(requerente.sessao), {
+      empresaId,
+      email: deConvite,
+      papel: "member",
+    });
+    expect(aceito.ok).toBe(true);
+    expect(await vinculosDe(deConvite)).toBe(1);
   });
 
   it("CT4.10: o convidado não aceita mudando o papel", async () => {

@@ -9,7 +9,7 @@ import { FormularioDeNovaSenha } from "@/modules/auth/ui/formularios";
 export const metadata: Metadata = { title: "Nova senha" };
 
 /**
- * Chega aqui quem abriu o link de recuperação ou de convite: a rota
+ * Chega aqui quem confirmou o link de recuperação ou de convite: o botão de
  * `/auth/confirmar` já criou a sessão. Sem sessão, o link venceu.
  */
 export default async function PaginaDeNovaSenha() {

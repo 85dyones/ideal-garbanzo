@@ -118,6 +118,21 @@ export async function novoUsuario(
   return usuario;
 }
 
+/** `token_hash` de recuperação pela API administrativa, sem mandar e-mail. */
+export async function tokenDeRecuperacao(email: string): Promise<string> {
+  const { url, chaveSecreta } = lerAmbiente();
+  const resposta = await createClient<Database>(
+    url,
+    chaveSecreta,
+    SEM_SESSAO_GUARDADA,
+  ).auth.admin.generateLink({ type: "recovery", email });
+  const { properties } = exigirDados(resposta, "generateLink de recuperação");
+  if (properties === null) {
+    throw new Error("generateLink de recuperação: resposta sem token");
+  }
+  return properties.hashed_token;
+}
+
 /**
  * Administrador pela conexão do banco: o primeiro, se não houver administrador
  * ativo; senão, concedido pelo existente (ADR-0002 §2.13 e §3).

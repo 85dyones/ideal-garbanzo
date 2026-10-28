@@ -72,6 +72,6 @@ Projeto `ralmlmuewullugeqtgoz`, painel → **Authentication**. Valores da I1.6 (
   - Se a origem não estiver nas Redirect URLs, o Supabase troca a URL de retorno pela Site URL, e esse link sai quebrado. Por isso, a lista precisa cobrir todo endereço que mostra as telas.
 - **Convite e troca de e-mail:** o convite (`inviteUserByEmail`) não manda URL de retorno, e ainda não existe tela de troca de e-mail. Por isso, esses links usam a Site URL, e o destino vem do tipo: convite vai para `/nova-senha`.
 
-**Pré-abertura dos links (ressalva R1 da I1.7, ADR-0002 §8):** alguns provedores de e-mail abrem os links antes da pessoa, como o Safe Links do Microsoft Defender. A documentação do Supabase ("Email prefetching") avisa que isso consome o token. A rota `/auth/confirmar` confere o token já no GET, então vai passar a mostrar uma página com botão antes do Inc. 6.
+**Pré-abertura dos links (ressalva R1 da I1.7, corrigida em 28/10; ADR-0002 §8):** alguns provedores de e-mail abrem os links antes da pessoa, como o Safe Links do Microsoft Defender. A documentação do Supabase ("Email prefetching") avisa que isso consome o token. Por isso, `/auth/confirmar` é uma página com botão: abrir o link não usa o token, só o clique.
 
 **Testes:** nenhum teste envia e-mail. Os usuários são criados pela API administrativa, já confirmados, e o convite de quem não tem conta é trocado por uma criação sem envio. Por isso, ligar o SMTP não manda mensagens para os endereços `.invalid` dos testes.

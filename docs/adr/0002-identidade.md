@@ -145,6 +145,9 @@ O operador só muda o status de `submitted` para `under_review`; o gatilho recus
 - **Entrada:** o `org_admin` da empresa ativa convida pelo e-mail, sem aprovação da plataforma (resposta à Q1: a empresa já foi aprovada e responde por quem convida). O vínculo nasce `pending` e fica `active` quando o convidado aceita.
 - **Aceite do convidado:** é a única mudança que alguém faz no próprio vínculo. O convidado com perfil ativo aceita (`pending` → `active`) ou recusa (`pending` → `removed`), sem mudar o papel. O aceite protege o convidado: ninguém é posto numa empresa sem saber, e o nome e o e-mail dele só ficam visíveis aos colegas depois do aceite (seção 2.9).
 - **Convite sem revelar cadastro:** o servidor responde igual exista ou não conta com aquele e-mail. Quem não tem conta recebe o convite do Auth (seção 2.12).
+- **Conta existente só recebe convite se for confiável** (R1 da I1.7, 28/10). Vale a conta com e-mail confirmado ou a que nasceu de um convite do Auth, cuja senha é definida por quem abre o link.
+  - A conta de cadastro ainda sem confirmação pode ser de outra pessoa, que usou o e-mail alheio com a própria senha.
+  - Ela recebe a mesma recusa genérica da conta suspensa ("Não foi possível convidar este e-mail.").
 - **Gestão pelo `org_admin` da própria empresa ativa**, sem passar pela plataforma:
   - suspender, reativar e remover membros, e cancelar convite pendente;
   - trocar o papel entre `member` e `org_admin`;
@@ -238,7 +241,7 @@ Nenhuma dessas tabelas tem DELETE para `anon`, `authenticated` ou `service_role`
 - As operações de servidor da I1.5 escrevem com o cliente da sessão do usuário (chave publicável e cookie). Assim, toda escrita passa pelas políticas e pelos gatilhos com o ator verdadeiro.
 - A chave secreta (`service_role`) fica restrita a cinco usos, todos em código de servidor:
   - contagem do limite de tentativas (seção 2.16), depois da checagem de permissão da operação;
-  - API administrativa do Auth (bloqueio, desbloqueio e convite);
+  - API administrativa do Auth (bloqueio, desbloqueio e convite; no convite a conta existente, também a leitura da confirmação do e-mail e da origem da conta, seção 2.6);
   - leitura do perfil pelo e-mail no convite de membro, depois de o servidor conferir que quem convida gere a empresa (I1.5): a sessão de quem convida não enxerga perfis fora da empresa, e a resposta é a mesma exista ou não a conta. A gravação do vínculo continua com a sessão de quem convida;
   - inclusão em `restricted_access_logs`;
   - preparação e limpeza dos testes de integração.
@@ -419,13 +422,28 @@ Nenhuma das duas achou problema crítico ou alto, e o gate do Inc. 1 (crítico b
 
 | ID | Severidade | Ressalva | Ação | Quando |
 |---|---|---|---|---|
-| R1 | média | **Pré-abertura dos links de e-mail.** `/auth/confirmar` consome o token já no GET, então um filtro de e-mail (como o Safe Links) ou a prévia de link de um aplicativo de mensagens pode usá-lo antes da pessoa. Na recuperação e no convite, a pessoa recebe "link inválido". No cadastro, o e-mail fica confirmado sem ação humana. E como o convite se liga ao perfil que já existe com aquele e-mail (`membros.ts`), quem cadastrou o e-mail alheio pode receber o convite. | O GET passa a só mostrar uma página com botão, com `Cache-Control: no-store` e `Referrer-Policy: no-referrer`. O botão confirma por ação de servidor, com `verifyOtp`. Também reavaliar o convite que se liga a perfil existente sem aviso a quem controla o e-mail. | I1.8, antes de usuários reais |
+| R1 | média | **Pré-abertura dos links de e-mail.** `/auth/confirmar` consome o token já no GET, então um filtro de e-mail (como o Safe Links) ou a prévia de link de um aplicativo de mensagens pode usá-lo antes da pessoa. Na recuperação e no convite, a pessoa recebe "link inválido". No cadastro, o e-mail fica confirmado sem ação humana. E como o convite se liga ao perfil que já existe com aquele e-mail (`membros.ts`), quem cadastrou o e-mail alheio pode receber o convite. | O GET passa a só mostrar uma página com botão, com `Cache-Control: no-store` e `Referrer-Policy: no-referrer`. O botão confirma por ação de servidor, com `verifyOtp`. Também reavaliar o convite que se liga a perfil existente sem aviso a quem controla o e-mail. | **corrigida em 28/10 (I1.8):** veja a observação depois da tabela |
 | R2 | baixa; média com usuários reais | **Parâmetro repetido no link.** `lerConfirmacao` usa a primeira ocorrência, e o modelo põe `{{ .RedirectTo }}` antes do token. Quem chama a API do Auth escolhe o `redirect_to` dentro da lista permitida, e pode pôr ali um `token_hash` próprio. A vítima entraria logada na conta de quem atacou. | Recusar o link quando `token_hash`, `type`, `code` ou `proximo` vierem repetidos, ou quando `code` e `token_hash` vierem juntos. Cobrir com testes unitários. | **corrigida em 28/10 (I1.8):** `linkAmbiguo` em `src/app/_apoio/confirmacao.ts`, com 4 testes e mutação detectada |
 | R3 | baixa | **Reconvite em duas escritas** (ACH-I1.7-02). Se a troca de papel falhar, o convite fica reaberto com o papel anterior, e a operação devolve erro. | Devolver `falha_parcial` ou passar a transição para uma função no `private`. | I1.8 |
 | R4 | baixa | **Blocos pgTAP sem claims** em `010-base-auditoria` (`anon`, `authenticated` e `service_role`) e `110-adesao` (`anon`). Nenhum passa por causa de `manutencao()`, e o bloco `authenticated` de `010` prova menos do que o nome diz, porque roda sem `sub`. | Definir as claims nesses blocos e pôr no CI uma checagem de asserção sob `set local role` com claims vazias. | I1.8 |
 | R5 | informativa | **`manutencao()` usa lista de exclusão** (`session_user <> 'authenticator'`). A API do Auth, que escreve com o papel administrativo dela e sem claims, entra no ramo de manutenção. Hoje nenhum gatilho dessa cadeia chama a função, mas um uso futuro em `profiles` abriria esse caminho para dados escolhidos no cadastro. | Usar uma lista permitida de `session_user`, conferida no projeto; exigir `pg_trigger_depth() = 1`; corrigir o comentário da migração; criar um teste pgTAP que fixe as duas funções que chamam `manutencao()`. | I1.8 |
 | R6 | informativa | **Registro das mutações.** Os textos do anexo A foram corrigidos nesta revisão, e os WITH CHECK equivalentes por construção foram listados. A lista das 113 mutações da I1.4 não está versionada. | Versionar a lista no próximo ciclo de mutação. | Inc. 2 |
 | R7 | informativa | **Produção.** O curinga dos previews na lista de Redirect URLs e um preview gerado por PR de fork, com o repositório público, receberiam links com token. Um proxy na frente da Vercel mudaria o IP usado nos limites (§2.16). | No `repasse-prod`, lista de Redirect URLs sem curinga e proteção de forks da Vercel ligada. Reavaliar os limites por IP se houver proxy. | Inc. 6 (I6.9) |
+
+**Correção da R1 (I1.8, 28/10):**
+- **Página com botão:** `/auth/confirmar` virou página do grupo público (`src/app/(publico)/auth/confirmar/page.tsx`). Abrir o link só mostra o botão, e o token é usado pela ação do botão (`src/app/_acoes/confirmacao.ts`), que lê e valida o link de novo.
+- **Cabeçalhos:** a página é dinâmica, então sai com `Cache-Control` `no-store`.
+  - A referência fica em `Referrer-Policy: same-origin`, e não em `no-referrer`. Com `no-referrer`, o navegador manda `Origin: null` no POST, e o Next recusaria a ação do botão.
+  - Com `same-origin`, o endereço com o token não vai para outros sites.
+- **Convite:** conta existente só recebe convite com e-mail confirmado ou nascida de convite do Auth (seção 2.6).
+- **Testes:**
+  - E2E `confirmacao.spec.mts`: o link é aberto duas vezes fora do navegador da pessoa, sem clique, e o botão ainda confirma e leva a `/nova-senha`. O mesmo link, confirmado de novo, dá o aviso fixo;
+  - integração: conta de cadastro sem confirmação é recusada, e a conta nascida de convite, como contraste, é aceita.
+- **Mutação:** com a página usando o token ao abrir, o clique cai em "link inválido". Sem a checagem da conta, o convite à conta sem confirmação passa. Os dois casos foram detectados.
+
+| ID | Severidade | Ressalva | Ação | Quando |
+|---|---|---|---|---|
+| R8 | a avaliar | **Cadastro prévio com e-mail alheio.** É uma hipótese a conferir no projeto de `dev`, levantada na reavaliação do convite: pelo comportamento conhecido do Auth do Supabase, um segundo cadastro com o mesmo e-mail ainda sem confirmação não troca a senha. Se a pessoa dona do e-mail confirmar depois, quem fez o primeiro cadastro entraria com a própria senha. A checagem do convite reduz o efeito, mas não resolve, porque a conta confirmada passa a valer. | Conferir o comportamento com um endereço controlado pela pessoa responsável. Se confirmado, avaliar com ela: encerrar as outras sessões e exigir nova senha na primeira entrada depois da confirmação, ou outra saída do próprio Auth. | antes de usuários reais (Inc. 6) |
 
 Conclusões que não viram ação:
 - **ACH-I1.7-01, IP por `x-forwarded-for`:** não procede na Vercel (§2.16).

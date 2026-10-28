@@ -6,8 +6,11 @@
  *   Ninguém mexe no próprio vínculo.
  * - O vínculo nasce `pending` e só o convidado aceita ou recusa.
  * - O convite responde igual exista ou não conta com o e-mail. A chave secreta
- *   só lê o perfil pelo e-mail e, sem conta, pede o convite ao Auth; a
- *   gravação do vínculo é sempre com a sessão de quem convida.
+ *   só lê o perfil pelo e-mail, confere no Auth se a conta existente pode
+ *   receber convite e, sem conta, pede o convite ao Auth; a gravação do
+ *   vínculo é sempre com a sessão de quem convida.
+ * - Conta de cadastro sem e-mail confirmado recebe a mesma recusa da conta
+ *   suspensa, sem dizer o motivo.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Dependencias } from "@/lib/operacao/dependencias";
@@ -43,6 +46,23 @@ const convidarPeloAuth: ConvidarNoAuth = async (administrativo, email) => {
 
 const RECUSA_DO_CONVITE = "Não foi possível convidar este e-mail.";
 
+/**
+ * Conta que já existe só recebe convite se o e-mail foi confirmado ou se ela
+ * nasceu de um convite do Auth (a senha é definida por quem abre o link).
+ * Conta de cadastro ainda sem confirmação pode ser de outra pessoa, que usou o
+ * e-mail alheio com a própria senha (ADR-0002 §8, R1). `null` se o Auth não
+ * responder.
+ */
+async function contaAceitaConvite(
+  administrativo: SupabaseClient,
+  perfilId: string,
+): Promise<boolean | null> {
+  const { data, error } = await administrativo.auth.admin.getUserById(perfilId);
+  if (error !== null) return null;
+  const { email_confirmed_at, invited_at } = data.user;
+  return Boolean(email_confirmed_at) || Boolean(invited_at);
+}
+
 export function convidarMembro(
   dependencias: Dependencias,
   entrada: unknown,
@@ -68,6 +88,15 @@ export function convidarMembro(
         .overrideTypes<{ id: string }[], { merge: false }>();
       if (perfis.error !== null || perfis.data.length > 1) {
         return falha("falha");
+      }
+      const perfilExistente = perfis.data[0]?.id;
+      if (perfilExistente !== undefined) {
+        const aceita = await contaAceitaConvite(
+          administrativo,
+          perfilExistente,
+        );
+        if (aceita === null) return falha("falha");
+        if (!aceita) return falha("regra_violada", RECUSA_DO_CONVITE);
       }
       const perfilId =
         perfis.data[0]?.id ??

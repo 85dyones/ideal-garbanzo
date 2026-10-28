@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   destinoDoTipo,
   lerConfirmacao,
+  parametrosDaPagina,
+  parametrosDoFormulario,
   tipoDeConfirmacao,
 } from "./confirmacao";
 
@@ -86,6 +88,43 @@ describe("link de confirmação do Auth", () => {
     expect(
       lerConfirmacao(new URLSearchParams("code=abc&token_hash=h1&type=email")),
     ).toEqual({ forma: "invalido" });
+  });
+
+  it("a página e o botão passam adiante as repetições, e só os parâmetros do link", () => {
+    const daPagina = parametrosDaPagina({
+      token_hash: ["alheio", "h1"],
+      type: "recovery",
+      outro: "x",
+    });
+    expect(daPagina.toString()).toBe(
+      "token_hash=alheio&token_hash=h1&type=recovery",
+    );
+    expect(lerConfirmacao(daPagina)).toEqual({ forma: "invalido" });
+
+    const formulario = new FormData();
+    formulario.append("token_hash", "h1");
+    formulario.append("type", "invite");
+    formulario.append("type", "recovery");
+    formulario.append("$ACTION_ID_abc", "");
+    expect(parametrosDoFormulario(formulario).toString()).toBe(
+      "token_hash=h1&type=invite&type=recovery",
+    );
+    expect(lerConfirmacao(parametrosDoFormulario(formulario))).toEqual({
+      forma: "invalido",
+    });
+  });
+
+  it("o botão lê o mesmo link que a página mostrou", () => {
+    const formulario = new FormData();
+    formulario.append("token_hash", "h1");
+    formulario.append("type", "invite");
+    formulario.append("proximo", "/nova-senha");
+    expect(lerConfirmacao(parametrosDoFormulario(formulario))).toEqual({
+      forma: "token",
+      tokenHash: "h1",
+      tipo: "invite",
+      destino: "/nova-senha",
+    });
   });
 
   it("sem código nem token com tipo válido, é inválido", () => {
