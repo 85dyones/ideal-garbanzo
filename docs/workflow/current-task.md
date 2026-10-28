@@ -1,9 +1,9 @@
 # Tarefa atual
 
-**Etapa:** Inc. 1, Identidade e adesão (plano v2); Inc. 0 concluído  
+**Etapa:** Inc. 1, Identidade e adesão (plano v2); I1.1, I1.2 e I1.3 entregues  
 **Próximas subtarefas:**
-- **I1.1 (T0):** extrair §3.3, §5.1, §6.1 e os testes negativos 1, 2, 4, 5 e 13 em tabela de decisão e casos de teste.
-- **I1.2 (T2):** ADR-0002 de identidade (funções de autorização, revalidação de usuário suspenso, adesão atômica), a partir da I1.1.
+- **I1.4 (T1):** testes de banco (`supabase/tests/database/110-` em diante) e de integração a partir do anexo A do ADR-0002; o T2 faz a verificação de mutação.
+- **I1.5 (T2):** operações de servidor, em paralelo com a I1.4.
 
 > **Repositório público:** este registro não traz segredos, dados pessoais nem detalhes internos ou de segurança de outros negócios. O registro completo fica em `notas-privadas/`, fora do Git.
 
@@ -210,3 +210,48 @@
   - CI verde;
   - teste de banco executando migração, no projeto de desenvolvimento e no CI;
   - nenhum deploy público.
+
+### 2026-10-28 · I1.1 · concluída
+
+- `fast-helper` (T0), só leitura: tabela de decisão com 64 regras (D01 a D64), casos de teste em texto para os testes 1, 2 (parte de empresa), 4, 5 e 13, e 35 ambiguidades (A1 a A35).
+- Conferência do T2:
+  - citações da especificação conferidas por amostra (§1.4, §3, §5.1, §6.1, §6.2, §6.12, §6.13, §7.4, §9, §12): batem;
+  - três afirmações técnicas confirmadas (`service_role` ignora a RLS; o usuário edita o próprio `user_metadata`; a ação referencial de chave estrangeira dispara os gatilhos de linha da tabela que referencia).
+- **Achado procedente do T0 (A31):** com a RLS negando por padrão, remover a política não derruba o teste negativo. A verificação de mutação passa a afrouxar a política, com caso de contraste em todo teste (ADR-0002 §3).
+
+### 2026-10-28 · I1.2 · entregue (aceite na I1.7)
+
+- `docs/adr/0002-identidade.md`, com a tabela da I1.1 resolvida no anexo A. Decisões principais:
+  - autorização lida do banco a cada consulta, nunca de claim do token;
+  - funções auxiliares `security definer` no schema `private`, fora da API;
+  - suspensão em três camadas (banco, servidor, bloqueio no Auth), com o banco como fonte da verdade;
+  - adesão aprovada cria empresa e vínculo num gatilho, na mesma transação;
+  - escrita pelo servidor com a sessão do usuário; `service_role` só para a API administrativa do Auth, o registro de acesso restrito e os testes;
+  - configuração crítica por padrão; operador lê só as não críticas;
+  - CNPJ alfanumérico aceito (IN RFB 2.229/2024, nas fontes consultadas), a conferir na documentação oficial na I1.3.
+- O ADR antecipa a decisão de Storage e reset da I2.4 para a I1.3, porque o primeiro bucket (evidência da adesão) entra no Inc. 1.
+- Plano ajustado: escopo e arquivos da I1.3; caminho dos testes da I1.4 (`supabase/tests/database/1*.test.sql`, porque o runner não lê subpastas); I2.4 segue a convenção do ADR-0002.
+- Perguntas à pessoa responsável: Q1 e Q2 (ADR-0002 §6).
+- **Respostas em 28/10:** Q1, o convite do administrador da empresa basta, sem aprovação da plataforma (o vínculo fica ativo com o aceite do convidado); Q2, o operador prepara a revisão (lê pedidos e move para `under_review`), e o administrador decide. ADR atualizado (§2.5, §2.6, §2.9, §2.12, §5, §6, §7 e anexo A, com D26d e CT4.10).
+
+### 2026-10-28 · I1.3 · entregue (revisão na I1.7)
+
+- Três migrações:
+  - `20261028140000_identidade`: schema `private`, CNPJ, 7 tabelas, funções de autorização, gatilhos de proteção, adesão atômica, perfil pelo Auth, RLS e grants por coluna;
+  - `20261028140100_auditoria_da_identidade`: auditoria por gatilho, chaves estrangeiras de ator nas tabelas da I0.6, `platform_settings` com `is_critical`, histórico e leitura por papel;
+  - `20261028140200_evidencia_da_adesao`: bucket privado `membership-evidence` e políticas do Storage, reaplicáveis.
+- Decisões de implementação, registradas no ADR:
+  - a conferência da adesão fica em `membership_application_reviews`, porque a RLS filtra linhas e não colunas;
+  - a evidência é do mesmo pedido por chave estrangeira composta;
+  - as funções de conjunto substituem a `vinculo_ativo`;
+  - a escrita interna é liberada por `pg_trigger_depth() > 1`, sem chave estrangeira em cascata;
+  - o primeiro administrador entra por SQL sem sessão, só sem administrador ativo;
+  - o `service_role` só lê as tabelas de identidade e perdeu a escrita em `platform_settings`.
+- CNPJ alfanumérico conferido nas perguntas e respostas da Receita e no manual de cálculo do DV; o teste usa o exemplo oficial `12ABC34501DE35`.
+- Reset: `private` em `esquemasDaAplicacao`; `bucketsDaAplicacao` esvaziado pela API do Storage, com trava de destino também na URL da API (`verificarApiDoDestino`, com teste unitário).
+- Teste de contraste (T2, transação desfeita no projeto de desenvolvimento): 47 casos negativos e de acesso legítimo, todos como esperados. A I1.4 transforma esses casos em pgTAP com mutação.
+- Evidência:
+  - `db:reset` aplicou as 4 migrações duas vezes, a segunda com o bucket já criado e um arquivo enviado pela API ("Arquivos removidos dos buckets: 1");
+  - `test:db`: 000 (6), 010 (29, com as quatro leituras de `authenticated` trocadas de "sem permissão" para "0 linhas") e 100 (34) passaram;
+  - `lint`, `typecheck`, `npm test` (62), `format:check` e `test:integration` (3) passaram.
+- Não conferido: os avisos de segurança do Supabase (o conector recusou acesso ao projeto) e o job de banco do CI, que roda no próximo push.

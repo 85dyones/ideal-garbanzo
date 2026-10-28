@@ -31,16 +31,25 @@ O projeto de desenvolvimento é um só para todos os agentes. Reset e testes peg
 - **Migrações** não abrem nem fecham transação (sem `BEGIN`/`COMMIT`): o reset aplica todas numa transação só e desfaz tudo se uma falhar.
 - **Nome de migração:** `<versão>_<nome>.sql`, versão numérica (`npx supabase migration new <nome>`).
 - **Teste pgTAP:** `begin; select plan(n); ...; select * from finish(); rollback;`. Sem plano, plano não cumprido ou erro de SQL contam como falha.
-- **Objetos fora do `public`** que o reset não remove (políticas em `storage.objects`, buckets, jobs do `pg_cron`): a migração que os cria precisa ser reaplicável (`drop policy if exists`, `on conflict do nothing`, `cron.unschedule`) ou o reset passa a removê-los. Decidir na I2.4, antes do primeiro bucket.
+- **Schemas da aplicação:** `config/banco-dev.json` → `esquemasDaAplicacao`. O `public` tem os objetos removidos (os grants padrão ficam); os demais (`private`) são removidos com `drop schema ... cascade`, o que leva junto as políticas do Storage e os gatilhos em `auth.users` que dependem deles.
+- **Objetos fora desses schemas** (buckets, políticas em `storage.objects` sem dependência do `private`, jobs do `pg_cron`): a migração que os cria precisa ser reaplicável (`insert ... on conflict (id) do update`, `drop policy if exists`, `cron.unschedule`). Decidido na I1.3 (ADR-0002 §2.14).
+- **Buckets da aplicação:** `config/banco-dev.json` → `bucketsDaAplicacao`. O reset apaga os arquivos pela API do Storage antes de limpar o banco, com `NEXT_PUBLIC_SUPABASE_URL` e `SUPABASE_SECRET_KEY` do mesmo destino do banco (a trava recusa outro projeto). Apagar `storage.objects` por SQL deixaria o arquivo órfão, e o Supabase recusa.
+- **Atuar como usuário:** o papel `postgres` ignora a RLS. Asserção de acesso roda com `set local role authenticated` e `request.jwt.claims` com o `sub`; a fixture de administrador está no `100-identidade-estrutura.test.sql` (ADR-0002 §3).
 
 ## Verificação de mutação (gate 3)
 
-Todo teste negativo de política (RLS, Storage) precisa falhar quando a política é removida. Procedimento, só no projeto de desenvolvimento:
+Todo teste negativo de política (RLS, Storage, gatilho de proteção) precisa falhar quando a regra é afrouxada. Com a RLS ligada, **remover** uma política permissiva faz o banco negar tudo: o teste negativo continua passando e não prova nada. Por isso a mutação **afrouxa** (ADR-0002 §3):
+
+- predicado `true` na política, condição tirada da função auxiliar do `private`, GRANT ampliado ou gatilho de proteção desligado;
+- todo teste negativo tem um caso de contraste, o acesso legítimo que precisa continuar funcionando;
+- uma camada de cada vez (servidor ou banco).
+
+Procedimento, só no projeto de desenvolvimento:
 
 1. Rodar `npm run test:db` e confirmar que o teste passa.
-2. Numa migração temporária, ou direto numa sessão de teste dentro de transação, remover ou afrouxar a política correspondente (`drop policy ...`).
-3. Rodar `npm run db:reset` e `npm run test:db` e confirmar que **o teste falha**.
+2. Numa migração temporária, afrouxar a regra correspondente.
+3. Rodar `npm run db:reset` e `npm run test:db` e confirmar que **o teste negativo falha** e o de contraste continua passando.
 4. Desfazer a mudança, rodar o reset de novo e confirmar que o teste volta a passar.
-5. Registrar a verificação no `docs/workflow/current-task.md` (teste, política, resultado nos dois sentidos).
+5. Registrar a verificação no `docs/workflow/current-task.md` (teste, regra afrouxada, resultado nos dois sentidos).
 
-Teste que passa com e sem a política não conta como evidência.
+Teste que passa com e sem a regra não conta como evidência.

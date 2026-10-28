@@ -3,7 +3,7 @@
 
 **Fontes:** `docs/especificacao/especificacao-v1.1.md` (aprovada em 26/10/2026), `docs/diagnostico/2026-10-26-missao-001.md` e `model-orchestration.md`  
 **Substitui:** o plano v1, baseado na especificação v1.0 (disponível no histórico do Git, commit `b34f01e`)  
-**Atualizado em:** 2026-10-26  
+**Atualizado em:** 2026-10-28  
 **Responsável pelo aceite:** orquestrador (T2), com aprovação da pessoa responsável (H) onde indicado
 
 Este plano traduz o roteiro da seção 12 da v1.1 em subtarefas despacháveis. Em caso de conflito, a v1.1 prevalece nas regras de negócio, e o `model-orchestration.md` prevalece no despacho, no escalonamento e no paralelismo. "§" indica uma seção da v1.1.
@@ -162,10 +162,10 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 
 | ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
 |---|---|---|---|---|
-| I1.1 | Extrair §3.3, §5.1, §6.1 e os testes 1, 2, 4, 5 e 13 → tabela de decisão e casos de teste em texto | T0 | nenhum | cada regra cita a seção; ambiguidades listadas |
-| I1.2 | Funções auxiliares de autorização; revalidação de usuário suspenso no banco; adesão aprovada cria empresa e vínculo de forma atômica → ADR-0002 | T2 | `docs/adr/0002-identidade.md` | ADR responde às ambiguidades da I1.1 |
-| I1.3 | Migrações de `organizations`, `profiles`, `organization_members`, `platform_staff`, `membership_applications`; RLS; sincronização segura de e-mail; bloqueio de autopromoção | T2 | `supabase/migrations/**`, `supabase/tests/**` | reset limpo; RLS ativa em toda tabela exposta |
-| I1.4 | Testes de banco e de integração a partir da I1.1 | T1 | `supabase/tests/identity/**`, testes de `src/modules/{auth,organizations,membership}/**` | testes passam; T2 remove cada política e confirma a falha |
+| I1.1 | Extrair §3.3, §5.1, §6.1 e os testes 1, 2, 4, 5 e 13 → tabela de decisão e casos de teste em texto | T0 | nenhum | **concluída em 28/10**: 64 regras, casos de teste dos cinco testes e 35 ambiguidades; integrada ao anexo A do ADR-0002 |
+| I1.2 | Funções auxiliares de autorização; revalidação de usuário suspenso no banco; adesão aprovada cria empresa e vínculo de forma atômica → ADR-0002 | T2 | `docs/adr/0002-identidade.md` | **entregue em 28/10**: o ADR responde às 35 ambiguidades (§7); aceite na I1.7; Q1 e Q2 respondidas em 28/10 (convite da empresa basta; operador prepara a revisão) |
+| I1.3 | Migrações de `organizations`, `profiles`, `organization_members`, `platform_staff`, `membership_applications`, `membership_application_reviews`, `membership_evidence_files`; funções auxiliares no schema `private`; RLS; sincronização segura de e-mail; bloqueio de autopromoção; adesão atômica por gatilho; bucket privado de evidência; chaves estrangeiras de ator nas tabelas da I0.6; reset limpando o `private` e esvaziando os buckets (ADR-0002 §2.14) | T2 | `supabase/migrations/**`, `supabase/tests/**`, `scripts/**`, `config/banco-dev.json` | reset limpo; RLS ativa em toda tabela exposta. **Entregue em 28/10:** 3 migrações, reset com `private` e bucket, `100-identidade-estrutura` (34 testes), contraste de 47 casos; revisão na I1.7 |
+| I1.4 | Testes de banco e de integração a partir da I1.1 (anexo A do ADR-0002) | T1 | `supabase/tests/database/1*.test.sql` a partir de `110-` (o runner não lê subpastas; o `100-` é da I1.3), `tests/integration/**`, testes de `src/modules/{auth,organizations,membership}/**` | testes passam; T2 afrouxa cada regra e confirma a falha do negativo, com o contraste passando (ADR-0002 §3) |
 | I1.5 | Operações de servidor: enviar e revisar adesão (com registro da conferência de CNPJ e evidência), suspender e reativar, gerenciar membros; auditoria | T2 | `src/modules/{auth,organizations,membership,audit}/**` | payload manipulado não concede papel (teste 4); suspenso é barrado na operação seguinte (teste 5) |
 | I1.6 | Telas: pedido de adesão (com Turnstile e rate limit portados), login, recuperação, painel de adesões, empresa e membros | T1 | rotas de autenticação, adesão e admin em `app/`, componentes, `src/lib/` do porte | estados do §9; nenhuma autorização só na interface |
 | I1.7 | Revisão independente do diff, das políticas e do ADR-0002 | T3 | leitura | achado crítico bloqueia o gate |
@@ -184,7 +184,7 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 | I2.1 | Extrair transições da §6.2, requisitos de publicação, campos materiais da §6.7 e regras de validade; inventariar o código a portar (seção 4) | T0 | nenhum | tabela de transições com autor permitido |
 | I2.2 | Máquina de estados com `under_review` condicionado a D10; estrutura do snapshot e algoritmo do hash; gatilhos de histórico; expiração no banco ou no servidor; buckets → ADR-0003 | T2 | `docs/adr/0003-oferta.md` | transições, versionamento e expiração definidos |
 | I2.3 | Migrações de `vehicles`, `offers`, `offer_versions`, `offer_media`, `offer_documents`, `supplier_declarations`; transições e CHECKs no banco; RLS; só inclusão onde a §5 exige | T2 | `supabase/migrations/**`, `supabase/tests/**` | transição inválida recusada pelo banco; publicar sem declaração em todas as categorias falha |
-| I2.4 | Storage privado, URLs temporárias, registro em `restricted_access_logs` | T2 | `supabase/migrations/**`, `src/modules/offers/storage/**` | arquivo privado não é obtido só pelo caminho (teste 6) |
+| I2.4 | Storage privado das ofertas, URLs temporárias, registro em `restricted_access_logs`, seguindo a convenção de bucket e reset do ADR-0002 §2.14 | T2 | `supabase/migrations/**`, `src/modules/offers/storage/**` | arquivo privado não é obtido só pelo caminho (teste 6) |
 | I2.5 | Função de estado documental, parte das declarações (`not_checked`, `declared_unverified`, `with_findings`), base para a I3 | T2 | `supabase/migrations/**`, `src/modules/documental/**` | estados conforme as linhas da §6.4 que dependem só de declaração |
 | I2.6 | `createOffer`, `updateOffer`, `publishOffer`, `withdrawOffer`, `suspendOffer`, `confirmAvailability`, `declareCategory`, com versão nova em mudança material e auditoria | T2 | `src/modules/{offers,documental,audit}/**` | mudança de preço gera versão e histórico; suspensão exige motivo |
 | I2.7 | Testes da máquina de estados, do versionamento e dos registros só de inclusão | T1 | testes de `src/modules/offers/**`, `supabase/tests/offers/**` | todas as transições válidas e ao menos uma inválida por estado; teste 11 para as tabelas deste incremento |

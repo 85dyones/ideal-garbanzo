@@ -17,7 +17,7 @@ const CAMINHO_DA_CA = path.join(RAIZ, "supabase", "certs", "prod-ca-2021.crt");
 /** Chave do advisory lock compartilhada por reset e testes. */
 const CHAVE_DA_TRAVA = 7_310_027;
 
-/** @returns {Promise<{ cliente: pg.Client, descricao: string }>} */
+/** @returns {Promise<{ cliente: pg.Client, descricao: string, local: boolean, ref: string | null }>} */
 export async function conectar() {
   carregarAmbiente();
   const SUPABASE_DB_URL =
@@ -36,7 +36,12 @@ export async function conectar() {
     connectionTimeoutMillis: 15_000,
   });
   await cliente.connect();
-  return { cliente, descricao: permitido.descricao };
+  return {
+    cliente,
+    descricao: permitido.descricao,
+    local: permitido.local,
+    ref: destino.ref,
+  };
 }
 
 /** Executa `tarefa` com a trava; espera até `esperaMs` se outra execução estiver em curso. */

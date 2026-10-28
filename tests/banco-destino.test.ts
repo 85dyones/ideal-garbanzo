@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   carregarConfiguracao,
   lerDestino,
+  verificarApiDoDestino,
   verificarDestinoPermitido,
 } from "../scripts/lib/destino.mjs";
 
@@ -75,6 +76,47 @@ describe("trava de destino do banco", () => {
         `postgresql://postgres.${DEV}:senha@aws-1-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require`,
       ),
     ).toThrow(/sslmode/);
+  });
+
+  it("aceita a API do mesmo projeto e a API local com banco local", () => {
+    expect(
+      verificarApiDoDestino(
+        `https://${DEV}.supabase.co/`,
+        { local: false, ref: DEV },
+        configuracao,
+      ),
+    ).toBe(`https://${DEV}.supabase.co`);
+    expect(
+      verificarApiDoDestino(
+        "http://127.0.0.1:54321",
+        { local: true, ref: null },
+        configuracao,
+      ),
+    ).toBe("http://127.0.0.1:54321");
+  });
+
+  it("recusa API de outro projeto, sem TLS ou remota com banco local", () => {
+    expect(() =>
+      verificarApiDoDestino(
+        `https://${OUTRO}.supabase.co`,
+        { local: false, ref: DEV },
+        configuracao,
+      ),
+    ).toThrow(/Destino recusado/);
+    expect(() =>
+      verificarApiDoDestino(
+        `http://${DEV}.supabase.co`,
+        { local: false, ref: DEV },
+        configuracao,
+      ),
+    ).toThrow(/Destino recusado/);
+    expect(() =>
+      verificarApiDoDestino(
+        `https://${DEV}.supabase.co`,
+        { local: true, ref: null },
+        configuracao,
+      ),
+    ).toThrow(/Destino recusado/);
   });
 
   it("explica URL inválida sem repetir a URL", () => {

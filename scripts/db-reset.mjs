@@ -6,15 +6,20 @@
  *
  * Só roda no projeto de desenvolvimento ou num banco local (gate 12). Os
  * grants e privilégios padrão do schema `public` são preservados, porque o
- * schema não é recriado: só os objetos dentro dele são removidos.
+ * schema não é recriado: só os objetos dentro dele são removidos. Os demais
+ * schemas da aplicação (`private`) são recriados pelas migrações.
+ *
+ * Antes da transação, esvazia os buckets da aplicação pela API do Storage
+ * (ADR-0002 §2.14): apagar `storage.objects` por SQL deixaria o arquivo
+ * órfão, e o Supabase recusa. O bucket fica; a migração o atualiza.
  *
  * Convenção: migrações não abrem nem fecham transação (sem BEGIN/COMMIT).
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { RAIZ } from "./lib/ambiente.mjs";
+import { RAIZ, exigirVariaveis } from "./lib/ambiente.mjs";
 import { comTrava, conectar, mensagemSegura } from "./lib/banco.mjs";
-import { carregarConfiguracao } from "./lib/destino.mjs";
+import { carregarConfiguracao, verificarApiDoDestino } from "./lib/destino.mjs";
 
 const PASTA_DE_MIGRACOES = path.join(RAIZ, "supabase", "migrations");
 const ARQUIVO_DE_SEED = path.join(RAIZ, "supabase", "seed.sql");
@@ -100,6 +105,72 @@ end
 $limpeza$;`;
 }
 
+/**
+ * Apaga pela API do Storage os arquivos dos buckets da aplicação. Só chama a
+ * API se houver arquivo, e só no mesmo destino do banco.
+ * @param {import("pg").Client} cliente
+ * @param {string[]} buckets
+ * @param {{ local: boolean, ref: string | null }} destinoDoBanco
+ * @param {import("./lib/destino.mjs").ConfiguracaoDoBanco} configuracao
+ * @returns {Promise<number>} quantos arquivos foram apagados
+ */
+async function esvaziarBuckets(cliente, buckets, destinoDoBanco, configuracao) {
+  if (buckets.length === 0) return 0;
+  const { rows } = await cliente.query(
+    "select bucket_id, name from storage.objects where bucket_id = any($1) order by bucket_id, name",
+    [buckets],
+  );
+  if (rows.length === 0) return 0;
+
+  const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY } = exigirVariaveis([
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "SUPABASE_SECRET_KEY",
+  ]);
+  const origem = verificarApiDoDestino(
+    NEXT_PUBLIC_SUPABASE_URL ?? "",
+    destinoDoBanco,
+    configuracao,
+  );
+  /** @type {Map<string, string[]>} */
+  const porBucket = new Map();
+  for (const { bucket_id: bucket, name } of rows) {
+    porBucket.set(bucket, [...(porBucket.get(bucket) ?? []), name]);
+  }
+  for (const [bucket, nomes] of porBucket) {
+    for (let inicio = 0; inicio < nomes.length; inicio += 1000) {
+      const resposta = await fetch(
+        `${origem}/storage/v1/object/${encodeURIComponent(bucket)}`,
+        {
+          method: "DELETE",
+          headers: {
+            apikey: SUPABASE_SECRET_KEY ?? "",
+            Authorization: `Bearer ${SUPABASE_SECRET_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            prefixes: nomes.slice(inicio, inicio + 1000),
+          }),
+        },
+      );
+      if (!resposta.ok) {
+        throw new Error(
+          `A API do Storage recusou esvaziar o bucket ${bucket} (HTTP ${resposta.status}).`,
+        );
+      }
+    }
+  }
+  const { rows: restantes } = await cliente.query(
+    "select count(*)::int as total from storage.objects where bucket_id = any($1)",
+    [buckets],
+  );
+  if (restantes[0].total > 0) {
+    throw new Error(
+      `Ainda há ${restantes[0].total} arquivo(s) nos buckets da aplicação depois de esvaziar.`,
+    );
+  }
+  return rows.length;
+}
+
 const SQL_DO_HISTORICO = `
 create schema if not exists supabase_migrations;
 create table if not exists supabase_migrations.schema_migrations (version text not null primary key);
@@ -117,11 +188,26 @@ async function principal() {
       );
     }
   }
+  const buckets = configuracao.bucketsDaAplicacao ?? [];
+  for (const bucket of buckets) {
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(bucket)) {
+      throw new Error(
+        `Nome de bucket inválido em config/banco-dev.json: ${bucket}`,
+      );
+    }
+  }
   const migracoes = listarMigracoes();
-  const { cliente, descricao } = await conectar();
+  const { cliente, descricao, local, ref } = await conectar();
   console.log(`Destino: ${descricao}`);
   try {
     await comTrava(cliente, async () => {
+      const arquivos = await esvaziarBuckets(
+        cliente,
+        buckets,
+        { local, ref },
+        configuracao,
+      );
+      console.log(`Arquivos removidos dos buckets: ${arquivos}`);
       await cliente.query("begin");
       try {
         const { rows: antes } = await cliente.query(

@@ -53,12 +53,16 @@ select throws_ok(
 select throws_ok($$select * from public.platform_settings$$, '42501', 'permission denied for table platform_settings', 'anon não lê platform_settings');
 reset role;
 
--- authenticated sem acesso (as políticas entram no Inc. 1)
+-- authenticated sem papel não vê nada: desde a I1.3 a leitura existe, filtrada
+-- pela RLS (ADR-0002 §2.7 e §2.9). Os registros inseridos acima e a chave
+-- não crítica abaixo existem; a leitura volta vazia.
+insert into public.platform_settings (key, value, description, is_critical)
+  values ('teste_nao_critica', '1'::jsonb, 'teste', false);
 set local role authenticated;
-select throws_ok($$select * from public.audit_logs$$, '42501', 'permission denied for table audit_logs', 'authenticated não lê audit_logs');
-select throws_ok($$select * from public.field_history$$, '42501', 'permission denied for table field_history', 'authenticated não lê field_history');
-select throws_ok($$select * from public.restricted_access_logs$$, '42501', 'permission denied for table restricted_access_logs', 'authenticated não lê restricted_access_logs');
-select throws_ok($$select * from public.platform_settings$$, '42501', 'permission denied for table platform_settings', 'authenticated não lê platform_settings');
+select is((select count(*)::int from public.audit_logs), 0, 'authenticated sem papel não lê audit_logs');
+select is((select count(*)::int from public.field_history), 0, 'authenticated sem papel não lê field_history');
+select is((select count(*)::int from public.restricted_access_logs), 0, 'authenticated sem papel não lê restricted_access_logs');
+select is((select count(*)::int from public.platform_settings), 0, 'authenticated sem papel nem empresa não lê platform_settings');
 reset role;
 
 -- service_role insere, mas não altera
