@@ -129,6 +129,7 @@ select pg_temp.entrar(null);
 -- D01: anônimo ------------------------------------------------------------------------
 
 set local role anon;
+select set_config('request.jwt.claims', '{"role": "anon"}', true);
 select throws_ok(
   $$insert into public.membership_applications (organization_name, legal_name, cnpj, requested_kind)
     values ('Anônima', 'Anônima Ltda', '11000000000299', 'buyer')$$,
@@ -139,6 +140,7 @@ select throws_ok(
   '42501', 'permission denied for table membership_applications',
   'D01: anônimo não lê pedidos');
 reset role;
+select pg_temp.entrar(null);
 
 -- D01 (§2.8) e D05: conta sem e-mail confirmado e perfil suspenso -------------------
 

@@ -387,6 +387,42 @@ describe("membros pelo servidor", () => {
     expect(await vinculosDe(deConvite)).toBe(1);
   });
 
+  it("R3: o reconvite com papel novo grava status e papel juntos", async () => {
+    const pessoa = await criarUsuario("reconvidado");
+    const d = () => dependencias(requerente.sessao);
+    const convite = await convidarMembro(d(), {
+      empresaId,
+      email: pessoa.email,
+      papel: "member",
+    });
+    expect(convite.ok).toBe(true);
+    if (!convite.ok) return;
+    const cancelado = await gerirMembro(d(), {
+      empresaId,
+      vinculoId: convite.dados.vinculoId,
+      acao: "cancelar_convite",
+    });
+    expect(cancelado.ok).toBe(true);
+
+    const reconvite = await convidarMembro(d(), {
+      empresaId,
+      email: pessoa.email,
+      papel: "org_admin",
+    });
+    expect(reconvite).toEqual({
+      ok: true,
+      dados: { vinculoId: convite.dados.vinculoId },
+    });
+    const vinculo = await comBanco(async (cliente) => {
+      const { rows } = await cliente.query<{ role: string; status: string }>(
+        "select role, status from public.organization_members where id = $1",
+        [convite.dados.vinculoId],
+      );
+      return rows[0];
+    });
+    expect(vinculo).toEqual({ role: "org_admin", status: "pending" });
+  });
+
   it("CT4.10: o convidado não aceita mudando o papel", async () => {
     await recusadoPeloServidor(
       convidado,

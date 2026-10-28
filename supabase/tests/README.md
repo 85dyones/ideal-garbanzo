@@ -35,6 +35,7 @@ O projeto de desenvolvimento é um só para todos os agentes. Reset, testes de b
 - **Objetos fora desses schemas** (buckets, políticas em `storage.objects` sem dependência do `private`, jobs do `pg_cron`): a migração que os cria precisa ser reaplicável (`insert ... on conflict (id) do update`, `drop policy if exists`, `cron.unschedule`). Decidido na I1.3 (ADR-0002 §2.14).
 - **Buckets da aplicação:** `config/banco-dev.json` → `bucketsDaAplicacao`. O reset apaga os arquivos pela API do Storage antes de limpar o banco, com `NEXT_PUBLIC_SUPABASE_URL` e `SUPABASE_SECRET_KEY` do mesmo destino do banco (a trava recusa outro projeto). Apagar `storage.objects` por SQL deixaria o arquivo órfão, e o Supabase recusa.
 - **Atuar como usuário:** o papel `postgres` ignora a RLS. Asserção de acesso roda com `set local role authenticated` e `request.jwt.claims` com o `sub`; a fixture de administrador está no `100-identidade-estrutura.test.sql` (ADR-0002 §3).
+- **Claims sempre definidas:** toda asserção com papel trocado (`anon`, `authenticated`, `service_role`) roda com `request.jwt.claims` definidas, como o PostgREST faz, e as claims são limpas ao voltar a `postgres`. O `tests/pgtap-claims.test.ts`, no `npm test`, recusa o arquivo que quebrar essa regra e documenta as convenções de linha que ele entende (R4 da I1.7).
 
 ## Verificação de mutação (gate 3)
 

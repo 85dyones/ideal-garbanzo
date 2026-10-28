@@ -10,7 +10,7 @@
 -- claims do usuário; a política de INSERT, com o gatilho desligado só dentro
 -- desta transação.
 begin;
-select plan(62);
+select plan(69);
 
 -- Apoio do arquivo (objetos temporários, desfeitos no rollback) -------------------
 
@@ -425,6 +425,58 @@ select is(
     where organization_id = pg_temp.id('A') and profile_id = pg_temp.id('N2')$$),
   'linhas: 1',
   'D26c: o org_admin cancela o convite pendente');
+
+-- R3 (I1.8): reconvite com troca de papel numa chamada só ----------------------------
+-- N2 está removido, como member. O id vem como postgres, fora da RLS.
+
+reset role;
+insert into pg_temp.fixture
+  select 'A/N2', m.id from public.organization_members m
+  where m.organization_id = pg_temp.id('A') and m.profile_id = pg_temp.id('N2');
+set local role authenticated;
+
+select matches(
+  pg_temp.resultado($$select public.reconvidar_membro(pg_temp.id('A/N2'), 'n2-140@repasse-teste.invalid', 'dono')$$),
+  '^erro 23514',
+  'R3: papel inválido na troca derruba o reconvite inteiro');
+reset role;
+select is(
+  (select m.role || '/' || m.status from public.organization_members m where m.id = pg_temp.id('A/N2')),
+  'member/removed',
+  'R3: depois da falha na troca, o vínculo continua removido (nada gravado)');
+set local role authenticated;
+
+select pg_temp.entrar('A2');
+select matches(
+  pg_temp.resultado($$select public.reconvidar_membro(pg_temp.id('A/N2'), 'n2-140@repasse-teste.invalid', 'member')$$),
+  '^erro P0001: reconvite indisponível para este vínculo',
+  'R3: member não reconvida (a RLS tira a linha do alcance)');
+
+select pg_temp.entrar('A1');
+select is(
+  pg_temp.resultado($$select public.reconvidar_membro(pg_temp.id('A/N2'), 'n2-140@repasse-teste.invalid', 'org_admin')$$),
+  'linhas: 1',
+  'R3: o org_admin reconvida com papel novo');
+reset role;
+select is(
+  (select m.role || '/' || m.status || '/' || m.invited_email from public.organization_members m where m.id = pg_temp.id('A/N2')),
+  'org_admin/pending/n2-140@repasse-teste.invalid',
+  'R3: o reconvite grava status, e-mail e papel juntos');
+set local role authenticated;
+
+select matches(
+  pg_temp.resultado($$select public.reconvidar_membro(pg_temp.id('A/N2'), 'n2-140@repasse-teste.invalid', 'member')$$),
+  '^erro P0001: reconvite indisponível para este vínculo',
+  'R3: vínculo que não está removido não é reconvidado');
+
+set local role anon;
+select set_config('request.jwt.claims', '{"role": "anon"}', true);
+select throws_ok(
+  $$select public.reconvidar_membro(gen_random_uuid(), 'x@repasse-teste.invalid', 'member')$$,
+  '42501', 'permission denied for function reconvidar_membro',
+  'R3: anon não executa o reconvite');
+set local role authenticated;
+select pg_temp.entrar('A1');
 
 -- CT2.5, CT2.6 e D27: o org_admin de A não gerencia B ---------------------------------------
 

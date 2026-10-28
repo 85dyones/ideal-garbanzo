@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 1 (identidade e adesão) **concluído em 28/10**. O gate foi cumprido e o ADR-0002 foi aceito, com as ressalvas R1 a R7 na §8.  
 **Próximas subtarefas:**
-- **I1.8 (T2):** correções das ressalvas R3, R4 e R5, e a conferência da R8, antes de usuários reais. A R2 e a R1 foram corrigidas em 28/10.
+- **I1.8 (T2):** R1 a R5 corrigidas em 28/10. Falta conferir a R8, com um endereço de e-mail da pessoa responsável, antes de usuários reais.
 - **Inc. 2, I2.1 (T0):** extrair as transições da §6.2 e os requisitos de publicação.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
@@ -497,3 +497,35 @@
   - `test:integration`: 51 testes passaram;
   - `test:e2e`: 8 passaram.
 - **Nova ressalva R8 (a conferir):** cadastro prévio com e-mail alheio. A hipótese, pelo comportamento conhecido do Auth, é que a senha do primeiro cadastro continua depois de a pessoa dona do e-mail confirmar. Não foi testado, porque o teste manda e-mail e precisa de um endereço controlado pela pessoa responsável. Está registrada no ADR-0002 §8.
+
+### 2026-10-28 · I1.8 · R3, R4 e R5
+
+- **Migração `20261028210000_ressalvas_da_revisao`:**
+  - **R5:** `private.manutencao()` passa a usar uma lista permitida de sessões, a nova `private.sessao_de_manutencao`, com `postgres` e `supabase_admin`.
+    - Ela também exige `pg_trigger_depth() = 1`, além de continuar exigindo usuário e claims vazios. O comentário foi corrigido.
+    - A sessão real dos scripts do T2 no dev foi conferida: `postgres`, sem superusuário. Os outros logins do projeto são `authenticator`, `supabase_admin`, `supabase_auth_admin`, `supabase_storage_admin` e os de replicação, ETL e leitura.
+  - **R3:** `public.reconvidar_membro(p_vinculo, p_email, p_papel)`.
+    - É `security invoker`, com execução só para `authenticated`.
+    - Faz o reconvite e a troca de papel numa chamada só, e recusa com P0001 quando a linha não está removida ou fora do alcance da RLS.
+    - `convidarMembro` passou a chamar a função.
+- **R4:**
+  - claims nos blocos de `010-base-auditoria` (`anon`, um usuário real sem papel e `service_role`) e de `110-adesao` (`anon`), limpas ao voltar a `postgres`;
+  - checagem automática `tests/pgtap-claims.test.ts`, no `npm test`. Com as versões antigas dos dois arquivos, ela acusou as mesmas 11 linhas listadas pelo T3; com as novas, nenhuma;
+  - convenção registrada em `supabase/tests/README.md`.
+- **Testes:**
+  - `210-manutencao` (11), com os chamadores fixos, a lista de sessões, o nível de gatilho, as claims e o contraste;
+  - 7 casos de R3 no `140-membros`, agora com 69 testes: falha na troca não grava nada, `member` recusado, sucesso com papel novo, linha não removida e `anon`;
+  - 1 de integração do reconvite com papel novo.
+- **Mutação**, dentro da transação do próprio arquivo, desfeita no rollback:
+  - lista de exclusão no lugar da permitida: caem os 3 testes de sessão;
+  - sem o nível de gatilho: cai o teste de nível 0;
+  - reconvite que engole a falha da troca: caem os 2 de atomicidade e os seguintes;
+  - reconvite sem conferir a linha: caem o de `member` e o de linha não removida.
+
+  Os contrastes passaram, e o `test:db` confirmou o banco intacto depois.
+- **Evidência no dev**, depois de `db:reset` com as 6 migrações:
+  - `test:db`: 14 arquivos e 484 asserções passaram;
+  - `test:integration`: 52 passaram;
+  - `test:e2e`: 8 passaram;
+  - lint, tipos, 156 testes unitários e build passaram.
+- O reset apagou os dados de teste do dev, inclusive a conta do teste de cadastro da pessoa responsável.

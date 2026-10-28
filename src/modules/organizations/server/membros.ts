@@ -148,27 +148,19 @@ export function convidarMembro(
         );
       }
       // Reconvite: a mesma linha volta a `pending` (o vínculo é único por
-      // empresa e perfil). Vínculo removido não troca papel; a troca vem depois.
+      // empresa e perfil) e, se o papel pedido for outro, troca de papel. As
+      // duas escritas vão numa chamada só, na mesma transação, com a sessão
+      // de quem convida (ADR-0002 §8, R3).
       const vinculoId = existente.data.id;
       const reconvite = await comRastreio(
-        dependencias.sessao
-          .from("organization_members")
-          .update({ status: "pending", invited_email: email })
-          .eq("id", vinculoId)
-          .eq("status", "removed"),
+        dependencias.sessao.rpc("reconvidar_membro", {
+          p_vinculo: vinculoId,
+          p_email: email,
+          p_papel: papel,
+        }),
         dependencias.requestId,
       );
       if (reconvite.error !== null) return recusaDoConvite(reconvite.error);
-      if (existente.data.role !== papel) {
-        const troca = await comRastreio(
-          dependencias.sessao
-            .from("organization_members")
-            .update({ role: papel })
-            .eq("id", vinculoId),
-          dependencias.requestId,
-        );
-        if (troca.error !== null) return traduzirErroDoBanco(troca.error);
-      }
       return sucesso({ vinculoId });
     },
   );

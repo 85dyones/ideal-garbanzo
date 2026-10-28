@@ -43,8 +43,10 @@ select throws_like($$update public.restricted_access_logs set resource_type = 'a
 select throws_like($$delete from public.restricted_access_logs$$, '%só de inclusão%', 'DELETE recusado em restricted_access_logs');
 select throws_like($$truncate public.restricted_access_logs$$, '%só de inclusão%', 'TRUNCATE recusado em restricted_access_logs');
 
--- anon sem acesso
+-- anon sem acesso. Cada bloco define as claims como o PostgREST faria
+-- (ADR-0002 §3; R4 da I1.7) e as limpa ao voltar a postgres.
 set local role anon;
+select set_config('request.jwt.claims', '{"role": "anon"}', true);
 select throws_ok($$select * from public.audit_logs$$, '42501', 'permission denied for table audit_logs', 'anon não lê audit_logs');
 select throws_ok(
   $$insert into public.audit_logs (action, entity_type) values ('anon', 'teste')$$,
@@ -52,27 +54,37 @@ select throws_ok(
 );
 select throws_ok($$select * from public.platform_settings$$, '42501', 'permission denied for table platform_settings', 'anon não lê platform_settings');
 reset role;
+select set_config('request.jwt.claims', '', true);
 
 -- authenticated sem papel não vê nada: desde a I1.3 a leitura existe, filtrada
 -- pela RLS (ADR-0002 §2.7 e §2.9). Os registros inseridos acima e a chave
--- não crítica abaixo existem; a leitura volta vazia.
+-- não crítica abaixo existem; a leitura volta vazia. O usuário é real, sem
+-- papel na plataforma nem empresa (o gatilho do cadastro cria o perfil).
 insert into public.platform_settings (key, value, description, is_critical)
   values ('teste_nao_critica', '1'::jsonb, 'teste', false);
+insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data, aud, role)
+  values ('01000000-0000-4000-8000-000000000001', 'sem-papel-010@repasse-teste.invalid', now(),
+          '{"full_name": "Sem papel"}'::jsonb, 'authenticated', 'authenticated');
 set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub": "01000000-0000-4000-8000-000000000001", "role": "authenticated"}', true);
 select is((select count(*)::int from public.audit_logs), 0, 'authenticated sem papel não lê audit_logs');
 select is((select count(*)::int from public.field_history), 0, 'authenticated sem papel não lê field_history');
 select is((select count(*)::int from public.restricted_access_logs), 0, 'authenticated sem papel não lê restricted_access_logs');
 select is((select count(*)::int from public.platform_settings), 0, 'authenticated sem papel nem empresa não lê platform_settings');
 reset role;
+select set_config('request.jwt.claims', '', true);
 
 -- service_role insere, mas não altera
 set local role service_role;
+select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 select lives_ok(
   $$insert into public.audit_logs (action, entity_type) values ('servidor', 'teste')$$,
   'service_role insere em audit_logs'
 );
 select throws_ok($$update public.audit_logs set action = 'alterada'$$, '42501', 'permission denied for table audit_logs', 'service_role não tem UPDATE em audit_logs');
 reset role;
+select set_config('request.jwt.claims', '', true);
 
 select * from finish();
 rollback;
