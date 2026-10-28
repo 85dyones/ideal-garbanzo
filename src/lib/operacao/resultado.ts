@@ -18,6 +18,8 @@ export type CodigoDeErro =
   | "conflito"
   /** Regra de negócio recusada pelo banco (transição, campo obrigatório). */
   | "regra_violada"
+  /** Tentativas demais na janela (ADR-0002 §2.16). */
+  | "limite_excedido"
   /** O banco gravou, mas um passo seguinte falhou; a operação pode ser repetida. */
   | "falha_parcial"
   /** Falha inesperada do banco, do Auth ou do Storage. */
@@ -44,6 +46,8 @@ const MENSAGENS: Readonly<Record<CodigoDeErro, string>> = {
   sem_permissao: "Sem permissão para esta ação.",
   conflito: "Já existe um registro igual em andamento.",
   regra_violada: "A ação não é permitida no estado atual.",
+  limite_excedido:
+    "Muitas tentativas em pouco tempo. Tente de novo mais tarde.",
   falha_parcial: "A ação foi gravada, mas um passo seguinte falhou. Repita.",
   falha: "Não foi possível concluir agora. Tente de novo.",
 };

@@ -170,6 +170,17 @@ export function enviarEvidencia(
   );
 }
 
+/**
+ * O esquema já aceita até 1 minuto à frente (relógio do navegador adiantado),
+ * mas o banco recusa qualquer data depois do `now()` dele. A data informada
+ * dentro dessa tolerância vira o instante atual do servidor, com 1 segundo de
+ * margem para a diferença entre os relógios do servidor e do banco.
+ */
+function semFuturo(valor: string): string {
+  const limite = Date.now() - 1000;
+  return Date.parse(valor) > limite ? new Date(limite).toISOString() : valor;
+}
+
 export interface Decisao {
   readonly pedidoId: string;
   readonly status: "approved" | "rejected";
@@ -196,7 +207,7 @@ export function decidirPedido(
         dados.decisao === "aprovar"
           ? {
               status: "approved",
-              cnpj_checked_at: dados.cnpjConferidoEm,
+              cnpj_checked_at: semFuturo(dados.cnpjConferidoEm),
               cnpj_check_source: dados.fonteDaConferencia,
               cnpj_check_evidence_id: dados.evidenciaId,
             }

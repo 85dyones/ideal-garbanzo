@@ -11,6 +11,7 @@ Valores reais nunca entram no Git, no chat nem em issue. O `.env.example` lista 
 |---|---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | pública | URL da API do projeto Supabase | painel do Supabase → Project Settings → API |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | pública | chave publicável (`sb_publishable_…`); em projetos antigos, a chave `anon` | painel do Supabase → Project Settings → API Keys |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | pública, opcional | chave do site (*site key*) do Cloudflare Turnstile. Com ela, `/cadastro`, `/entrar` e `/recuperar` mostram o widget e enviam o token ao Supabase Auth, que o confere com a chave secreta do Turnstile cadastrada no próprio Auth (ADR-0002 §2.8). Sem ela, não há widget nem token: é o caso do `dev` e do E2E. Se o captcha estiver ligado no Auth do projeto, a variável precisa estar definida, senão o login falha. A chave secreta do Turnstile não entra no repasse | painel do Cloudflare → Turnstile → widget do domínio |
 | `SUPABASE_SECRET_KEY` | **somente servidor** | chave secreta (`sb_secret_…`), equivalente à antiga `service_role`; ignora o RLS | painel do Supabase → Project Settings → API Keys |
 | `SUPABASE_PROJECT_REF` | ferramenta local | identificador do projeto (ex.: `ralmlmuewullugeqtgoz`) | URL do painel do projeto |
 | `SUPABASE_DB_URL` | **ferramenta local, secreta** | conexão Postgres para migrações e testes de banco | painel do Supabase → Connect → *Session pooler* (host `aws-<n>-sa-east-1.pooler.supabase.com`), com a senha do banco codificada para URL e **sem** `sslmode`: o TLS é configurado no cliente com o certificado de CA do Supabase (`supabase/certs/prod-ca-2021.crt`) |
@@ -20,7 +21,7 @@ Valores reais nunca entram no Git, no chat nem em issue. O `.env.example` lista 
 | Ambiente | Projeto Supabase | Onde os valores ficam | Variáveis |
 |---|---|---|---|
 | Local (`dev`) | `ralmlmuewullugeqtgoz` | `.env` ou `.env.local` na raiz, ambos ignorados pelo Git | todas |
-| Homologação (previews da Vercel, branch `main`) | `ralmlmuewullugeqtgoz` | Vercel → projeto `ideal-garbanzo` → Environment Variables → **Preview** | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e, quando o código precisar, `SUPABASE_SECRET_KEY` |
+| Homologação (previews da Vercel, branch `main`) | `ralmlmuewullugeqtgoz` | Vercel → projeto `ideal-garbanzo` → Environment Variables → **Preview** | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, quando o código precisar, `SUPABASE_SECRET_KEY` e, com o captcha ligado no Auth, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (entra no build: mudar a chave pede novo deploy) |
 | Produção (branch `producao`) | `repasse-prod`, a criar no Inc. 6 | Vercel → **Production** | **nenhuma até o Inc. 6** |
 | CI (GitHub Actions) | Supabase efêmero no runner | gerado pelo próprio job | nenhuma cadastrada |
 

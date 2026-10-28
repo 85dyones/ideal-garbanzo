@@ -44,6 +44,11 @@ import {
   type UsuarioDeTeste,
 } from "./apoio";
 import type { Dependencias } from "@/lib/operacao/dependencias";
+import {
+  LIMITES,
+  consumirLimite,
+  type Limite,
+} from "@/lib/operacao/limite-de-tentativas";
 import type { CodigoDeErro, Resultado } from "@/lib/operacao/resultado";
 
 interface Pessoa {
@@ -551,5 +556,50 @@ describe("papel e configuração pelo servidor", () => {
       return rows[0]?.granted_by;
     });
     expect(concessao).toBe(admin.usuario.id);
+  });
+});
+
+describe("limite de tentativas (ADR-0002 §2.16)", () => {
+  async function esgotar(limite: Limite, perfilId: string): Promise<void> {
+    for (let i = 0; i < limite.maximo; i += 1) {
+      await consumirLimite(clienteAdministrativo(), limite, [perfilId]);
+    }
+  }
+
+  it("convite além do limite é recusado sem gravar vínculo", async () => {
+    await esgotar(LIMITES.convite, requerente.usuario.id);
+    const email = emailDeTeste("alem-do-limite");
+    const resultado = await convidarMembro(dependencias(requerente.sessao), {
+      empresaId,
+      email,
+      papel: "member",
+    });
+    expect(resultado).toMatchObject({ ok: false, erro: "limite_excedido" });
+    const vinculos = await comBanco(async (cliente) => {
+      const { rows } = await cliente.query<{ total: number }>(
+        "select count(*)::int as total from public.organization_members where invited_email = $1",
+        [email],
+      );
+      return rows[0]?.total;
+    });
+    expect(vinculos).toBe(0);
+  });
+
+  it("pedido de adesão além do limite é recusado sem gravar", async () => {
+    await esgotar(LIMITES.pedidoDeAdesao, convidado.usuario.id);
+    const resultado = await enviarPedidoDeAdesao(
+      dependencias(convidado.sessao),
+      { ...pedido(), cnpj: cnpjDeTeste("E") },
+    );
+    expect(resultado).toMatchObject({ ok: false, erro: "limite_excedido" });
+    expect(await contarPedidosDe(convidado.usuario.id)).toBe(0);
+  });
+
+  it("contraste: outro usuário, com contador próprio, envia normalmente", async () => {
+    const resultado = await enviarPedidoDeAdesao(
+      dependencias(operador.sessao),
+      { ...pedido(), cnpj: cnpjDeTeste("F") },
+    );
+    expect(resultado.ok).toBe(true);
   });
 });

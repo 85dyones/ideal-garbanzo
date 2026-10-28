@@ -1,4 +1,6 @@
-# Repasse de veículos
+# EntrePátios
+
+**O repasse que conecta pátios.** Rede privada de oportunidades automotivas entre lojistas (marca em [`docs/marca.md`](docs/marca.md)).
 
 Plataforma B2B privada de oportunidades de repasse de veículos para compradores profissionais, com ofertas padronizadas, histórico documental e negociações rastreáveis. As regras de negócio estão na [especificação v1.1](docs/especificacao/especificacao-v1.1.md).
 

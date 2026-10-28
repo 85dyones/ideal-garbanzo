@@ -1,9 +1,10 @@
 # Tarefa atual
 
-**Etapa:** Inc. 1, Identidade e adesão (plano v2); I1.1 a I1.5 entregues (I1.4 e I1.5 sem commit)  
-**Próximas subtarefas:**
-- **I1.6 (T1):** telas de adesão, login, recuperação, painel de adesões, empresa e membros, sobre as operações da I1.5; inclui a decisão de SMTP com a pessoa responsável.
-- **I1.7 (T3):** revisão independente do diff, das políticas e do ADR-0002.
+**Etapa:** Inc. 1, Identidade e adesão (plano v2). A I1.1 a I1.6 foram entregues; a I1.6 está sem commit.  
+**Próxima subtarefa:**
+- **I1.7 (T3):** revisão independente do diff, das políticas e do ADR-0002. A pessoa responsável vai solicitar. O gate do Inc. 1 depende dela.
+
+**Configurações pendentes nos painéis (pessoa responsável):** veja a entrada da I1.6.
 
 > **Repositório público:** este registro não traz segredos, dados pessoais nem detalhes internos ou de segurança de outros negócios. O registro completo fica em `notas-privadas/`, fora do Git.
 
@@ -314,3 +315,67 @@
 
   Sem mutação, os 24 passam. A camada de banco foi conferida com as mutações da I1.4 (entrada acima).
 - Não conferido: os avisos de segurança do Supabase (o conector continua sem acesso ao projeto) e o job de banco do CI, que roda no próximo push. A tela que monta as dependências pelos cookies (`criarDependencias`) só é exercitada na I1.6.
+
+### 2026-10-28 · I1.6 · entregue (revisão na I1.7)
+
+- **Decisões da pessoa responsável (28/10):**
+  - e-mail do Auth pela Hostinger, com caixa provisória de outro negócio dela. Isso é exceção registrada à §4.5 da especificação, válida só em `dev` e homologação até o Inc. 6 (ADR-0002 §2.8; plano, I6.1; detalhes em `notas-privadas/`);
+  - limite de tentativas com os contadores no próprio Postgres do repasse, sem provedor novo.
+- **Telas:** despachadas ao `builder` (T1) em worktree a partir de `9beb1fc`. Inclui:
+  - autenticação com `@supabase/ssr`, proxy e `/auth/confirmar`;
+  - início, pedido de adesão, empresa e membros;
+  - páginas provisórias do comprador para o teste 1;
+  - administração de adesões, empresas e usuários;
+  - E2E com Playwright.
+
+  Leitura só com a sessão do usuário, escrita só pelas operações da I1.5, checagem em cada página. Turnstile pelo captcha do Supabase Auth.
+- **Limite de tentativas (T2, fora do worktree):**
+  - migração `20261028180000_limite_de_tentativas` e `src/lib/operacao/limite-de-tentativas.ts`, com o novo código `limite_excedido`;
+  - aplicado no convite de membro e no pedido de adesão; nas ações de autenticação entra depois da integração das telas;
+  - ADR-0002 §2.16 e quinto uso da chave secreta em §2.12.
+- **Evidência:**
+  - `db:reset` aplicou as 5 migrações;
+  - `test:db` passou: 13 arquivos, com o novo `200-limite-de-tentativas` (17 asserções);
+  - mutação de banco no dev, com cada mutação na transação do teste: as 5 foram detectadas (execute e tabela para `authenticated`, contador que nunca estoura, janela vencida mantida, chave em claro aceita);
+  - integração das operações: 27 casos, 3 deles novos de limite, com contraste;
+  - mutação de servidor: as 3 foram detectadas (sem o limite no convite, sem o limite no pedido, limite falhando aberto).
+- **Marca (28/10):** a pessoa responsável definiu a marca da plataforma: EntrePátios, com a assinatura "O repasse que conecta pátios". Ela está registrada em `docs/marca.md`, com grafia, regras de texto e onde aparece. O CLAUDE.md e o README citam a marca. O builder recebeu a marca durante a I1.6 para o título, a apresentação e os cabeçalhos. Os identificadores técnicos não mudam.
+- **Entrega do builder:** commit `85e0687` na branch do worktree, trazida para a árvore de trabalho sem commit.
+  - Telas públicas: apresentação com a marca, entrar, cadastro, recuperação, nova senha e `/auth/confirmar`.
+  - Telas logadas: início (situação, convites, empresas e pedidos), pedido de adesão, empresa e membros.
+  - Comprador provisório, para o teste 1.
+  - Administração: adesões (conferência, evidência, URL temporária e decisão), empresas e usuários.
+  - Proxy do Next 16, que só renova a sessão e manda o anônimo ao login.
+  - Checagem de acesso em cada página e layout (`verificarAcesso`), com leitura só pela sessão do usuário e escrita só pelas operações da I1.5.
+  - E2E com Playwright 1.64.1, com 6 testes.
+- **Revisão do T2:** proxy, retorno do Auth, ações de autenticação, validação do `proximo`, origem da URL de retorno e checagem de acesso. Nenhuma página protegida deixa de chamar a checagem, e a chave secreta não aparece em `src/`.
+- **Ajustes do T2:**
+  - limite de tentativas nas ações de entrar, cadastro e recuperação, contado por e-mail e, à parte, por IP (ADR-0002 §2.16);
+  - `serverActions.bodySizeLimit` de 11 MB no `next.config.ts`, para a evidência de até 10 MB;
+  - a data da conferência dentro da tolerância de relógio vira o instante do servidor, para o banco não recusar.
+- **Evidência no projeto de desenvolvimento:**
+  - lint, tipos, formatação, 148 testes unitários e build passaram;
+  - `test:db`: 13 arquivos passaram;
+  - `test:integration`: 50 testes em 5 arquivos passaram;
+  - `test:e2e`: 6 passaram, entre eles CT1.1 e CT1.4 ("Sem permissão" igual para qualquer id), CT1.3 por amostra, o contraste do comprador e o fluxo completo da adesão pelas telas.
+- **Mutação da camada de telas (teste 1):** com a checagem da área do comprador afrouxada no layout e nas páginas, o CT1.1 falhou. Os arquivos foram restaurados.
+- **Conferência no navegador** (painel do app, servidor local, usuários de teste criados na sessão):
+  - a apresentação mostra a marca;
+  - o login cai no início;
+  - o painel de adesões lista os pedidos, e a página do pedido mostra dados, conferência, evidência e decisão;
+  - "Mover para análise" grava, e o requerente vê "Em análise";
+  - id inexistente mostra "Registro inexistente" para a equipe;
+  - o requerente vê "Sem permissão" na administração e no comprador;
+  - o layout de celular (375 px) não tem rolagem horizontal.
+- **Configurações pendentes da pessoa responsável:**
+  - **Supabase, Authentication:**
+    - Site URL;
+    - Redirect URLs: `http://localhost:3000/**` e o padrão dos previews da Vercel;
+    - modelos de e-mail apontando para `/auth/confirmar?token_hash={{ .TokenHash }}&type=...` (signup, invite, recovery e email_change);
+    - confirmação de e-mail ligada;
+    - SMTP da Hostinger;
+    - captcha Turnstile.
+
+    Com o captcha ligado no projeto de desenvolvimento, o login dos testes de integração e do E2E falha. Fica para decidir junto com o widget.
+  - **Cloudflare:** widget Turnstile próprio do repasse; a chave do site vai em `NEXT_PUBLIC_TURNSTILE_SITE_KEY` na Vercel.
+- **Fora desta entrega:** configuração e auditoria (telas), termos e privacidade, edição do próprio perfil na tela, paginação das listas da administração (até 200 itens) e logotipo.

@@ -33,3 +33,9 @@ Thumbs.db
 
 # Notas privadas: detalhes internos e de segurança (repositório público)
 notas-privadas/
+
+# Playwright: resultados, relatórios e cache dos E2E
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

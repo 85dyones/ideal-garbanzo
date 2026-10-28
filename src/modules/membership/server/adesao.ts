@@ -7,6 +7,7 @@
  * já está na plataforma. Turnstile e limite de taxa entram com a tela (I1.6).
  */
 import type { Dependencias } from "@/lib/operacao/dependencias";
+import { LIMITES, consumirLimite } from "@/lib/operacao/limite-de-tentativas";
 import {
   falha,
   sucesso,
@@ -32,6 +33,12 @@ export function enviarPedidoDeAdesao(
           "Confirme seu e-mail antes de enviar o pedido.",
         );
       }
+      const cabe = await consumirLimite(
+        dependencias.administrativo(),
+        LIMITES.pedidoDeAdesao,
+        [contexto.perfilId],
+      );
+      if (!cabe) return falha("limite_excedido");
       const { data, error } = await comRastreio(
         dependencias.sessao
           .from("membership_applications")

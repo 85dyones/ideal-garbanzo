@@ -185,7 +185,10 @@ O vínculo do requerente, criado na aprovação da adesão (seção 2.5), já na
 - **E-mail:** `profiles.email` acompanha `auth.users.email` por gatilho na alteração. A troca segue o fluxo de confirmação do Supabase Auth; o usuário não altera `profiles.email` direto.
 - **Escrita interna:** os gatilhos `proteger_*` liberam a escrita feita por outro gatilho nosso (`pg_trigger_depth() > 1`): o cadastro e a sincronização de e-mail no perfil, e a empresa e o vínculo criados pela aprovação. Nenhuma chave estrangeira de identidade tem ação em cascata, então o usuário não dispara escrita interna fora desses caminhos.
 - **Exclusão:** usuários não são apagados. `audit_logs` aponta para `profiles` com chave estrangeira restritiva, então apagar um usuário com histórico falha. `ON DELETE SET NULL` ou `CASCADE` não servem, porque virariam UPDATE ou DELETE na tabela só de inclusão, que o gatilho recusa. Pedido de eliminação de dados (LGPD) vira anonimização do perfil, definida com o jurídico (§7.2).
-- **E-mails no Inc. 1:** só os do próprio Auth (confirmação, recuperação, convite). O aviso de aprovação da empresa (§6.13) entra com a outbox, no Inc. 5; até lá, o requerente vê o status no painel. O SMTP padrão do Supabase é só para teste, segundo a documentação do Supabase; o provedor de e-mail próprio do repasse é decidido com a pessoa responsável na I1.6.
+- **E-mails no Inc. 1:** só os do próprio Auth (confirmação, recuperação, convite). O aviso de aprovação da empresa (§6.13) entra com a outbox, no Inc. 5; até lá, o requerente vê o status no painel. O SMTP padrão do Supabase é só para teste, segundo a documentação do Supabase; o provedor de e-mail do repasse é a Hostinger (resposta da pessoa responsável em 28/10), sem nada compartilhado com a Motors. Por enquanto, a caixa remetente é provisória e pertence a outro negócio da pessoa responsável; os detalhes ficam em `notas-privadas/`.
+  - **Exceção à §4.5 da especificação**, que proíbe conta de provedor de outro negócio. Ela foi aprovada pela pessoa responsável em 28/10 e vale só para `dev` e homologação, até o Inc. 6.
+  - Até lá, os e-mails do Auth saem com o endereço provisório, e a senha dessa caixa fica nas configurações de SMTP do projeto Supabase do repasse.
+  - Antes da produção, o repasse passa a ter caixa própria, e a senha da caixa provisória é trocada. Esse item entra na lista de go/no-go do Inc. 6. O SMTP dela entra no Auth do Supabase na I1.6. Os dados de conexão são os publicados no painel de e-mail da Hostinger, e a senha é cadastrada pela pessoa responsável direto no painel do Supabase, sem passar pelo repositório nem pelo chat.
 
 ### 2.9. Quem lê o quê no Inc. 1 (teste 2, parte de empresa)
 
@@ -233,7 +236,8 @@ Nenhuma dessas tabelas tem DELETE para `anon`, `authenticated` ou `service_role`
 ### 2.12. Escrita pelo servidor com a sessão do usuário
 
 - As operações de servidor da I1.5 escrevem com o cliente da sessão do usuário (chave publicável e cookie). Assim, toda escrita passa pelas políticas e pelos gatilhos com o ator verdadeiro.
-- A chave secreta (`service_role`) fica restrita a quatro usos, todos em código de servidor:
+- A chave secreta (`service_role`) fica restrita a cinco usos, todos em código de servidor:
+  - contagem do limite de tentativas (seção 2.16), depois da checagem de permissão da operação;
   - API administrativa do Auth (bloqueio, desbloqueio e convite);
   - leitura do perfil pelo e-mail no convite de membro, depois de o servidor conferir que quem convida gere a empresa (I1.5): a sessão de quem convida não enxerga perfis fora da empresa, e a resposta é a mesma exista ou não a conta. A gravação do vínculo continua com a sessão de quem convida;
   - inclusão em `restricted_access_logs`;
@@ -270,9 +274,40 @@ O primeiro bucket entra no Inc. 1, então a convenção do `supabase/tests/READM
 
 ### 2.15. Rotas e telas (teste 1, parte do Inc. 1)
 
-- As áreas de fornecedor, comprador e administração conferem a permissão no servidor, no layout de cada grupo de rotas, antes de buscar qualquer dado. A interface nunca é a única barreira (§1.4.6).
+- As áreas de fornecedor, comprador e administração conferem a permissão no servidor antes de buscar qualquer dado: no layout de cada grupo de rotas e, de novo, em cada página, porque o Next não renderiza o layout outra vez quando a navegação fica dentro do mesmo grupo (ajuste da I1.6). A interface nunca é a única barreira (§1.4.6).
 - A área do comprador ganha no Inc. 1 uma página provisória, protegida por `pode_ver_catalogo()`, para o teste 1 ter alvo. O catálogo de verdade vem no Inc. 4.
 - Quem não tem acesso recebe "sem permissão" para qualquer id, exista o registro ou não. "Registro inexistente" só aparece para quem tem acesso (§9). Assim, a resposta não revela se o registro existe.
+
+### 2.16. Limite de tentativas e Turnstile (I1.6)
+
+- **Onde ficam os contadores:** no Postgres do repasse, por decisão da pessoa responsável em 28/10, sem provedor novo. O projeto interno de onde veio o padrão usava um serviço externo, que exigiria conta nova.
+  - Migração `20261028180000_limite_de_tentativas`: tabela `public.limites_de_tentativas` e função `public.consumir_limite_de_tentativas`, com janela fixa por chave.
+  - A função é `security invoker` e só o `service_role` executa e acessa a tabela; `anon` e `authenticated` não leem nem consomem, senão zerariam o próprio contador.
+  - A chave chega resumida em sha256 pelo servidor (`src/lib/operacao/limite-de-tentativas.ts`), então IP, e-mail e id não ficam gravados em claro (§7.2).
+  - Cada chamada apaga as janelas vencidas da própria chave e, de vez em quando, as de qualquer chave com mais de um dia.
+- **Falha fechado:** se o banco não responder, a tentativa é recusada com `limite_excedido`. O projeto interno deixava passar quando o serviço externo caía; aqui, sem banco, a operação também não aconteceria.
+- **Onde vale e com que valor:** os valores são técnicos e provisórios (a especificação não fixa números) e ficam numa tabela no código, por finalidade:
+
+  | Finalidade | Por | Valor |
+  |---|---|---|
+  | convite de membro | quem convida | 30 por hora |
+  | pedido de adesão | requerente | 5 por hora; o banco já impede dois pedidos abertos |
+  | entrar | e-mail | 10 em 15 minutos |
+  | entrar | IP | 30 em 15 minutos |
+  | cadastro | IP | 5 por hora |
+  | recuperação de senha | e-mail | 5 por hora |
+  | recuperação de senha | IP | 10 por hora |
+
+  - Entrar e recuperar contam por e-mail e, à parte, por IP, porque contar só o par IP e e-mail deixaria um IP testar muitos e-mails.
+  - O IP é o primeiro item de `x-forwarded-for`, preenchido pela Vercel. Sem esse cabeçalho, como na máquina local, as tentativas contam juntas.
+  - Ponto para a I1.7: conferir se a Vercel sobrescreve o `x-forwarded-for` enviado pelo cliente. Se não sobrescrever, o limite por IP pode ser contornado trocando o cabeçalho, e o limite por e-mail continua valendo.
+  - Esses limites valem nas ações de servidor das telas de autenticação. A API do Auth é pública, então ela também conta com os limites nativos do Supabase Auth.
+- **Turnstile:** fica no captcha do próprio Supabase Auth, nas telas de cadastro, entrada e recuperação.
+  - A API do Auth é pública, e só a verificação dentro dele protege de verdade.
+  - O token vale uma vez, então o servidor do repasse não o verifica antes.
+  - O verificador de servidor do projeto interno, que confere host e ação, fica para quando houver formulário público fora do Auth.
+  - Sem `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, as telas não mostram o widget, como no `dev` e no E2E.
+  - Em produção, o widget próprio do repasse não deve aceitar `localhost` na lista de domínios (lição do projeto interno).
 
 ---
 

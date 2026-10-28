@@ -1,4 +1,6 @@
-# CLAUDE.md: Plataforma B2B de Repasse de Veículos
+# CLAUDE.md: EntrePátios, plataforma B2B de repasse de veículos
+
+Marca, assinatura e regras de texto: `docs/marca.md`. Identificadores técnicos (pacote `repasse`, repositório, projetos) não mudam.
 
 ## Documentos, nesta ordem
 

@@ -11,6 +11,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Dependencias } from "@/lib/operacao/dependencias";
+import { LIMITES, consumirLimite } from "@/lib/operacao/limite-de-tentativas";
 import {
   falha,
   sucesso,
@@ -55,6 +56,10 @@ export function convidarMembro(
       if (!podeGerirEmpresa(contexto, empresaId)) return falha("sem_permissao");
 
       const administrativo = dependencias.administrativo();
+      const cabe = await consumirLimite(administrativo, LIMITES.convite, [
+        contexto.perfilId,
+      ]);
+      if (!cabe) return falha("limite_excedido");
       const perfis = await administrativo
         .from("profiles")
         .select("id")

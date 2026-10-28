@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Repasse de veículos",
-  description: "Plataforma privada de oportunidades de repasse de veículos.",
+  title: { default: "EntrePátios", template: "%s · EntrePátios" },
+  description: "Rede privada de oportunidades automotivas entre lojistas.",
 };
 
 export default function RootLayout({
@@ -12,7 +12,9 @@ export default function RootLayout({
 }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="pt-BR">
-      <body className="min-h-screen antialiased">{children}</body>
+      <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
+        {children}
+      </body>
     </html>
   );
 }
