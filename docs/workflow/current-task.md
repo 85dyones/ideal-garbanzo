@@ -1,9 +1,8 @@
 # Tarefa atual
 
-**Etapa:** Inc. 1 (identidade e adesão) **concluído em 28/10**. O gate foi cumprido e o ADR-0002 foi aceito, com as ressalvas R1 a R7 na §8.  
-**Próximas subtarefas:**
-- **I1.8 (T2):** concluída em 28/10, com R1 a R5 e R8 corrigidas. A R6 (versionar a lista de mutações) fica para o Inc. 2, e a R7 para a I6.9.
-- **Inc. 2, I2.1 (T0):** extrair as transições da §6.2 e os requisitos de publicação.
+**Etapa:** Inc. 2 (oferta) em andamento. O Inc. 1 foi concluído em 28/10, com o gate cumprido, o ADR-0002 aceito e a I1.8 fechada; a R6 fica para este incremento, e a R7 para a I6.9.  
+**Próxima subtarefa:**
+- **I2.3 (T2):** migrações de `vehicles`, `offers`, `offer_versions`, `offer_media`, `offer_documents`, `supplier_declarations` e `offer_reviews`, com as transições, os CHECKs, a RLS, o snapshot e o hash, a expiração pelo `pg_cron` e os testes pgTAP, conforme o ADR-0003.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -577,3 +576,44 @@
   - `test:e2e`: 11 passaram;
   - no navegador do app, `/cadastro` mostra só nome e e-mail.
 - **Pendente:** a pessoa responsável sai da conta do teste da R8, que ficou com duas sessões, no outro navegador. As contas de teste do `dev` saem no próximo reset.
+
+### 2026-10-28 · I2.1 · entregue (regras da oferta)
+
+- **Extração:** o `fast-helper` (T0) trabalhou só em leitura, sem abrir segredos.
+- **Entrega:** anexo A do `docs/adr/0003-oferta.md`, que é um rascunho; as decisões entram na I2.2. O anexo traz:
+  - 17 transições (T01 a T17), com autor, pré-condições, efeitos e base;
+  - 15 transições proibidas (X01 a X15);
+  - os requisitos de publicação e o que não bloqueia;
+  - os campos materiais;
+  - as regras de preço, validade, disponibilidade e suspensão;
+  - os casos dos testes 2 (CT2.7 a CT2.15), 6 (CT6.1 a CT6.7), 11 (CT11.1 a CT11.7) e 12 (CT12.1 a CT12.9), com contraste e mutação;
+  - 32 ambiguidades (B1 a B32), com a sugestão mais conservadora. As que dependem da §13: B1, B2 e B32 (D10); B7 (C2); B20 (C1 a C4); B21 (D5); B27 (D9).
+- **Inventário do porte:** em `notas-privadas/i2.1-inventario-privado.md`, com seis padrões e arquivo e linha no projeto interno; no ADR, só o resumo genérico (A.8). O T0 corrigiu o diagnóstico (o CHECK de completude está em outra migração) e achou um gatilho de pares permitidos que o diagnóstico não citava.
+- **Conferência do T2:**
+  - citações da especificação: §3.3, a tabela e os requisitos da §6.2, a §6.7, a §6.9, a §6.10, a §7.4 e as colunas da §5.2 batem;
+  - inventário: três referências conferidas por amostra no projeto interno, todas batendo.
+- **Observação do T0:** ao abrir o diagnóstico privado, o ambiente carregou sozinho uma cópia antiga do `CLAUDE.md` guardada em `notas-privadas/originais-2026-10-27/`. O T0 não usou o conteúdo.
+
+### 2026-10-29 · I2.2 · entregue (decisões da oferta)
+
+- **Entrega:** seções 1 a 7 do `docs/adr/0003-oferta.md`, com status "proposto". O ADR traz:
+  - os estados, as transições (T01 a T19; T18 e T19 novas) e as proibições X16 a X19;
+  - os requisitos de publicação numa função só, para o gatilho e para a tela;
+  - a edição por estado;
+  - a versão por comparação do snapshot, uma por transação, por gatilho adiado;
+  - a estrutura do snapshot e o hash: JSON canônico, um subconjunto do JCS sem números, e SHA-256 no banco, com conferência independente em TS;
+  - o histórico e a auditoria por gatilho;
+  - a expiração pelo `pg_cron`, com o predicado de oferta aberta entre as rodadas;
+  - a suspensão, com categoria fechada, e a reativação só pelo administrador;
+  - os buckets e o download de documento só pelo servidor, com registro;
+  - quem lê o quê, as operações e as chaves de configuração;
+  - as respostas a B1 a B32.
+- **Conferido no `dev` em 29/10:** o `pg_cron` 1.6.4 está disponível e ainda não foi ligado (Postgres 17.11), lido em `pg_available_extensions`. A conferência foi feita pelo T2 com um script só de leitura; o conector do Supabase recusou a listagem de extensões por falta de permissão.
+- **Perguntas da seção 6, respondidas pela pessoa responsável em 29/10, todas pela sugestão:**
+  - Q1: revisão antes de publicar ligada como valor provisório, e a edição de oferta publicada não volta à revisão;
+  - Q2: o `member` prepara, e o `org_admin` publica e altera o que o comprador vê;
+  - Q3: o staff age só pelas transições;
+  - Q4: a identidade do veículo é material, e placa, RENAVAM e chassi ficam fixos depois da primeira publicação;
+  - Q5: validade padrão de 15 dias e teto de 30.
+- **Antecipado da I2.4:** nomes dos buckets, caminho dos objetos e regra de download dos documentos.
+- **Corrigido no plano:** caminho dos testes da I2.7 (`supabase/tests/database/3*`).
