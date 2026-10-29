@@ -812,3 +812,19 @@
     - a mensagem do resultado fica na URL e reaparece ao recarregar;
   - **estados não capturados:** carregamento, erro genérico, fila vazia e resultados de reservar, liberar e retirar;
   - **capturas:** feitas no servidor de desenvolvimento, com o indicador do Next escondido por CSS.
+
+### 2026-10-29 · Decisões D8, D9 e D10; encaminhamento da D5
+
+- **Push:** a pedido da pessoa responsável, `main` enviada ao `origin` (`100575f..81c0793`), com as I2.6 a I2.9 e a marca. O CI passou inteiro no `81c0793` (execução 40954243886): pela primeira vez, as migrações do Inc. 2 rodaram no Supabase efêmero, com reset, pgTAP e integração; lint, tipos, testes, formatação e build também passaram. O logo publicado é o do kit v0.3; a autoria do símbolo segue pendente com o designer da proposta original.
+- **Decididas pela pessoa responsável:**
+  - **D10:** revisão antes de publicar no piloto. O valor de `offer_review_required` já é `true`; a I6.2 tira a marca de provisório da descrição da chave;
+  - **D9:** oferta com impedimento de transferência ativo não publica no piloto. O padrão provisório da §6.11 vira o valor do piloto, e o Inc. 3 implementa assim;
+  - **D8:** piloto com 1 a 2 fornecedores e 3 a 5 compradores. Os nomes ficam em `notas-privadas/`, fora do repositório público.
+- **D5:** a pessoa responsável pediu um pacote para o advogado, preparado pelo T2. Ele traz os textos provisórios, o fluxo da intermediação, as perguntas sobre a Portaria SENATRAN 139/2025 e a LGPD, e o que cada resposta muda no produto. O piloto com dados reais continua bloqueado até a D5.
+  - **Pacote pronto em 29/10,** como documento compartilhável fora do repositório. O levantamento foi feito por um subagente `fast-helper` (T0), só em leitura. O documento tem 10 seções: o produto, o fluxo das partes em diagrama, os textos, os dados pessoais e os serviços de terceiros, a Portaria 139/2025, o impedimento, as notificações, a comissão e 13 perguntas, cada uma com o que muda no produto;
+  - **ambiguidades achadas no levantamento, para tratar depois:**
+    - o teste de linguagem não varre os modelos de e-mail em `supabase/templates/`;
+    - a §6.6 pede "nas fontes consultadas, em [data]", mas o teste aceita sem a data;
+    - o exemplo do snapshot no ADR-0003 usa `declarado_sem_comprovacao.v1`, e o código usa `declaracao_sem_comprovacao.v1`;
+    - nenhuma subtarefa do plano cria as telas de termos e privacidade previstas na especificação.
+- **Fila (pedido de 29/10):** perfil de interesse com alerta e copiloto de decisões e busca, na seção "Depois do piloto" do plano.

@@ -200,7 +200,7 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 
 **Aceite:** estados conforme a §6.4; testes 7 e 10.  
 **Seções:** §5.3, §6.3-§6.6, §6.11.  
-**Decisões:** D9 adota o padrão provisório da §6.11 (impedimento ativo não publica); C7 mantém o registro manual.
+**Decisões:** D9 decidida em 29/10: impedimento ativo não publica (o padrão da §6.11); C7 mantém o registro manual.
 
 | ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
 |---|---|---|---|---|
@@ -257,7 +257,7 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 
 **Aceite:** os 13 critérios da §10, com evidência.  
 **Seções:** §7, §10, §11, §15, §16.  
-**Decisões que bloqueiam o piloto:** D5, D8, D9, D10.
+**Decisões que bloqueiam o piloto:** D5, D8, D9, D10. D8, D9 e D10 decididas em 29/10; D5 com o jurídico.
 
 | ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
 |---|---|---|---|---|
@@ -291,12 +291,12 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 
 | Decisão | Afeta | Pode avançar antes | Não pode antes |
 |---|---|---|---|
-| D5 (jurídico) | I2.3, I4.1, I5.2, I6.1 | documentos ocultos ao comprador; texto provisório marcado | piloto; abrir evidência ao comprador |
+| D5 (jurídico) | I2.3, I4.1, I5.2, I6.1 | documentos ocultos ao comprador; texto provisório marcado. Em 29/10, a pessoa responsável pediu um pacote para o advogado | piloto; abrir evidência ao comprador |
 | D6 (WhatsApp) | pós-piloto | e-mail | qualquer envio por WhatsApp |
 | D7 (projetos de tentativas anteriores) | nenhuma | — | usar esses projetos |
-| D8 (participantes) | I6.8 | dados de teste identificados | piloto com dados reais |
-| D9 (impedimento de transferência) | I3.2, I3.3, I6.2 | padrão provisório: impedimento ativo não publica | valor definitivo |
-| D10 (revisão antes de publicar) | I2.2, I2.9, I6.2 | configuração com valor provisório | valor do piloto |
+| D8 (participantes) | I6.8 | **decidida em 29/10:** 1 a 2 fornecedores e 3 a 5 compradores; os nomes ficam em `notas-privadas/` | piloto com dados reais antes dos nomes |
+| D9 (impedimento de transferência) | I3.2, I3.3, I6.2 | **decidida em 29/10:** impedimento ativo não publica no piloto (o padrão da §6.11 vira o valor do piloto) | — |
+| D10 (revisão antes de publicar) | I2.2, I2.9, I6.2 | **decidida em 29/10:** revisão no piloto; a I6.2 tira a marca de provisório da chave | — |
 | C1-C4 (comissão) | pós-piloto | — | gerar comissão em produção |
 | C5 (documentos para aprovação) | I1.5 | registro da conferência sem lista fixa | lista obrigatória |
 | C6 (regiões e categorias) | I4.2 | filtros genéricos | restrição por região ou categoria |

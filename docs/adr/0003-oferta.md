@@ -43,7 +43,7 @@ A I2.1 levantou 32 ambiguidades (B1 a B32, anexo A.7). A seção 7 responde a ca
 
 ### 2.2. Revisão antes de publicar (D10)
 
-- **Configuração:** `offer_review_required`, booleano em `platform_settings`. O valor definitivo é a decisão D10 (§13). Até lá, o valor é provisório e fica marcado assim na descrição da chave (gate 7). O valor provisório é "revisão exigida" (Q1).
+- **Configuração:** `offer_review_required`, booleano em `platform_settings`. O valor definitivo é a decisão D10 (§13). Até lá, o valor é provisório e fica marcado assim na descrição da chave (gate 7). O valor provisório é "revisão exigida" (Q1). **D10 decidida em 29/10:** revisão no piloto. O valor já é esse; a I6.2 tira a marca de provisório da descrição da chave.
 - **A configuração vale no momento da transição.** Mudá-la não mexe nas ofertas que já estão em `under_review` ou `published`.
 - **Com revisão exigida:**
   - o fornecedor envia a oferta para `under_review`. O envio exige os requisitos da publicação (seção 2.4), inclusive a autorização de divulgação;
@@ -248,7 +248,7 @@ Os IDs são os do anexo A.2. T18 e T19 são novas.
   - o `pg_cron` 1.6.4 está disponível no projeto de desenvolvimento, mas ainda não foi ligado. Conferi em 29/10 em `pg_available_extensions`, no Postgres 17.11;
   - a I2.3 liga a extensão por migração (`20261029120100_expiracao_das_ofertas`), no schema `pg_catalog`, como manda a documentação do Supabase;
   - a migração não faz GRANT no schema `cron`. O gatilho de eventos do próprio Supabase dá o acesso ao `postgres` ao criar a extensão e repete a revogação e a concessão a cada `create extension`. Um GRANT do `postgres` para ele mesmo fica dependente desse acesso, e o reset seguinte falha com "dependent privileges exist" (conferido em 29/10; os GRANTs da primeira versão foram removidos do `dev`);
-  - a migração é reaplicável: `cron.schedule` com o mesmo nome atualiza o job, e dois resets seguidos passaram. O CI ainda não rodou essa migração.
+  - a migração é reaplicável: `cron.schedule` com o mesmo nome atualiza o job, e dois resets seguidos passaram. O CI rodou as migrações do Inc. 2 pela primeira vez em 29/10, num Supabase efêmero, com reset, pgTAP e integração passando (execução 40954243886).
 - **Entre duas rodadas:**
   - a oferta vencida já se comporta como expirada;
   - catálogo (Inc. 4) e interesse (Inc. 5) usam o predicado `private.oferta_aberta(oferta)`: status `published` ou `reserved`, `valid_until` no futuro e empresa dona ativa;
