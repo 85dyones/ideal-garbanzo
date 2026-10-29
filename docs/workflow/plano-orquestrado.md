@@ -37,7 +37,7 @@ Este plano traduz o roteiro da seção 12 da v1.1 em subtarefas despacháveis. E
 | Pré-requisitos P1-P6 | P1 concluída; P2-P6 pausadas | ver seção 5 |
 | Inc. 0: Fundação | **concluído em 27/10** (I0.12 e I0.13 canceladas); gate cumprido, com CI verde aplicando a migração (execução 40598516010) | app local e em homologação; CI verde; testes de banco executam as migrações |
 | Inc. 1: Identidade e adesão | **concluído em 28/10**: gate cumprido, com os testes 1, 2, 4, 5 e 13 com mutação no dev e a I1.7 sem crítico nem alto. As ressalvas estão no ADR-0002 §8, e as correções ficam na I1.8 | testes negativos 1, 2 (empresa), 4, 5 e 13 |
-| Inc. 2: Oferta | em andamento: I2.1 entregue em 28/10; I2.2 a I2.9 entregues em 29/10 (ADR-0003 proposto; migrações, Storage, estado documental, operações de servidor, testes, telas do fornecedor e da administração, com 75 mutações verificadas no banco e na integração) | publica com pendência e mostra aviso; testes 2 (ofertas e documentos), 6, 11 e 12 (preço) |
+| Inc. 2: Oferta | em andamento: I2.1 entregue em 28/10; I2.2 a I2.10 entregues em 29/10 (ADR-0003 proposto; migrações, Storage, estado documental, operações de servidor, testes, telas do fornecedor e da administração, com 75 mutações verificadas no banco e na integração; revisão independente sem crítico, com ressalvas baixas no ADR-0003 §8) | publica com pendência e mostra aviso; testes 2 (ofertas e documentos), 6, 11 e 12 (preço) |
 | Inc. 3: Domínio documental | não iniciado | estados conforme §6.4; testes 7 e 10; revisão AG |
 | Inc. 4: Catálogo privado | não iniciado | critérios 4, 6, 7 e 10 da §10 |
 | Inc. 5: Ciência e negociação | não iniciado | critérios 8 e 9; testes 2 (negociações), 3, 8 e 9 |
@@ -191,7 +191,7 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 | I2.7 | Testes da máquina de estados, do versionamento e dos registros só de inclusão | T1 | testes de `src/modules/offers/**`, `supabase/tests/offers/**` | todas as transições válidas e ao menos uma inválida por estado; teste 11 para as tabelas deste incremento. **Entregue em 29/10** (builder em worktree, rodado e integrado pelo T2): tabela de decisão do ADR contra o servidor (22 testes, 1.536 combinações), pgTAP 360 (teste 11 sistemático, 99) e 370 (versionamento por coluna, 32); 11 mutações. O caminho dos testes de banco é `supabase/tests/database/3*` (ADR-0003 §3) |
 | I2.8 | Telas do fornecedor: cadastro em etapas (veículo, fotos, condições, declarações por categoria, documentos), painel de ofertas, histórico, aviso documental | T1 | rotas do fornecedor em `app/`, componentes | fluxo completo pela interface; aviso visível ao publicar com pendência. **Entregue em 29/10** (builder em worktree; revisão TV; integrado pelo T2): rotas em `/empresa/[empresaId]/ofertas` (painel, nova, resumo e envio, cinco etapas, histórico), leituras pela sessão, ações sobre as operações da I2.6 e `declararCategorias` (uma versão por gravação); e2e com 4 testes, inclusive o fluxo completo com o aviso documental; 6 achados importantes do TV corrigidos |
 | I2.9 | Telas administrativas: ofertas, suspensão, revisão (se D10) | T1 | rotas administrativas em `app/` | suspensão pede motivo. **Entregue em 29/10** (builder em worktree; revisão TV; integrado pelo T2): `/admin/ofertas` com a fila de revisão e o detalhe com leitura completa; publicar, devolver com motivo, suspender com categoria e motivo, reativar (só administrador), retirar com motivo, reservar e liberar, cada ação só quando a tabela de transições permite; conflito de interesse (B25) só com aviso; e2e com 10 testes, inclusive a suspensão sem motivo recusada; 3 achados importantes do TV corrigidos |
-| I2.10 | Revisão independente | T3 | leitura | sem crítico aberto |
+| I2.10 | Revisão independente | T3 | leitura | sem crítico aberto. **Entregue em 29/10:** "aprovado com ressalvas", sem crítico, alto nem médio; 5 achados baixos e 6 informativos, conferidos pelo T2 (o ACH-01 provado no banco de desenvolvimento) e registrados no ADR-0003 §8 com a ação de cada um |
 
 **Paralelismo:** I2.7 ∥ I2.8 depois da I2.3 e da I2.6. A I2.9 vem depois da I2.8.  
 **Gate:** aceite demonstrado; testes 2 (ofertas e documentos), 6, 11 e 12 (preço) com verificação de mutação; T3 limpo.
@@ -200,7 +200,7 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 
 **Aceite:** estados conforme a §6.4; testes 7 e 10.  
 **Seções:** §5.3, §6.3-§6.6, §6.11.  
-**Decisões:** D9 decidida em 29/10: impedimento ativo não publica (o padrão da §6.11); C7 mantém o registro manual.
+**Decisões:** D9 decidida e confirmada em 29/10: só publica veículo 100% liberado para transferência; impedimento ativo não publica (o padrão da §6.11). Pendência documental continua sem bloquear (§1.4). C7 mantém o registro manual.
 
 | ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
 |---|---|---|---|---|
@@ -257,7 +257,7 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 
 **Aceite:** os 13 critérios da §10, com evidência.  
 **Seções:** §7, §10, §11, §15, §16.  
-**Decisões que bloqueiam o piloto:** D5, D8, D9, D10. D8, D9 e D10 decididas em 29/10; D5 com o jurídico.
+**Decisões que bloqueiam o piloto:** D5, D8, D9, D10. D9 e D10 decididas e confirmadas em 29/10; D8 não trava o andamento (1 fornecedor confirmado); D5 em verificação pela pessoa responsável com o jurídico.
 
 | ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
 |---|---|---|---|---|
@@ -294,8 +294,8 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 | D5 (jurídico) | I2.3, I4.1, I5.2, I6.1 | documentos ocultos ao comprador; texto provisório marcado. Em 29/10, a pessoa responsável pediu um pacote para o advogado | piloto; abrir evidência ao comprador |
 | D6 (WhatsApp) | pós-piloto | e-mail | qualquer envio por WhatsApp |
 | D7 (projetos de tentativas anteriores) | nenhuma | — | usar esses projetos |
-| D8 (participantes) | I6.8 | **decidida em 29/10:** 1 a 2 fornecedores e 3 a 5 compradores; os nomes ficam em `notas-privadas/` | piloto com dados reais antes dos nomes |
-| D9 (impedimento de transferência) | I3.2, I3.3, I6.2 | **decidida em 29/10:** impedimento ativo não publica no piloto (o padrão da §6.11 vira o valor do piloto) | — |
+| D8 (participantes) | I6.8 | **decidida em 29/10:** 1 a 2 fornecedores e 3 a 5 compradores; 1 fornecedor já confirmado; não trava o andamento; os nomes ficam em `notas-privadas/` | piloto com dados reais antes dos nomes |
+| D9 (impedimento de transferência) | I3.2, I3.3, I6.2 | **decidida e confirmada em 29/10:** só publica veículo 100% liberado para transferência; impedimento ativo não publica (o padrão da §6.11 vira o valor do piloto) | — |
 | D10 (revisão antes de publicar) | I2.2, I2.9, I6.2 | **decidida em 29/10:** revisão no piloto; a I6.2 tira a marca de provisório da chave | — |
 | C1-C4 (comissão) | pós-piloto | — | gerar comissão em produção |
 | C5 (documentos para aprovação) | I1.5 | registro da conferência sem lista fixa | lista obrigatória |

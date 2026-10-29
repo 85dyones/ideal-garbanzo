@@ -175,7 +175,7 @@ Os IDs são os do anexo A.2. T18 e T19 são novas.
     }
   },
   "transfer_impediments": [],
-  "notices": ["declarado_sem_comprovacao.v1"]
+  "notices": ["declaracao_sem_comprovacao.v1"]
 }
 ```
 
@@ -602,6 +602,38 @@ Respondidas pela pessoa responsável em 29/10, todas pela sugestão conservadora
 | B30 | autorização de divulgação | F-adm declara a cada envio ou publicação; a autorização é limpa ao voltar a `draft` | 2.12 |
 | B31 | edição por estado | tabela da seção 2.5 | 2.5 |
 | B32 | operações que faltam na §8 | `cancelReview`, `reviewOffer`, `reserveOffer`, `releaseReservation`, `reopenOffer` e `reactivateOffer` | 2.15 |
+
+---
+
+## 8. Revisão independente da I2.10: ressalvas
+
+A revisão foi feita em 29/10 por um subagente `reasoning-review` (T3), só em leitura, sobre o diff `4e11b16..ba5dbe1`.
+- **Veredito:** "aprovado com ressalvas". Nenhum achado crítico, alto ou médio; 5 baixos e 6 informativos. O critério do plano (sem crítico aberto) está cumprido.
+- **O revisor rodou:** tipos, lint em `src` e `tests`, unitários (271) e build, todos passando. Ele não rodou banco, integração, e2e nem mutações: ficam com o T2, que já os tinha rodado na integração de cada subtarefa e no CI (execução 40954243886).
+- **Conferido pelo T2 antes de registrar:**
+  - os achados 01, 03 e 05 batem com o código;
+  - **achado 01, no banco de desenvolvimento,** numa transação desfeita: uma oferta publicada, vencida havia um minuto e já fora de `private.oferta_aberta`, teve a validade estendida pelo `org_admin` e voltou a ficar aberta, sem reabrir como rascunho nem passar pela revisão;
+  - **achado 02, latente:** pela API, o schema `private` responde PGRST106 ("Invalid schema"), a extensão `pg_graphql` está desligada, e `public.pendencias_de_publicacao` recusa `anon`;
+  - **expiração:** o job `expirar-ofertas` roda como `postgres`, a cada 10 minutos, com as últimas rodadas `succeeded`; `authenticated` e `service_role` não têm uso do schema `cron`;
+  - **Storage:** só os três buckets privados e as cinco políticas das migrações (INSERT de evidência, foto e documento; SELECT de evidência e foto).
+
+| ID | Severidade | Ressalva | Ação proposta |
+|---|---|---|---|
+| ACH-01 | baixa | **Oferta vencida antes do job.** Entre o vencimento e a rodada seguinte do job (até 10 minutos, ou mais se o job falhar), o `org_admin` ainda edita preço e condições, estende a validade, confirma a disponibilidade, reserva e libera. Estender a validade devolve a oferta ao catálogo sem a T13 nem a revisão. Isso contraria a seção 2.9 ("a oferta vencida já se comporta como expirada"). O teste de paridade codifica o comportamento atual. | No gatilho e em `rules/edicao.ts` e `rules/transicoes.ts`: oferta `published` ou `reserved` com a validade vencida é tratada como `expired`. Sem edição, extensão, disponibilidade, T08 nem T09; ficam a retirada (T11) e a expiração pelo job. Migração nova, porque a do Inc. 2 já está no `origin`. Ajustar o teste de paridade. |
+| ACH-02 | baixa | **Funções do `private` com EXECUTE para `authenticated` e sem conferir quem chama:** `private.pendencias_de_publicacao` e `private.estados_documentais_da_oferta`. Hoje só os invólucros públicos, que conferem a RLS, as alcançam. Uma exposição futura do `private`, ou uma função pública nova do Inc. 4 que as chame com id do usuário, abriria a outra empresa o detalhe das declarações e as pendências. | Conferir o chamador dentro das duas funções, ou tornar `estados_documentais_da_oferta` `security invoker`, com asserção no pgTAP. |
+| ACH-03 | baixa | **Sem teste de "o registro falhou, a URL não sai"** em `gerarUrlDoDocumento`. O código está certo, mas trocar o `return` por um log, ou mover o registro para depois da URL, não derruba nenhum teste. | Teste unitário com um cliente administrativo falso cuja inclusão em `restricted_access_logs` falha; registrar a mutação. |
+| ACH-04 | baixa | **Políticas de escrita sem mutação registrada:** `vehicles_cadastro`, `vehicles_alteracao`, `offers_cadastro`, `supplier_declarations_inclusao`, `offer_media_inclusao`, `offer_media_alteracao` e `offer_documents_inclusao`. O gatilho BEFORE de cada tabela recusa antes da WITH CHECK, com o mesmo predicado, então a mutação de cada uma deve ser equivalente. Só a de `offers_alteracao` está registrada (R6 do ADR-0002). | Rodar as sete mutações e registrar cada uma como equivalente ao gatilho, em `supabase/tests/mutacoes/inc-2.md`. |
+| ACH-05 | baixa | **Descrição do documento sem a conferência de caracteres no servidor.** `storage/esquemas.ts` usa `trim` e `max`, mas não `textoDeLinha`. Com um caractere invisível, o arquivo sobe, a linha cai no CHECK, a tela mostra um erro genérico, e o objeto fica no bucket sem linha, porque não há DELETE. | `textoDeLinha(300).optional()` no esquema. |
+| ACH-06 | informativa | `publicarOferta` com a D10 desligada não tem teste de integração. A T06 está coberta no pgTAP 310 e na paridade, e a D10 está decidida (revisão no piloto). | Opcional: teste unitário com sessão falsa. |
+| ACH-07 | informativa | Pela API direta, uma nova suspensão sem `suspended_category` herda a categoria da suspensão anterior (seção 2.10). O servidor sempre envia a categoria. | Registrar aqui; exigir a categoria na chamada se a API direta passar a importar. |
+| ACH-08 | informativa | O `?resultado=` do detalhe da administração pode ser forjado num link: mostra, por exemplo, "Oferta suspensa" sem a ação. O texto vem de lista fechada, e a situação real aparece ao lado. | Mostrar o aviso só quando ele bater com a situação atual. |
+| ACH-09 | informativa | A leitura de foto é pelo caminho do objeto, e não por `offer_media`. Uma foto removida continua legível para quem passa na política, hoje só a empresa dona e o staff. | No Inc. 4, a política do comprador exige uma linha de `offer_media` não removida com aquele caminho. |
+| ACH-10 | informativa | Os testes desligam `offers_proteger` dentro da transação para simular a validade vencida e `sold`. O gatilho volta antes das asserções, e tudo é desfeito; o `ALTER TABLE` trava `offers` durante o teste. | Registrar a exceção em `supabase/tests/README.md`. |
+| ACH-11 | informativa | O exemplo do snapshot (seção 2.6) usava `declarado_sem_comprovacao.v1`, diferente do catálogo. | **Corrigido em 29/10:** o exemplo usa `declaracao_sem_comprovacao.v1`. |
+
+**Bem coberto, segundo o revisor:** gatilho e servidor batem em T03 a T19, com motivos por ator, D10 e B25; isolamento com a mesma resposta para oferta alheia e inexistente; `manutencao()` fora do alcance de qualquer usuário; GRANTs por coluna, `search_path` vazio e grants mínimos em todas as funções; Storage só com INSERT, documento só pelo servidor e com registro antes; tabelas só de inclusão; evidência para cada item do gate (publicar com pendência e aviso; testes 2, 6, 11 e 12); nenhum termo proibido, segredo ou `console.*` no diff.
+
+**Também sugerido pelo revisor, para a próxima rodada de testes:** um teste de integração do CT6.6 com cópia de objeto no Storage (`copy` de foto alheia e de documento sem SELECT devem falhar), que a lista de mutações não cobre.
 
 ---
 

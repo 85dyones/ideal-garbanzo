@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 2 (oferta) em andamento. O Inc. 1 foi concluído em 28/10, com o gate cumprido, o ADR-0002 aceito e a I1.8 fechada; a R6 fica para este incremento, e a R7 para a I6.9.  
 **Próxima subtarefa:**
-- **I2.10 (T3):** revisão independente do Inc. 2 (migrações, Storage, operações, telas do fornecedor e da administração), com o critério "sem crítico aberto". Depois, o gate do Inc. 2.
+- **Gate do Inc. 2:** a I2.10 não deixou crítico aberto. Falta a pessoa responsável decidir se as ressalvas baixas do ADR-0003 §8 (ACH-01 a ACH-05) são corrigidas antes de fechar o gate, como na I1.8, ou ficam registradas. Fechado o gate, o ADR-0003 passa a aceito.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -828,3 +828,31 @@
     - o exemplo do snapshot no ADR-0003 usa `declarado_sem_comprovacao.v1`, e o código usa `declaracao_sem_comprovacao.v1`;
     - nenhuma subtarefa do plano cria as telas de termos e privacidade previstas na especificação.
 - **Fila (pedido de 29/10):** perfil de interesse com alerta e copiloto de decisões e busca, na seção "Depois do piloto" do plano.
+
+### 2026-10-29 · Confirmações da pessoa responsável sobre as decisões
+
+- **D10:** confirmada como registrada.
+- **D9:** confirmada. Só publica veículo 100% liberado para transferência: impedimento ativo não publica. Pendência documental continua sem bloquear a publicação (§1.4 e regra do projeto).
+- **D8:** não trava o andamento. Um fornecedor já está confirmado; os compradores ficam a confirmar. Os nomes vão para `notas-privadas/`.
+- **D5:** a pessoa responsável vai verificar com o jurídico, a partir do pacote.
+
+### 2026-10-29 · I2.10 · revisão independente recebida (integração pelo T2)
+
+- **Despacho:** subagente `reasoning-review` (T3), só em leitura, com o modelo padrão da instalação; nenhum fallback informado. Diff `4e11b16..ba5dbe1`.
+- **Veredito:** "aprovado com ressalvas". Nenhum achado crítico, alto ou médio; 5 baixos e 6 informativos, no ADR-0003 §8. O critério do plano (sem crítico aberto) está cumprido.
+- **O revisor rodou:** tipos, lint em `src` e `tests`, `npm test` (271) e build, todos passando. Banco, integração, e2e e mutações ficaram com o T2, que os rodou na integração de cada subtarefa e no CI.
+- **Conferência do T2:**
+  - **código:** os achados 01, 03 e 05 batem com o código;
+  - **ACH-01, no banco de desenvolvimento** (script no scratchpad, transação desfeita): uma oferta publicada, vencida havia um minuto e já fora de `private.oferta_aberta`, teve a validade estendida pelo `org_admin` (`UPDATE` aceito) e voltou a ficar aberta, sem a T13 nem a revisão. O conector do Supabase recusou a consulta por permissão, e a prova foi feita pela conexão do projeto (`scripts/lib/banco.mjs`), com a trava do projeto de desenvolvimento;
+  - **ACH-02, latente:** pela API, o `private` responde PGRST106, a extensão `pg_graphql` está desligada, e `public.pendencias_de_publicacao` recusa `anon`;
+  - **expiração:** o job roda como `postgres`, a cada 10 minutos, e as últimas rodadas tiveram `succeeded`. `authenticated` e `service_role` não têm uso do schema `cron`;
+  - **Storage:** só os três buckets privados e as cinco políticas das migrações.
+- **Feito na integração:** ACH-11 corrigido (código da ressalva no exemplo do ADR-0003 §2.6).
+- **Pendente (proposta):** uma subtarefa de correção, como a I1.8:
+  - ACH-01: migração nova e ajuste das regras e do teste de paridade;
+  - ACH-02: conferir o chamador nas duas funções do `private`;
+  - ACH-03: teste unitário do registro que falha;
+  - ACH-04: as sete mutações de política, registradas como equivalentes;
+  - ACH-05: `textoDeLinha` na descrição do documento;
+  - ACH-08 e ACH-10: ajustes pequenos;
+  - o teste do CT6.6 com cópia de objeto, sugerido pelo revisor.
