@@ -41,7 +41,7 @@ export default async function PaginaDoVeiculo({
           />
         ) : (
           <>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-neutral-700">
               {motivoDaEtapaSoLeitura(oferta.status, ator)}
             </p>
             <DadosDoVeiculo veiculo={oferta.veiculo} />

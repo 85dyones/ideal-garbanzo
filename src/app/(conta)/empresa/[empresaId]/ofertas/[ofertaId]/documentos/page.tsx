@@ -49,7 +49,7 @@ export default async function PaginaDosDocumentos({
     <PaginaDaOferta carga={carga} atual="documentos">
       <Secao titulo="5. Documentos">
         <Aviso>{TEXTO.documentosOcultos}</Aviso>
-        <p className="text-sm text-gray-700">
+        <p className="text-sm text-neutral-700">
           {TEXTO.documentoGuardado} {TEXTO.documentoSemEfeitoNoEstado}
         </p>
         {documentos.length === 0 ? (
@@ -60,7 +60,7 @@ export default async function PaginaDosDocumentos({
         ) : (
           <ol
             aria-label="Documentos da oferta"
-            className="flex flex-col divide-y divide-gray-200"
+            className="flex flex-col divide-y divide-neutral-200"
           >
             {documentos.map((documento, indice) => (
               <li
@@ -74,11 +74,11 @@ export default async function PaginaDosDocumentos({
                       ? ""
                       : `: ${documento.descricao}`}
                   </p>
-                  <p className="text-gray-700">
+                  <p className="text-neutral-700">
                     Enviado em {formatarDataHora(documento.enviadoEm)} por{" "}
                     {nomeDe(documento.enviadoPor)} · oculto para compradores
                   </p>
-                  <p className="break-all text-gray-600">
+                  <p className="break-all text-neutral-600">
                     SHA-256: {documento.sha256}
                   </p>
                 </div>
@@ -97,7 +97,7 @@ export default async function PaginaDosDocumentos({
             <EnvioDeDocumento ofertaId={oferta.id} acao={enviarDocumentoAcao} />
           </>
         ) : (
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-neutral-700">
             {motivoDaEtapaSoLeitura(oferta.status, ator)}
           </p>
         )}

@@ -79,7 +79,7 @@ export default async function PaginaDasDeclaracoes({
         )}
         {editavel ? (
           <>
-            <p className="text-sm text-gray-700">{TEXTO.declaracoes}</p>
+            <p className="text-sm text-neutral-700">{TEXTO.declaracoes}</p>
             {paraDeclarar.length === 0 ? (
               <Vazio>
                 Nenhuma categoria documental configurada. Fale com a
@@ -100,7 +100,7 @@ export default async function PaginaDasDeclaracoes({
                 <h3 id="titulo-fora-da-configuracao" className="font-semibold">
                   Categorias que saíram da configuração
                 </h3>
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-neutral-700">
                   As declarações feitas antes continuam registradas e não
                   recebem resposta nova.
                 </p>
@@ -110,7 +110,7 @@ export default async function PaginaDasDeclaracoes({
           </>
         ) : (
           <>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-neutral-700">
               {motivoDaEtapaSoLeitura(oferta.status, ator)}
             </p>
             <EstadosPorCategoria categorias={estados.categorias} />

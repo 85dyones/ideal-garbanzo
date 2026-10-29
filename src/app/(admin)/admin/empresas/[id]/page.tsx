@@ -112,7 +112,7 @@ export default async function PaginaDaEmpresaNaAdministracao({
       </Secao>
 
       {administrador ? null : (
-        <p className="text-sm text-gray-700">
+        <p className="text-sm text-neutral-700">
           Mudanças de status, dados e membros ficam com o administrador da
           plataforma.
         </p>

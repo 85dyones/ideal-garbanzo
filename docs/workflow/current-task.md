@@ -759,3 +759,19 @@
   - **achados menores do TV não tratados:** cor de link visitado no cabeçalho, título repetido nas etapas veículo e condições, quilometragem gravada sem separador de milhar, "Status" na tela da empresa e "Situação" nas ofertas, alvo de toque dos rádios abaixo de 44 px e o resumo das versões em parágrafo corrido;
   - **capturas:** saíram com o indicador de desenvolvimento do Next, que cobre partes da tela no celular; as próximas devem usar o build de produção;
   - **formatação e lint do repositório:** acusam só a pasta `entrepatios-brand/`, fora do Git, que apareceu durante a sessão e não é desta subtarefa (`tokens/tailwind.colors.js` tem erro de sintaxe). Se ela entrar no Git assim, o CI falha.
+
+### 2026-10-29 · Marca · identidade visual aplicada ao site (kit v0.3)
+
+- **Pedido da pessoa responsável:** alinhar o site à marca definida no kit v0.3 (marinho e âmbar), que está na pasta `entrepatios-brand/`, fora do Git.
+- **Feito pelo T2:**
+  - cores do kit no tema do Tailwind (`src/app/globals.css`) e Geist pelo `next/font`;
+  - estilos comuns em marinho, âmbar e neutros: botão de ação âmbar com texto marinho, link em marinho 600, avisos nos tons da paleta. Cinza, azul e verde do Tailwind saíram de 33 arquivos, sem verde no sistema;
+  - logo em `public/marca/`, pelo componente `src/components/logo.tsx`: negativo no cabeçalho marinho e na faixa da apresentação; colorido nas telas públicas. Ícones do site em `src/app/`;
+  - lista de dados com rótulo e valor agrupados no celular;
+  - `docs/marca.md` com a identidade visual e as pendências do kit.
+- **Testes:** `npm test` (248), lint e tipos passam no código do site; build passa; e2e inteiro com 15 testes passando; capturas conferidas no computador e no celular.
+- **Pendente:**
+  - **pendências do próprio kit:** autoria da silhueta (combinar com o designer da proposta original), busca no INPI, Pantone e testes em impressão. A primeira pesa antes de o site ir a público;
+  - **pasta do kit:** decidir se entra no Git. Do jeito que está, `tokens/tailwind.colors.js` tem erro de sintaxe e quebra o lint e a formatação;
+  - **frase do painel:** o painel do kit traz "Mais do que veículos em estoque. São oportunidades em movimento." e o conceito "O estoque de um pode ser a oportunidade do outro.", que não estão no `docs/marca.md`; o site manteve os textos aprovados;
+  - **modo escuro:** o kit traz os tokens, mas o site ainda não tem tema escuro.

@@ -43,7 +43,7 @@ export default async function PaginaDaAdesao() {
               ["Enviado em", formatarDataHora(aberto.enviadoEm)],
             ]}
           />
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-neutral-700">
             Você tem um pedido em andamento. Um novo pedido só pode ser enviado
             depois da decisão.
           </p>

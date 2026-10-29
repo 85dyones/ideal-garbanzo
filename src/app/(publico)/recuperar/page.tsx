@@ -11,7 +11,7 @@ export default function PaginaDeRecuperacao() {
     <>
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold">Recuperar acesso</h1>
-        <p className="text-gray-700">
+        <p className="text-neutral-700">
           Informe o e-mail da conta. Enviamos um link para você criar uma nova
           senha.
         </p>

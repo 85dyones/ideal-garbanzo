@@ -103,7 +103,7 @@ export function FormularioDeConferencia({
     <form action={enviar} className="flex flex-col gap-3">
       <input type="hidden" name="pedidoId" value={pedidoId} />
       <input type="hidden" name="itens" value={JSON.stringify(itens)} />
-      <p className="text-sm text-gray-700">
+      <p className="text-sm text-neutral-700">
         Lista livre: registre cada item conferido, o resultado e, se quiser, uma
         observação. Nenhum item é obrigatório.
       </p>
@@ -113,7 +113,7 @@ export function FormularioDeConferencia({
           return (
             <li
               key={linha.chave}
-              className="flex flex-col gap-2 rounded border border-gray-200 p-3"
+              className="flex flex-col gap-2 rounded border border-neutral-200 p-3"
             >
               <p className="text-sm font-medium">Item {posicao + 1}</p>
               <div className="flex flex-col gap-1">

@@ -159,7 +159,7 @@ function CamposDoVeiculo({
           erros={erros.carroceria}
         />
       </div>
-      <p className="text-sm text-gray-700">{TEXTO.dadosRestritos}</p>
+      <p className="text-sm text-neutral-700">{TEXTO.dadosRestritos}</p>
       {identidadeFixa ? (
         <>
           <Dados
@@ -169,7 +169,7 @@ function CamposDoVeiculo({
               ["Chassi", iniciais.chassi === "" ? "—" : iniciais.chassi],
             ]}
           />
-          <p className="text-sm text-gray-700">{TEXTO.identidadeFixa}</p>
+          <p className="text-sm text-neutral-700">{TEXTO.identidadeFixa}</p>
         </>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -318,7 +318,7 @@ export function FormularioDaOferta({
       )}
       <input type="hidden" name="partes" value={listaDePartes} />
       {modo === "alterar" ? (
-        <p className="text-sm text-gray-700">
+        <p className="text-sm text-neutral-700">
           {TEXTO.campoEmBrancoNaAlteracao}
         </p>
       ) : null}

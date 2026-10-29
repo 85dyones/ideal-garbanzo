@@ -53,7 +53,7 @@ export default async function PaginaDosUsuarios() {
       {perfis.length === 0 ? (
         <Vazio>Nenhum perfil cadastrado.</Vazio>
       ) : (
-        <ul className="flex flex-col divide-y divide-gray-200 rounded border border-gray-300 bg-white">
+        <ul className="flex flex-col divide-y divide-neutral-200 rounded border border-neutral-300 bg-white">
           {perfis.map((perfil) => {
             const papel = papeis.get(perfil.id);
             const papelAtivo = papel?.status === "active" ? papel.papel : null;
@@ -69,13 +69,13 @@ export default async function PaginaDosUsuarios() {
                     {perfil.nome === "" ? "—" : perfil.nome}
                     {proprio ? " (você)" : ""}
                   </p>
-                  <p className="text-sm text-gray-700">
+                  <p className="text-sm text-neutral-700">
                     {perfil.email ?? "—"} ·{" "}
                     {ROTULO_DO_STATUS_DO_PERFIL[perfil.status]} · desde{" "}
                     {formatarDataHora(perfil.criadoEm)}
                   </p>
                   {papel === undefined ? null : (
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-neutral-700">
                       {ROTULO_DO_PAPEL_NA_PLATAFORMA[papel.papel]} (
                       {ROTULO_DO_STATUS_DO_PAPEL[papel.status].toLowerCase()})
                       {papel.papel === "operator" && papel.podeLerAuditoria

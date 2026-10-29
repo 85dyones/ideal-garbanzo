@@ -92,7 +92,7 @@ function MudancaDeStatus({
   return (
     <form
       action={enviar}
-      className="flex flex-col gap-2 rounded border border-gray-200 p-3"
+      className="flex flex-col gap-2 rounded border border-neutral-200 p-3"
       noValidate
       aria-label={rotulo}
     >
@@ -129,7 +129,7 @@ export function StatusDaEmpresaAdministrado({
   const acoes = ACOES_DO_STATUS[status];
   if (acoes.length === 0) {
     return (
-      <p className="text-sm text-gray-700">
+      <p className="text-sm text-neutral-700">
         Nenhuma mudança de status disponível.
       </p>
     );

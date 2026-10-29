@@ -78,7 +78,7 @@ export function Publicacao({
           />
           <span>{TEXTO.autorizacao}</span>
         </label>
-        <p id={`${id}-dica`} className="text-sm text-gray-600">
+        <p id={`${id}-dica`} className="text-sm text-neutral-600">
           {TEXTO.autorizacaoACadaEnvio}
         </p>
         <ErrosDoCampo id={`${id}-erro`} erros={erros} />
@@ -136,13 +136,13 @@ export function Retirada({
   return (
     <form
       action={enviar}
-      className="flex flex-col gap-2 rounded border border-gray-200 p-3"
+      className="flex flex-col gap-2 rounded border border-neutral-200 p-3"
       noValidate
       aria-label="Retirar a oferta"
     >
       <input type="hidden" name="ofertaId" value={ofertaId} />
       {rascunho ? (
-        <p className="text-sm text-gray-700">{TEXTO.retirarRascunho}</p>
+        <p className="text-sm text-neutral-700">{TEXTO.retirarRascunho}</p>
       ) : null}
       <AreaDeTexto
         nome="motivo"
@@ -180,7 +180,7 @@ export function AlteracaoDaValidade({
   return (
     <form
       action={enviar}
-      className="flex flex-col gap-2 rounded border border-gray-200 p-3"
+      className="flex flex-col gap-2 rounded border border-neutral-200 p-3"
       noValidate
       aria-label="Alterar a validade"
     >

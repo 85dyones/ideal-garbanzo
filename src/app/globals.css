@@ -1,1 +1,51 @@
 @import "tailwindcss";
+
+/*
+ * Cores e fonte da marca EntrePátios (kit v0.3, `docs/marca.md`). Marinho é
+ * estrutura e texto; âmbar é acento e ação, nunca fundo grande nem texto
+ * sobre branco (2,1:1); neutros para superfícies e texto secundário. Não há
+ * verde no sistema. Os valores são os de `tokens/tokens.css` do kit.
+ */
+@theme {
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+
+  --color-marinho-50: #f2f7ff;
+  --color-marinho-100: #e3eefc;
+  --color-marinho-200: #cfe0f5;
+  --color-marinho-300: #b4c9e5;
+  --color-marinho-400: #8ba7cb;
+  --color-marinho-500: #6685ae;
+  --color-marinho-600: #44658f;
+  --color-marinho-700: #2c496e;
+  --color-marinho-800: #19314f;
+  --color-marinho-900: #0b1f38;
+  --color-marinho-950: #020813;
+
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-amber-200: #fde68a;
+  --color-amber-300: #fcd34d;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+  --color-amber-700: #b45309;
+  --color-amber-800: #92400e;
+  --color-amber-900: #78350f;
+  --color-amber-950: #451a03;
+
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-200: #e5e5e5;
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-400: #a3a3a3;
+  --color-neutral-500: #737373;
+  --color-neutral-600: #525252;
+  --color-neutral-700: #404040;
+  --color-neutral-800: #262626;
+  --color-neutral-900: #171717;
+  --color-neutral-950: #0a0a0a;
+
+  --color-red-50: #fef2f2;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
+}

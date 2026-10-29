@@ -46,13 +46,13 @@ export default async function PaginaDasEmpresas({
       {empresas.length === 0 ? (
         <Vazio>Nenhuma empresa com este filtro.</Vazio>
       ) : (
-        <ul className="flex flex-col divide-y divide-gray-200 rounded border border-gray-300 bg-white">
+        <ul className="flex flex-col divide-y divide-neutral-200 rounded border border-neutral-300 bg-white">
           {empresas.map((empresa) => (
             <li key={empresa.id} className="flex flex-col gap-1 p-3">
               <Link href={`/admin/empresas/${empresa.id}`} className={LINK}>
                 {empresa.nome}
               </Link>
-              <span className="text-sm text-gray-700">
+              <span className="text-sm text-neutral-700">
                 {ROTULO_DO_STATUS_DA_EMPRESA[empresa.status]} ·{" "}
                 {ROTULO_DO_TIPO[empresa.tipo]} · CNPJ {empresa.cnpj}
                 {empresa.dadosDeTeste ? " · dados de teste" : ""}

@@ -64,7 +64,7 @@ function FormularioDeConvite({
   return (
     <form
       action={enviar}
-      className="flex flex-col gap-3 rounded border border-gray-200 p-3"
+      className="flex flex-col gap-3 rounded border border-neutral-200 p-3"
       noValidate
       aria-label="Convidar membro"
     >
@@ -182,7 +182,7 @@ export function GestaoDeMembros({
       {membros.length === 0 ? (
         <Vazio>Nenhum membro para mostrar.</Vazio>
       ) : (
-        <ul className="flex flex-col divide-y divide-gray-200">
+        <ul className="flex flex-col divide-y divide-neutral-200">
           {membros.map((membro) => {
             const proprio = membro.perfilId === perfilAtualId;
             const agir = podeGerir && !proprio;
@@ -200,9 +200,9 @@ export function GestaoDeMembros({
                     {proprio ? " (você)" : ""}
                   </p>
                   {membro.email !== null && membro.nome !== null ? (
-                    <p className="text-sm text-gray-700">{membro.email}</p>
+                    <p className="text-sm text-neutral-700">{membro.email}</p>
                   ) : null}
-                  <p className="text-sm text-gray-700">
+                  <p className="text-sm text-neutral-700">
                     {ROTULO_DO_PAPEL[membro.papel]} ·{" "}
                     {ROTULO_DO_STATUS_DO_VINCULO[membro.status]}
                   </p>

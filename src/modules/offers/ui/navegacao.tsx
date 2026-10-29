@@ -26,8 +26,8 @@ export function NavegacaoDaOferta({
                 aria-current={ativa ? "page" : undefined}
                 className={`inline-block rounded border px-3 py-1 ${
                   ativa
-                    ? "border-blue-800 bg-blue-800 text-white"
-                    : "border-gray-400 bg-white text-gray-900"
+                    ? "border-marinho-900 bg-marinho-900 text-white"
+                    : "border-neutral-400 bg-white text-marinho-900"
                 }`}
               >
                 {etapa.rotulo}

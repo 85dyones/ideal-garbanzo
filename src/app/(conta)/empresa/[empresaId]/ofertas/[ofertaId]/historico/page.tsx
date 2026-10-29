@@ -58,7 +58,7 @@ export default async function PaginaDoHistorico({
   return (
     <PaginaDaOferta carga={carga} atual="historico">
       <Secao titulo="Versões">
-        <p className="text-sm text-gray-700">
+        <p className="text-sm text-neutral-700">
           Uma versão nova nasce quando muda um dado importante da oferta, como
           preço, quilometragem, condições comerciais ou declarações.
         </p>
@@ -67,7 +67,7 @@ export default async function PaginaDoHistorico({
         ) : (
           <ol
             aria-label="Versões da oferta"
-            className="flex flex-col divide-y divide-gray-200"
+            className="flex flex-col divide-y divide-neutral-200"
           >
             {versoes.map((versao) => (
               <li key={versao.id} className="flex flex-col gap-1 py-2">
@@ -78,7 +78,7 @@ export default async function PaginaDoHistorico({
                     ? SISTEMA
                     : (nomeDe(versao.criadaPor) ?? SEM_NOME)}
                 </p>
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-neutral-700">
                   {resumoDaMudanca(versao.resumoDaMudanca)}
                 </p>
               </li>
@@ -91,7 +91,7 @@ export default async function PaginaDoHistorico({
         {revisoes.length === 0 ? (
           <Vazio>Nenhuma revisão registrada.</Vazio>
         ) : (
-          <ol className="flex flex-col divide-y divide-gray-200">
+          <ol className="flex flex-col divide-y divide-neutral-200">
             {revisoes.map((revisao) => (
               <li key={revisao.id} className="flex flex-col gap-1 py-2">
                 <p>
@@ -104,7 +104,7 @@ export default async function PaginaDoHistorico({
                     : ` · versão ${String(revisao.versao)}`}
                 </p>
                 {revisao.motivo === null ? null : (
-                  <p className="break-words text-sm text-gray-700">
+                  <p className="break-words text-sm text-neutral-700">
                     Motivo: {revisao.motivo}
                   </p>
                 )}
@@ -123,7 +123,7 @@ export default async function PaginaDoHistorico({
         ) : (
           <ol
             aria-label="Alterações da oferta"
-            className="flex flex-col divide-y divide-gray-200"
+            className="flex flex-col divide-y divide-neutral-200"
           >
             {eventos.map((evento) => (
               <li key={evento.chave} className="flex flex-col gap-1 py-2">
@@ -131,7 +131,7 @@ export default async function PaginaDoHistorico({
                   <strong>{formatarDataHora(evento.em)}</strong> ·{" "}
                   {evento.autor}
                 </p>
-                <ul className="list-disc pl-5 text-sm text-gray-700">
+                <ul className="list-disc pl-5 text-sm text-neutral-700">
                   {evento.mudancas.map((mudanca) => (
                     <li key={mudanca.id} className="break-words">
                       {mudanca.campo}: {mudanca.antes} → {mudanca.depois}

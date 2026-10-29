@@ -280,7 +280,7 @@ export default async function PaginaDoResumoDaOferta({
               <Link href={`${base}${etapa.caminho}`} className={LINK}>
                 {etapa.rotulo}
               </Link>
-              <span className="text-sm text-gray-700">
+              <span className="text-sm text-neutral-700">
                 {situacaoDaEtapa[etapa.chave]}
               </span>
             </li>
@@ -374,7 +374,7 @@ export default async function PaginaDoResumoDaOferta({
                   ? "Enviar para revisão"
                   : "Publicar"}
               </h3>
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-neutral-700">
                 {configuracao.revisaoExigida
                   ? TEXTO.revisaoAtiva
                   : TEXTO.revisaoInativa}
@@ -396,7 +396,7 @@ export default async function PaginaDoResumoDaOferta({
               />
             </section>
           ) : (
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-neutral-700">
               {TEXTO.envioSoDoAdministrador}
             </p>
           )

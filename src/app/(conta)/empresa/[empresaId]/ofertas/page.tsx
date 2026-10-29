@@ -69,15 +69,15 @@ export default async function PaginaDasOfertas({
       ) : (
         <ul
           aria-label="Ofertas da empresa"
-          className="flex flex-col divide-y divide-gray-200 rounded border border-gray-300 bg-white"
+          className="flex flex-col divide-y divide-neutral-200 rounded border border-neutral-300 bg-white"
         >
           {ofertas.map((oferta) => (
             <li key={oferta.id} className="flex flex-col gap-1 p-3">
               <Link href={`${caminho}/${oferta.id}`} className={LINK}>
                 {tituloDaOferta(oferta.veiculo)}
               </Link>
-              <p className="flex flex-wrap gap-x-2 text-sm text-gray-700">
-                <span className="font-medium text-gray-900">
+              <p className="flex flex-wrap gap-x-2 text-sm text-neutral-700">
+                <span className="font-medium text-marinho-900">
                   {ROTULO_DO_STATUS[oferta.status]}
                 </span>
                 <span>· {formatarPreco(oferta.preco)}</span>
@@ -97,7 +97,7 @@ export default async function PaginaDasOfertas({
                   o motivo.
                 </p>
               ) : null}
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-neutral-600">
                 Atualizada em {formatarDataHora(oferta.atualizadaEm)}
               </p>
             </li>

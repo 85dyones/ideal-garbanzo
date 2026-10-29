@@ -93,7 +93,7 @@ export default async function PaginaDeConfirmacao({
         <CamposDoLink pedido={pedido} />
         <BotaoDeEnvio>{textos.botao}</BotaoDeEnvio>
       </form>
-      <p className="text-sm text-gray-700">
+      <p className="text-sm text-neutral-700">
         Se você não pediu isto, feche esta página: nada é confirmado sem o
         clique no botão.
       </p>

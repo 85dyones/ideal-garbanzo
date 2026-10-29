@@ -49,7 +49,7 @@ export default async function PaginaDasAdesoes({
       {pedidos.length === 0 ? (
         <Vazio>Nenhum pedido com este filtro.</Vazio>
       ) : (
-        <ul className="flex flex-col divide-y divide-gray-200 rounded border border-gray-300 bg-white">
+        <ul className="flex flex-col divide-y divide-neutral-200 rounded border border-neutral-300 bg-white">
           {pedidos.map((pedido) => {
             const requerente = requerentes.get(pedido.requerenteId);
             return (
@@ -57,12 +57,12 @@ export default async function PaginaDasAdesoes({
                 <Link href={`/admin/adesoes/${pedido.id}`} className={LINK}>
                   {pedido.nomeDaEmpresa}
                 </Link>
-                <span className="text-sm text-gray-700">
+                <span className="text-sm text-neutral-700">
                   {ROTULO_DO_STATUS_DO_PEDIDO[pedido.status]} · CNPJ{" "}
                   {pedido.cnpj} · {ROTULO_DO_TIPO[pedido.tipo]} · enviado em{" "}
                   {formatarDataHora(pedido.enviadoEm)}
                 </span>
-                <span className="text-sm text-gray-700">
+                <span className="text-sm text-neutral-700">
                   Requerente:{" "}
                   {requerente === undefined || requerente.nome === ""
                     ? "—"

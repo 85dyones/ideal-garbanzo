@@ -67,7 +67,7 @@ export function Campo({
         {...atributos}
       />
       {dica === undefined ? null : (
-        <p id={`${id}-dica`} className="text-sm text-gray-600">
+        <p id={`${id}-dica`} className="text-sm text-neutral-600">
           {dica}
         </p>
       )}
@@ -111,7 +111,7 @@ export function CampoDeSelecao({
         ))}
       </select>
       {dica === undefined ? null : (
-        <p id={`${id}-dica`} className="text-sm text-gray-600">
+        <p id={`${id}-dica`} className="text-sm text-neutral-600">
           {dica}
         </p>
       )}
@@ -148,7 +148,7 @@ export function AreaDeTexto({
         {...atributos}
       />
       {dica === undefined ? null : (
-        <p id={`${id}-dica`} className="text-sm text-gray-600">
+        <p id={`${id}-dica`} className="text-sm text-neutral-600">
           {dica}
         </p>
       )}
@@ -158,7 +158,7 @@ export function AreaDeTexto({
 }
 
 const CORES_DA_MENSAGEM: Readonly<Record<string, string>> = {
-  sucesso: "text-green-800",
+  sucesso: "text-marinho-700",
   aviso: "text-amber-900",
   erro: "text-red-800",
   inicial: "",

@@ -54,7 +54,7 @@ function LinhaDaCategoria({
   return (
     <fieldset
       className={`flex flex-col gap-2 rounded border p-3 ${
-        semDeclaracao ? "border-red-700 border-l-4" : "border-gray-200"
+        semDeclaracao ? "border-red-700 border-l-4" : "border-neutral-200"
       }`}
       aria-describedby={`${id}-situacao`}
     >
@@ -70,7 +70,7 @@ function LinhaDaCategoria({
             <span className="font-medium">
               Declaração vigente: {item.vigente.resposta}
             </span>
-            <span className="text-sm text-gray-700">
+            <span className="text-sm text-neutral-700">
               {" "}
               (em {item.vigente.em})
             </span>
@@ -80,13 +80,13 @@ function LinhaDaCategoria({
         item.vigente?.detalhe === undefined ? null : (
           <p className="break-words">Detalhe: {item.vigente.detalhe}</p>
         )}
-        <p className="text-sm text-gray-700">
+        <p className="text-sm text-neutral-700">
           <span className="block sm:inline">Estado: {item.estado}</span>
           <span className="hidden sm:inline"> · </span>
           <span className="block sm:inline">Origem: {item.origem}</span>
         </p>
         {item.vigente === null ? null : (
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-neutral-700">
             Marque uma resposta só se quiser mudar a declaração.
           </p>
         )}

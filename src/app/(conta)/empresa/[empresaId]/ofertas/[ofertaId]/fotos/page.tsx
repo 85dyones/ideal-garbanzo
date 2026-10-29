@@ -60,10 +60,10 @@ export default async function PaginaDasFotos({
               return (
                 <li
                   key={foto.id}
-                  className="flex flex-col gap-2 rounded border border-gray-200 p-2"
+                  className="flex flex-col gap-2 rounded border border-neutral-200 p-2"
                 >
                   {foto.url === null ? (
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-neutral-700">
                       Não foi possível carregar a foto agora. Atualize a página.
                     </p>
                   ) : (
@@ -71,10 +71,10 @@ export default async function PaginaDasFotos({
                     <img
                       src={foto.url}
                       alt={`Foto ${String(numero)} do veículo`}
-                      className="aspect-[4/3] w-full rounded bg-gray-100 object-cover"
+                      className="aspect-[4/3] w-full rounded bg-neutral-100 object-cover"
                     />
                   )}
-                  <p className="text-sm text-gray-700">
+                  <p className="text-sm text-neutral-700">
                     Foto {numero} · enviada em{" "}
                     {formatarDataHora(foto.enviadaEm)}
                   </p>
@@ -114,11 +114,11 @@ export default async function PaginaDasFotos({
               acao={enviarFotoAcao}
             />
             {fotos.length === 0 ? null : (
-              <p className="text-sm text-gray-700">{TEXTO.fotoRemovida}</p>
+              <p className="text-sm text-neutral-700">{TEXTO.fotoRemovida}</p>
             )}
           </>
         ) : (
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-neutral-700">
             {motivoDaEtapaSoLeitura(oferta.status, ator)}
           </p>
         )}

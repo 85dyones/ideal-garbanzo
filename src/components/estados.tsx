@@ -66,7 +66,7 @@ export function AcessoSuspenso() {
 
 export function Vazio({ children }: { readonly children: ReactNode }) {
   return (
-    <p className="rounded border border-dashed border-gray-400 p-4 text-gray-700">
+    <p className="rounded border border-dashed border-neutral-400 p-4 text-neutral-700">
       {children}
     </p>
   );
@@ -74,7 +74,7 @@ export function Vazio({ children }: { readonly children: ReactNode }) {
 
 export function Carregando() {
   return (
-    <div role="status" aria-live="polite" className="p-4 text-gray-700">
+    <div role="status" aria-live="polite" className="p-4 text-neutral-700">
       Carregando…
     </div>
   );
@@ -92,7 +92,7 @@ export function Aviso({
     tom === "bloqueio"
       ? "border-red-700 bg-red-50 text-red-950"
       : tom === "alerta"
-        ? "border-amber-600 bg-amber-50 text-amber-950"
-        : "border-blue-700 bg-blue-50 text-blue-950";
+        ? "border-amber-500 bg-amber-50 text-amber-950"
+        : "border-marinho-600 bg-marinho-50 text-marinho-900";
   return <div className={`rounded border-l-4 p-3 ${cores}`}>{children}</div>;
 }

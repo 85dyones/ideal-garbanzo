@@ -133,7 +133,7 @@ export function AcoesDoUsuario({
   readonly acoes: AcoesDosUsuarios;
 }) {
   return (
-    <details className="rounded border border-gray-200 p-3">
+    <details className="rounded border border-neutral-200 p-3">
       <summary className="cursor-pointer text-sm font-medium">Ações</summary>
       <div className="mt-3 flex flex-col gap-4">
         <StatusDoPerfil

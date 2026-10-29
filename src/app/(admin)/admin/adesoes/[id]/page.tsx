@@ -180,7 +180,7 @@ export default async function PaginaDoPedido({
           </ul>
         )}
         {conferencia === null ? null : (
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-neutral-700">
             Atualizada em {formatarDataHora(conferencia.atualizadaEm)}.
           </p>
         )}
@@ -191,7 +191,7 @@ export default async function PaginaDoPedido({
           {evidencias.length === 0 ? (
             <Vazio>Nenhuma evidência enviada.</Vazio>
           ) : (
-            <ul className="flex flex-col divide-y divide-gray-200">
+            <ul className="flex flex-col divide-y divide-neutral-200">
               {evidencias.map((evidencia) => (
                 <li
                   key={evidencia.id}
@@ -201,13 +201,13 @@ export default async function PaginaDoPedido({
                     <p className="font-medium">
                       {textoOuTraco(evidencia.descricao)}
                     </p>
-                    <p className="text-gray-700">
+                    <p className="text-neutral-700">
                       {ROTULO_DO_TIPO_DE_ARQUIVO[evidencia.tipoDoArquivo] ??
                         evidencia.tipoDoArquivo}{" "}
                       · {formatarTamanho(evidencia.tamanho)} · enviada em{" "}
                       {formatarDataHora(evidencia.enviadaEm)}
                     </p>
-                    <p className="break-all text-gray-600">
+                    <p className="break-all text-neutral-600">
                       SHA-256: {evidencia.sha256}
                     </p>
                   </div>
@@ -245,7 +245,7 @@ export default async function PaginaDoPedido({
       ) : null}
 
       {!administrador ? (
-        <p className="text-sm text-gray-700">
+        <p className="text-sm text-neutral-700">
           Conferência, evidências e decisão ficam com o administrador da
           plataforma.
         </p>

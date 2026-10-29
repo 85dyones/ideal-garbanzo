@@ -63,21 +63,21 @@ export function EstadosPorCategoria({
     return <Vazio>Nenhuma categoria documental para mostrar.</Vazio>;
   }
   return (
-    <ul className="flex flex-col divide-y divide-gray-200">
+    <ul className="flex flex-col divide-y divide-neutral-200">
       {categorias.map((item) => (
         <li key={item.categoria} className="flex flex-col gap-1 py-2">
           <p className="font-medium">{item.rotuloDaCategoria}</p>
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-neutral-700">
             Estado: {item.rotuloDoEstado} · Origem: {item.rotuloDaOrigem}
           </p>
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-neutral-700">
             {item.declaracao === null
               ? "Sem declaração."
               : `Declaração vigente: ${item.declaracao.rotulo}, em ${formatarDataHora(item.declaracao.declaradaEm)}.`}
           </p>
           {item.declaracao?.detalhe === null ||
           item.declaracao?.detalhe === undefined ? null : (
-            <p className="break-words text-sm text-gray-700">
+            <p className="break-words text-sm text-neutral-700">
               Detalhe: {item.declaracao.detalhe}
             </p>
           )}

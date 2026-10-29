@@ -144,7 +144,7 @@ export default async function PaginaDeInicio() {
                   <Link href={`/empresa/${empresa.id}`} className={LINK}>
                     {empresa.nome}
                   </Link>{" "}
-                  <span className="text-sm text-gray-700">
+                  <span className="text-sm text-neutral-700">
                     ({ROTULO_DO_TIPO[empresa.tipo]};{" "}
                     {ROTULO_DO_PAPEL[vinculo.papel].toLowerCase()}; empresa{" "}
                     {ROTULO_DO_STATUS_DA_EMPRESA[empresa.status].toLowerCase()})
@@ -175,7 +175,7 @@ export default async function PaginaDeInicio() {
                   <strong>{pedido.nomeDaEmpresa}</strong>:{" "}
                   {rotuloDoStatusDoPedido(pedido.status)}
                 </span>
-                <span className="text-sm text-gray-700">
+                <span className="text-sm text-neutral-700">
                   Enviado em {formatarDataHora(pedido.enviadoEm)}
                   {pedido.revisadoEm === null
                     ? ""
