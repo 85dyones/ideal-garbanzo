@@ -224,6 +224,64 @@ async function tornarAdministrador(usuario: UsuarioDeTeste): Promise<void> {
   }
 }
 
+/**
+ * Operador da plataforma pela conexão do banco, concedido pelo administrador
+ * informado, como na tela de usuários: o gatilho exige um administrador ativo
+ * na sessão (ADR-0002 §2.13). Sem acesso à auditoria (`can_read_audit`).
+ */
+export async function tornarOperador(
+  administrador: UsuarioDeTeste,
+  usuario: UsuarioDeTeste,
+): Promise<void> {
+  const { cliente } = await conectar();
+  try {
+    await cliente.query("begin");
+    await cliente.query("select set_config('request.jwt.claims', $1, true)", [
+      JSON.stringify({ sub: administrador.id, role: "authenticated" }),
+    ]);
+    await cliente.query(
+      "insert into public.platform_staff (profile_id, role) values ($1, 'operator')",
+      [usuario.id],
+    );
+    await cliente.query("commit");
+  } catch (erro) {
+    await cliente.query("rollback").catch(() => undefined);
+    throw erro;
+  } finally {
+    await cliente.end();
+  }
+}
+
+/** Usuário com e-mail confirmado e papel de operador da plataforma. */
+export async function novoOperador(
+  papel: string,
+  administrador: UsuarioDeTeste,
+): Promise<UsuarioDeTeste> {
+  const usuario = await novoUsuario(papel);
+  await tornarOperador(administrador, usuario);
+  return usuario;
+}
+
+/**
+ * Login pela API sem os tipos do banco, para as tabelas da oferta, que
+ * `tipos-do-banco.ts` ainda não descreve. As leituras tipam o resultado com
+ * `overrideTypes`, como nas operações de servidor.
+ */
+export async function sessaoSemTipos(
+  usuario: UsuarioDeTeste,
+): Promise<SupabaseClient> {
+  const { url, chavePublicavel } = lerAmbiente();
+  const cliente = createClient(url, chavePublicavel, SEM_SESSAO_GUARDADA);
+  const { error } = await cliente.auth.signInWithPassword({
+    email: usuario.email,
+    password: usuario.senha,
+  });
+  if (error !== null) {
+    throw new Error(`O login de ${usuario.email} falhou: ${error.message}`);
+  }
+  return cliente;
+}
+
 /** Login pela API, com a chave publicável. */
 async function entrarNaApi(usuario: UsuarioDeTeste): Promise<Cliente> {
   const { url, chavePublicavel } = lerAmbiente();

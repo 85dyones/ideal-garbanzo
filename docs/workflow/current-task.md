@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 2 (oferta) em andamento. O Inc. 1 foi concluído em 28/10, com o gate cumprido, o ADR-0002 aceito e a I1.8 fechada; a R6 fica para este incremento, e a R7 para a I6.9.  
 **Próxima subtarefa:**
-- **I2.9 (T1):** telas administrativas das ofertas: lista, revisão (com a D10 ligada), devolução com motivo, suspensão com categoria e motivo e reativação, sobre as operações da I2.6. Depois, a revisão independente (I2.10, T3).
+- **I2.10 (T3):** revisão independente do Inc. 2 (migrações, Storage, operações, telas do fornecedor e da administração), com o critério "sem crítico aberto". Depois, o gate do Inc. 2.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -775,3 +775,40 @@
   - **pasta do kit:** decidir se entra no Git. Do jeito que está, `tokens/tailwind.colors.js` tem erro de sintaxe e quebra o lint e a formatação;
   - **frase do painel:** o painel do kit traz "Mais do que veículos em estoque. São oportunidades em movimento." e o conceito "O estoque de um pode ser a oportunidade do outro.", que não estão no `docs/marca.md`; o site manteve os textos aprovados;
   - **modo escuro:** o kit traz os tokens, mas o site ainda não tem tema escuro.
+
+### 2026-10-29 · I2.9 · entregue (telas da administração)
+
+- **Despacho:** subagente `builder` (T1), em worktree isolado, com o modelo padrão da instalação; nenhum fallback informado. O worktree nasceu no `100575f` e foi avançado ao `c65ca48` (`git merge --ff-only`) antes de qualquer mudança. Revisão visual por um subagente `vision-review` (TV), com 22 capturas.
+- **Conferido pelo T2 antes do despacho:** a equipe lê as pendências e os estados documentais pelas RPCs `security invoker` (a RLS deixa o staff ler a oferta) e abre documento pelo servidor, que aceita membro ativo ou staff e registra o acesso antes da URL.
+- **Entrega do builder:**
+  - **lista `/admin/ofertas`:** ofertas de todas as empresas, com filtro por situação e a fila "Em revisão" em destaque (a mais antiga primeiro). Limite de 200 linhas, como em `/admin/empresas`, com aviso;
+  - **detalhe `/admin/ofertas/[ofertaId]`:** uma página com seções (situação, veículo com placa, RENAVAM e chassi, condições, estados documentais, pendências, fotos, documentos com abertura registrada, versões e revisões, histórico de campos só com acesso à auditoria) e, no fim, as ações da plataforma;
+  - **ações** em `src/app/_acoes/ofertas-da-plataforma.ts`, sobre as operações da I2.6: publicar ou devolver com motivo, suspender com categoria e motivo, reativar (só o administrador), retirar com motivo, reservar e liberar. Cada uma aparece só quando a tabela de transições permite ao ator (`situacaoDaPlataforma`, com teste contra `TRANSICOES` em todos os estados). Quem é da equipe e tem vínculo com a empresa dona vê só o aviso do conflito (B25);
+  - **e2e** `tests/e2e/ofertas-admin.spec.mts`, com 10 testes; apoio de operador pela conexão do banco (`tornarOperador`, concedido por um administrador ativo).
+- **Achados do TV:** nenhum crítico. Os 3 importantes foram corrigidos pelo T2:
+  - o lembrete de que pendência documental não justifica devolução nem suspensão aparecia cinco vezes; ficou um por seção, no mesmo tom;
+  - as seções viraram pílulas como as do filtro, com "Ações da plataforma" primeiro e em destaque; as ações ganharam um título próprio e links de volta ao topo;
+  - quem revisa volta à fila: link na mensagem do resultado e no fim do detalhe.
+
+  Dos menores, foram corrigidos:
+  - o filtro ignora situação sem pílula ("Vendida");
+  - o aviso de conflito diz "agir como empresa fornecedora";
+  - borda de risco na suspensão e na retirada;
+  - a lista em duas linhas fixas no celular;
+  - textos em linguagem neutra ("quem administra a plataforma");
+  - dica do motivo da reativação, que fica na auditoria.
+- **Testes:**
+  - `npm test`: 271;
+  - lint, tipos, formatação e build passam;
+  - e2e da administração: 10 passando, antes e depois das correções. Os testes novos conferem que a mensagem do resultado fica visível sem rolar e que a volta à fila funciona;
+  - e2e inteiro: 25 passando antes e depois das correções. Entre as duas, duas rodadas esbarraram no limite de login do Supabase Auth ("Muitas tentativas em pouco tempo"), por rodar o conjunto várias vezes seguidas; todas as falhas eram esse limite, e a rodada depois de 15 minutos passou inteira.
+- **Mutação:** com a reativação visível ao operador, o e2e (c) falha; com o código restaurado (conferido com `cmp`), ele volta a passar. O builder tirou o tratamento do conflito em `situacaoDaPlataforma`, e dois testes unitários da B25 falharam. As telas não decidem permissão: a operação e o gatilho decidem de novo, já cobertos pelas mutações das I2.3 a I2.7.
+- **Pendente:**
+  - **achados menores do TV não tratados:**
+    - o erro do campo sai depois da dica, no componente comum de formulário;
+    - a mensagem geral "Confira os campos destacados." também aparece em formulário de um campo só;
+    - a lista "Todas" sem paginação nem busca (limite de 200);
+    - o menu da administração não marca a seção atual;
+    - a mensagem do resultado fica na URL e reaparece ao recarregar;
+  - **estados não capturados:** carregamento, erro genérico, fila vazia e resultados de reservar, liberar e retirar;
+  - **capturas:** feitas no servidor de desenvolvimento, com o indicador do Next escondido por CSS.
