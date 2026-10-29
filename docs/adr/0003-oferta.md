@@ -274,7 +274,8 @@ Os IDs são os do anexo A.2. T18 e T19 são novas.
 - **Colunas:**
   - o staff envia `suspended_category`;
   - o gatilho preenche `suspended_reason`, `suspended_by` e `suspended_at`;
-  - a última suspensão fica na linha, e as anteriores ficam em `field_history`.
+  - a última suspensão fica na linha, e as anteriores ficam em `field_history`;
+  - a nova suspensão de uma oferta reativada aceita a mesma categoria da anterior. Corrigido na I2.6: o gatilho exigia que a categoria aparecesse entre as colunas alteradas e recusava a mesma categoria. Agora exige só a categoria preenchida, e o servidor sempre envia a categoria escolhida. A correção foi feita na própria migração da I2.3, que ainda não tinha saído do repositório local.
 - **Durante a suspensão:** o fornecedor só lê. Não edita, não retira, não reabre, não declara nem anexa.
 - **Reativação:**
   - só o administrador reativa, com motivo, e a oferta volta a `draft`;
@@ -301,7 +302,8 @@ Os IDs são os do anexo A.2. T18 e T19 são novas.
   - quilometragem inteira e não negativa.
 - **Depois da primeira publicação** (Q4):
   - placa, RENAVAM e chassi não mudam;
-  - marca, modelo, versão e anos mudam com versão nova, porque entram na lista de campos materiais.
+  - marca, modelo, versão e anos mudam com versão nova, porque entram na lista de campos materiais;
+  - na oferta publicada ou reservada, nenhum dado exigido para publicar volta a vazio, nem por chamada direta à API. O gatilho `proteger_veiculo` recusa, com a mesma lista das pendências de publicação (`private.dados_do_veiculo_faltando`). Corrigido na I2.6, na própria migração da I2.3.
 - **Campos restritos:** placa, RENAVAM e chassi só para a empresa dona e o staff (§5.2, §7.2). O catálogo do Inc. 4 lê o veículo por uma visão sem esses campos.
 
 ### 2.12. Declarações do fornecedor e textos
@@ -406,6 +408,20 @@ Vale a regra do ADR-0002 §2.12: as operações escrevem com a sessão do usuár
 
 As operações novas seguem o padrão da §8 (B32). As RPCs são `security invoker` no `public`, com `execute` só para `authenticated`.
 
+**Entregue na I2.6 (29/10):**
+- **Tabela no servidor:** `src/modules/offers/rules/transicoes.ts` repete a tabela da seção 2.3, com o ator de cada transição, o motivo por ator e as condições da D10 e da validade. `atorDaOferta` classifica a sessão em relação à empresa dona, com o conflito de interesse da B25. `rules/edicao.ts` repete a seção 2.5 e a disponibilidade.
+- **Operações** (nomes do código, com o da §8 entre parênteses):
+  - em `server/ofertas.ts`: `criarOferta` (`createOffer`), `atualizarOferta` (`updateOffer`), `declararCategoria` (`declareCategory`), `confirmarDisponibilidade` (`confirmAvailability`) e `consultarPendenciasDePublicacao`;
+  - em `server/transicoes.ts`: `publicarOferta` (`publishOffer`), `cancelarRevisao`, `revisarOferta`, `reservarOferta`, `liberarReserva`, `retirarOferta` (`withdrawOffer`), `reabrirOferta`, `suspenderOferta` (`suspendOffer`) e `reativarOferta`;
+  - em `storage/servidor.ts`: `removerFotoDaOferta` e `ordenarFotoDaOferta`.
+- **Como respondem:**
+  - cada operação de transição faz só as transições dela. O servidor confere o par de estados, o ator, a D10 e o motivo antes de escrever;
+  - sem papel para a ação, a resposta é "sem permissão"; com papel, mas no estado errado, é regra violada;
+  - a publicação lê a D10 para escolher entre `under_review` e `published` e mostra as pendências do banco (`private.pendencias_de_publicacao`) com rótulos;
+  - a validade chega como data e vai ao banco como 23:59:59 daquele dia, com o nome do fuso de Brasília, para o próprio banco converter.
+- **Esquemas estritos** (`schemas/ofertas.ts`): placa, RENAVAM e chassi normalizados e conferidos; preço como texto com até duas casas; textos sem caracteres de controle nem invisíveis, como os CHECKs; ocorrência declarada com detalhe; autorização de divulgação declarada no ato.
+- **Hash fora do banco:** `rules/snapshot.ts` implementa o JSON canônico e o hash da seção 2.7.
+
 ### 2.16. Configuração do Inc. 2
 
 A I2.3 cria as chaves em `platform_settings`. Como toda configuração, só o administrador altera (ADR-0002 §2.7). Nenhuma delas é crítica, porque os formulários e o operador precisam lê-las.
@@ -453,6 +469,14 @@ Mudar `material_fields` ou `document_categories` vale para frente (seção 2.6).
   - `tests/integration/estado-documental.test.ts` (3 testes): o banco e as regras do servidor dizem o mesmo (mapeamento, precedência e ressalvas), e a operação devolve estados, origens, ressalvas e resumo, ou "sem permissão";
   - testes unitários das regras e do catálogo de ressalvas (9);
   - 6 mutações, todas derrubando os casos esperados sem derrubar o contraste.
+- **Entregue na I2.6 (29/10):**
+  - `tests/integration/ofertas-transicoes.test.ts` (3 testes): a comparação entre o banco e `transicoes.ts` desta seção. Percorre os 8 estados de origem, os 7 de destino, 8 sessões (todos os papéis, inclusive o staff com vínculo ativo e com vínculo suspenso da B25, e o sistema), os dois valores da D10, com e sem motivo, e confere 1.792 tentativas. Faz o mesmo, em cada estado, com a edição da oferta, do veículo, a declaração e a disponibilidade (256 tentativas, contra `rules/edicao.ts`). As ofertas chegam aos estados pelas operações; `expired` e `sold`, só dentro da transação do teste;
+  - `tests/integration/ofertas-operacoes.test.ts` (28 testes): o critério da I2.6 (o preço novo gera versão, histórico e auditoria; a suspensão exige motivo e categoria) e as operações novas; CT2.10, CT2.11, CT12.1, CT12.5 (no esquema), CT12.6 e CT12.9; o veículo da publicada sem dado vazio; e o hash de toda versão gravada recalculado por `rules/snapshot.ts`;
+  - o `310-ofertas-transicoes` ganhou 2 asserções (72): a nova suspensão de uma oferta reativada, com a mesma categoria (seção 2.10);
+  - o `320-ofertas-versoes` ganhou 3 (82): a publicada não perde dado do veículo, pela RPC nem pela API direta, e o rascunho pode ficar incompleto (seção 2.11);
+  - testes unitários da tabela, do ator, da edição, do veículo, do snapshot e dos esquemas (30);
+  - 14 mutações, todas derrubando os casos esperados sem derrubar o contraste.
+- **Lacuna corrigida na I2.6:** com o token do `org_admin`, uma chamada direta à API apagava um dado do veículo de uma oferta publicada ou reservada (por exemplo, a marca), e a oferta continuava publicada. Conferido numa transação desfeita. O gatilho `proteger_veiculo` passou a recusar (seção 2.11).
 
 ---
 

@@ -378,6 +378,31 @@ as $$
   end;
 $$;
 
+-- Dados do veículo exigidos para publicar (§5.2; ADR-0003 §2.11) que estão
+-- vazios, na ordem da tabela. Servem às pendências e ao gatilho do veículo.
+create function private.dados_do_veiculo_faltando(v public.vehicles)
+returns text[]
+language sql
+immutable
+set search_path = ''
+as $$
+  select array_remove(array[
+    case when v.make is null then 'make' end,
+    case when v.model is null then 'model' end,
+    case when v.version is null then 'version' end,
+    case when v.manufacture_year is null then 'manufacture_year' end,
+    case when v.model_year is null then 'model_year' end,
+    case when v.mileage_km is null then 'mileage_km' end,
+    case when v.fuel_type is null then 'fuel_type' end,
+    case when v.transmission is null then 'transmission' end,
+    case when v.color is null then 'color' end,
+    case when v.body_type is null then 'body_type' end,
+    case when v.plate is null then 'plate' end,
+    case when v.renavam is null then 'renavam' end,
+    case when v.chassis is null then 'chassis' end
+  ], null);
+$$;
+
 -- Requisitos de publicação (§6.2; ADR-0003 §2.4). Devolve o que falta; lista
 -- vazia quer dizer que a oferta pode ser enviada ou publicada.
 create function private.pendencias_de_publicacao(p_oferta uuid)
@@ -403,20 +428,7 @@ begin
     where e.id = o.supplier_organization_id and e.status = 'active' and e.kind in ('supplier', 'both')) then
     faltas := array_append(faltas, 'supplier');
   end if;
-  faltas := faltas || array_remove(array[
-    case when v.make is null then 'make' end,
-    case when v.model is null then 'model' end,
-    case when v.version is null then 'version' end,
-    case when v.manufacture_year is null then 'manufacture_year' end,
-    case when v.model_year is null then 'model_year' end,
-    case when v.mileage_km is null then 'mileage_km' end,
-    case when v.fuel_type is null then 'fuel_type' end,
-    case when v.transmission is null then 'transmission' end,
-    case when v.color is null then 'color' end,
-    case when v.body_type is null then 'body_type' end,
-    case when v.plate is null then 'plate' end,
-    case when v.renavam is null then 'renavam' end,
-    case when v.chassis is null then 'chassis' end,
+  faltas := faltas || private.dados_do_veiculo_faltando(v) || array_remove(array[
     case when o.location_city is null or o.location_state is null then 'location' end,
     case when o.asking_price is null then 'asking_price' end,
     case when o.commercial_conditions is null then 'commercial_conditions' end,
@@ -957,7 +969,10 @@ begin
       if not eh_staff then
         raise exception 'só o operador ou o administrador suspende a oferta' using errcode = '42501';
       end if;
-      if new.suspended_category is null or 'suspended_category' <> all (alterados) then
+      -- A categoria da suspensão anterior fica na linha (§2.10). Numa nova
+      -- suspensão com a mesma categoria, a coluna não aparece como alterada;
+      -- o servidor sempre manda a categoria escolhida.
+      if new.suspended_category is null then
         raise exception 'informe a categoria da suspensão' using errcode = 'P0001';
       end if;
       permitidos := array_append(permitidos, 'suspended_category');
@@ -1028,6 +1043,7 @@ as $$
 declare
   ator uuid := (select auth.uid());
   alterados text[];
+  faltando text[];
   oferta public.offers;
 begin
   if tg_op = 'INSERT' then
@@ -1066,6 +1082,13 @@ begin
   perform private.conferir_edicao(old.organization_id, oferta.status);
   if oferta.published_at is not null and alterados && array['plate', 'renavam', 'chassis'] then
     raise exception 'placa, RENAVAM e chassi não mudam depois da primeira publicação' using errcode = 'P0001';
+  end if;
+  -- A publicada ou reservada continua completa (ADR-0003 §2.4): nenhum dado
+  -- exigido para publicar volta a vazio, nem por chamada direta à API.
+  faltando := private.dados_do_veiculo_faltando(new);
+  if oferta.status in ('published', 'reserved') and cardinality(faltando) > 0 then
+    raise exception 'a oferta publicada ou reservada precisa dos dados do veículo: %',
+      array_to_string(faltando, ', ') using errcode = 'P0001';
   end if;
   return new;
 end;
@@ -1635,6 +1658,7 @@ revoke all on function
   private.oferta_aberta(uuid),
   private.tem_impedimento_ativo(uuid),
   private.estado_pela_declaracao(text),
+  private.dados_do_veiculo_faltando(public.vehicles),
   private.pendencias_de_publicacao(uuid),
   private.json_canonico(jsonb),
   private.hash_do_snapshot(jsonb),

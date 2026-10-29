@@ -15,6 +15,42 @@ export function textoObrigatorio(maximo: number) {
     .max(maximo, { error: `Use no máximo ${String(maximo)} caracteres.` });
 }
 
+/**
+ * Caracteres que `private.texto_de_linha` e `private.texto_livre` recusam
+ * (migração `20261029120000_ofertas`): controle e invisíveis (hífen suave,
+ * largura zero, marcas de direção, BOM).
+ */
+const PROIBIDOS_NA_LINHA =
+  /[\u0000-\u001f\u007f\u00ad\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/u;
+const PROIBIDOS_NO_TEXTO_LIVRE =
+  /[\u0000-\u0009\u000b-\u001f\u007f\u00ad\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/u;
+const MENSAGEM_DOS_PROIBIDOS =
+  "Remova caracteres de controle ou invisíveis do texto.";
+
+/** Texto de uma linha, como `private.texto_de_linha` (ADR-0003 §2.12). */
+export function textoDeLinha(maximo: number) {
+  return textoObrigatorio(maximo).refine(
+    (valor) => !PROIBIDOS_NA_LINHA.test(valor),
+    { error: MENSAGEM_DOS_PROIBIDOS },
+  );
+}
+
+/**
+ * Texto livre, como `private.texto_livre`: aceita quebra de linha no meio. A
+ * quebra do navegador (`\r\n`) vira `\n` antes da conferência.
+ */
+export function textoLivre(maximo: number) {
+  return z
+    .string()
+    .transform((valor) => valor.replace(/\r\n?/g, "\n"))
+    .pipe(
+      textoObrigatorio(maximo).refine(
+        (valor) => !PROIBIDOS_NO_TEXTO_LIVRE.test(valor),
+        { error: MENSAGEM_DOS_PROIBIDOS },
+      ),
+    );
+}
+
 export const email = z
   .string()
   .trim()

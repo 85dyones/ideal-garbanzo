@@ -648,3 +648,215 @@ begin
 end
 $m$;
 ```
+
+## I2.6: operações de servidor da oferta (29/10/2026)
+
+Resultado: 14 de 14 mutações derrubaram os casos esperados, sem derrubar o contraste. Três procedimentos:
+
+- **banco:** a função é trocada no projeto de desenvolvimento, o teste de integração roda, e a definição salva antes é reaplicada. O script conferiu com `pg_get_functiondef` que cada função voltou idêntica;
+- **código:** o arquivo é trocado, o teste roda, e o original volta. O script conferiu que cada arquivo voltou idêntico;
+- **pgTAP:** como na I2.3, a mutação entra na cópia do arquivo de teste e é desfeita no rollback.
+
+O teste `ofertas-transicoes` compara o banco com `rules/transicoes.ts` e `rules/edicao.ts`. Por isso, ele cai tanto com a mutação no gatilho quanto com a mutação na tabela do servidor. Os testes de operação dão a mesma resposta com qualquer um dos lados, porque o banco recusa de novo. Para a checagem do servidor ser observável, eles conferem com as dependências espiadas que a recusa veio antes da escrita.
+
+| ID  | Camada             | Teste                    | Mudança                                                                                          | Casos que devem cair                                                                                                   | Contraste                                                                                                       | Caíram | Resultado              |
+| --- | ------------------ | ------------------------ | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------ | ---------------------- |
+| O01 | gatilho            | `ofertas-transicoes`     | proteger_oferta(): o member reserva e libera (T08 e T09)                                         | todo par de estados, todo ator, os dois valores da D10, com e sem motivo                                               | edição da oferta, do veículo, declaração e disponibilidade em cada estado                                       | 1      | caiu; contraste passou |
+| O02 | gatilho            | `ofertas-transicoes`     | proteger_oferta(): a plataforma retira sem motivo (T11)                                          | todo par de estados, todo ator, os dois valores da D10, com e sem motivo                                               | edição da oferta, do veículo, declaração e disponibilidade em cada estado                                       | 1      | caiu; contraste passou |
+| O03 | função do private  | `ofertas-transicoes`     | conferir_edicao(): o member edita a publicada e a reservada                                      | edição da oferta, do veículo, declaração e disponibilidade em cada estado                                              | todo par de estados, todo ator, os dois valores da D10, com e sem motivo                                        | 1      | caiu; contraste passou |
+| O04 | gatilho            | `ofertas-transicoes`     | proteger_oferta() sem o conflito de interesse (B25)                                              | todo par de estados, todo ator, os dois valores da D10, com e sem motivo                                               | edição da oferta, do veículo, declaração e disponibilidade em cada estado                                       | 1      | caiu; contraste passou |
+| O05 | tabela do servidor | `ofertas-transicoes`     | transicoes.ts: o member reserva (T08)                                                            | todo par de estados, todo ator, os dois valores da D10, com e sem motivo                                               | edição da oferta, do veículo, declaração e disponibilidade em cada estado                                       | 1      | caiu; contraste passou |
+| O06 | regra do servidor  | `ofertas-transicoes`     | edicao.ts: o member edita a publicada e a reservada                                              | edição da oferta, do veículo, declaração e disponibilidade em cada estado                                              | todo par de estados, todo ator, os dois valores da D10, com e sem motivo                                        | 1      | caiu; contraste passou |
+| O07 | servidor           | `ofertas-operacoes`      | atualizarOferta sem conferir o ator e o estado antes da RPC                                      | o member, o operador, o administrador e outra empresa não mudam o preço da publicada (Q2, CT12.9, CT12.1); updateOffer | mudança de preço na publicada gera versão nova, histórico e auditoria; as versões anteriores ficam intactas     | 2      | caiu; contraste passou |
+| O08 | servidor           | `ofertas-operacoes`      | mudarStatus sem conferir o ator e o estado antes de escrever                                     | o org_admin e a plataforma reservam e liberam; qualquer F confirma a disponibilidade, sem versão                       | mudança de preço na publicada gera versão nova, histórico e auditoria; as versões anteriores ficam intactas     | 3      | caiu; contraste passou |
+| O09 | servidor           | `ofertas-operacoes`      | mudarStatus sem exigir o motivo da plataforma                                                    | o org_admin retira sem motivo e reabre; a plataforma retira só com motivo                                              | com revisão exigida, o org_admin envia; o fornecedor cancela; a plataforma devolve com motivo e publica         | 1      | caiu; contraste passou |
+| O10 | esquema            | `ofertas`                | dados da oferta sem .strict()                                                                    | CT12.5: preço junto com status, empresa ou colunas do banco é recusado inteiro                                         | CT12.7: preço zero, negativo, não numérico ou com três casas é recusado                                         | 1      | caiu; contraste passou |
+| O11 | snapshot           | `snapshot`               | jsonCanonico() sem ordenar as chaves                                                             | chaves em ordem de código, sem espaços, listas na ordem dada                                                           | recusa número e chave fora do ASCII, como o banco                                                               | 1      | caiu; contraste passou |
+| O12 | gatilho            | `310-ofertas-transicoes` | proteger_oferta(): a nova suspensão exige a categoria como coluna alterada (o defeito corrigido) | T14: a reativada pode ser suspensa de novo com a mesma categoria                                                       | T14: o operador suspende com categoria e motivo                                                                 | 2      | caiu; contraste passou |
+| O13 | gatilho            | `320-ofertas-versoes`    | proteger_veiculo() sem conferir os dados obrigatórios da publicada                               | B16: a publicada não perde dado do veículo pela RPC; B16: nem pela API direta                                          | B16: no rascunho, o dado do veículo pode ficar vazio (contraste); X19/Q4: a placa não muda depois da publicação | 3      | caiu; contraste passou |
+| O14 | gatilho            | `ofertas-operacoes`      | proteger_veiculo() sem conferir os dados obrigatórios da publicada                               | a publicada não perde dado do veículo, nem pela API direta; o rascunho pode ficar incompleto                           | mudança de preço na publicada gera versão nova, histórico e auditoria; as versões anteriores ficam intactas     | 1      | caiu; contraste passou |
+
+Na O13, a terceira asserção que caiu ("§5.6: os dados do veículo têm histórico") é efeito em cascata: com a mutação, as mudanças para vazio foram aceitas e deixaram linhas a mais no histórico do veículo. As O13 e O14 cobrem a correção da lacuna do veículo, feita depois da primeira rodada.
+
+### Mudança de cada mutação (I2.6)
+
+**O01**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.proteger_oferta()'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'if not \(eh_adm_empresa or eh_staff\) then', 'if not (eh_membro or eh_staff) then');
+  if n = d then
+    raise exception 'mutação não aplicada em private.proteger_oferta()';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**O02**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.proteger_oferta()'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'elsif eh_staff then\s+motivo := private\.motivo_obrigatorio\(\);\s+else\s+raise exception ''só o administrador da empresa ou a plataforma retira', 'elsif eh_staff then motivo := private.cabecalho(''x-audit-reason''); else raise exception ''só o administrador da empresa ou a plataforma retira');
+  if n = d then
+    raise exception 'mutação não aplicada em private.proteger_oferta()';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**O03**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.conferir_edicao(uuid,text)'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'if not private\.membro_ativo\(empresa, array\[''org_admin''\]\) then', 'if not private.membro_ativo(empresa) then');
+  if n = d then
+    raise exception 'mutação não aplicada em private.conferir_edicao(uuid,text)';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**O04**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.proteger_oferta()'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'tem_vinculo := exists \([^;]*\);', 'tem_vinculo := false;');
+  if n = d then
+    raise exception 'mutação não aplicada em private.proteger_oferta()';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**O05**
+
+```diff
+- quem: [...F_ADM, ...ST],
++ quem: [...F, ...ST],
+```
+
+**O06**
+
+```diff
+-     return ator === "adm_empresa";
++     return FORNECEDOR.includes(ator);
+```
+
+**O07**
+
+```diff
+-       const editavel = await ofertaEditavel(dependencias, contexto, ofertaId);
+-       if (!editavel.ok) return editavel;
+-       const resposta = await comRastreio(
+-         dependencias.sessao.rpc("atualizar_oferta", {
++       void contexto;
++       const resposta = await comRastreio(
++         dependencias.sessao.rpc("atualizar_oferta", {
+```
+
+**O08**
+
+```diff
+-   if (!candidatas.some((transicao) => transicao.quem.includes(ator))) {
++   if (false) {
+```
+
+```diff
+-   if (transicao === undefined || !pedido.permitidas.includes(transicao.id)) {
+-     return falha("regra_violada");
+-   }
+-   if (motivoObrigatorio(transicao, ator)
++   if (transicao !== undefined && motivoObrigatorio(transicao, ator)
+```
+
+**O09**
+
+```diff
+-   if (motivoObrigatorio(transicao, ator) && pedido.motivo === undefined) {
++   if (false) {
+```
+
+**O10**
+
+```diff
+- const dadosDaOferta = z.strictObject({
++ const dadosDaOferta = z.object({
+```
+
+**O11**
+
+```diff
+-     entradas.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+-
+```
+
+**O12**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.proteger_oferta()'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'if new\.suspended_category is null then', 'if new.suspended_category is null or ''suspended_category'' <> all (alterados) then');
+  if n = d then
+    raise exception 'mutação não aplicada em private.proteger_oferta()';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**O13**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.proteger_veiculo()'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'if oferta\.status in \(''published'', ''reserved''\) and cardinality\(faltando\) > 0 then', 'if false then');
+  if n = d then
+    raise exception 'mutação não aplicada em private.proteger_veiculo()';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**O14**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.proteger_veiculo()'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'if oferta\.status in \(''published'', ''reserved''\) and cardinality\(faltando\) > 0 then', 'if false then');
+  if n = d then
+    raise exception 'mutação não aplicada em private.proteger_veiculo()';
+  end if;
+  execute n;
+end
+$m$;
+```

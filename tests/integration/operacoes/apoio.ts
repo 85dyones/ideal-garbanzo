@@ -97,6 +97,8 @@ export interface DependenciasEspiadas {
   readonly dependencias: Dependencias;
   /** Tabelas abertas pela sessão, na ordem. */
   readonly tabelas: string[];
+  /** Funções chamadas pela sessão por RPC, na ordem. */
+  readonly rpcs: string[];
   /** Quantas vezes a operação pediu o cliente da chave secreta. */
   readonly usosDaChaveSecreta: () => number;
 }
@@ -111,6 +113,7 @@ export function dependenciasEspiadas(
   sessao: SupabaseClient,
 ): DependenciasEspiadas {
   const tabelas: string[] = [];
+  const rpcs: string[] = [];
   let usos = 0;
   const espiada = new Proxy(sessao, {
     get(alvo, propriedade) {
@@ -118,6 +121,12 @@ export function dependenciasEspiadas(
         return (tabela: string) => {
           tabelas.push(tabela);
           return alvo.from(tabela);
+        };
+      }
+      if (propriedade === "rpc") {
+        return (funcao: string, argumentos?: object) => {
+          rpcs.push(funcao);
+          return alvo.rpc(funcao, argumentos);
         };
       }
       const valor: unknown = Reflect.get(alvo, propriedade);
@@ -136,6 +145,7 @@ export function dependenciasEspiadas(
       },
     },
     tabelas,
+    rpcs,
     usosDaChaveSecreta: () => usos,
   };
 }

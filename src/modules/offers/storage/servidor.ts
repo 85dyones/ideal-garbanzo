@@ -6,7 +6,8 @@
  *   a linha exige o objeto no bucket. Se a linha falhar depois do envio, o
  *   arquivo fica sem referência (ninguém apaga no bucket) e não aparece.
  * - Foto: a URL temporária sai com a sessão de quem pede, pela política de
- *   leitura do bucket.
+ *   leitura do bucket. Remover e reordenar mexem só na linha de
+ *   `offer_media`, nos estados editáveis; o objeto fica no bucket.
  * - Documento: o bucket não tem política de leitura. O servidor lê a linha com
  *   a sessão (a RLS decide quem vê), confere a permissão de novo, grava em
  *   `restricted_access_logs` e só então gera a URL com a chave secreta. Sem
@@ -30,6 +31,10 @@ import {
   vinculoAtivo,
 } from "@/modules/auth/rules/permissoes";
 import { executarOperacao } from "@/modules/auth/server/operacao";
+import type { ContextoDoUsuario } from "@/modules/auth/tipos";
+import { podeEditarConteudo } from "../rules/edicao";
+import { atorDaOferta } from "../rules/transicoes";
+import { lerOferta } from "../server/leitura";
 import {
   BUCKET_DAS_FOTOS,
   BUCKET_DOS_DOCUMENTOS,
@@ -40,6 +45,8 @@ import {
 } from "./arquivos";
 import {
   esquemaDaFoto,
+  esquemaDaOrdemDaFoto,
+  esquemaDaRemocaoDaFoto,
   esquemaDaUrlDaFoto,
   esquemaDaUrlDoDocumento,
   esquemaDoDocumento,
@@ -265,6 +272,106 @@ export function gerarUrlDoDocumento(
         url: assinada.data.signedUrl,
         validadeEmSegundos: VALIDADE_DA_URL_DO_DOCUMENTO,
       });
+    },
+  );
+}
+
+/**
+ * A foto que a sessão lê, ainda não removida, numa oferta em que o ator pode
+ * editar o conteúdo (ADR-0003 §2.5 e §2.13).
+ */
+async function fotoEditavel(
+  dependencias: Dependencias,
+  contexto: ContextoDoUsuario,
+  fotoId: string,
+): Promise<Resultado<{ id: string }>> {
+  const { data, error } = await dependencias.sessao
+    .from("offer_media")
+    .select("id, offer_id, removed_at")
+    .eq("id", fotoId)
+    .maybeSingle()
+    .overrideTypes<
+      { id: string; offer_id: string; removed_at: string | null },
+      { merge: false }
+    >();
+  if (error !== null) return traduzirErroDoBanco(error);
+  if (data === null) return falha("sem_permissao");
+  const oferta = await lerOferta(dependencias, data.offer_id);
+  if (!oferta.ok) return oferta;
+  const ator = atorDaOferta(contexto, oferta.dados.empresaId);
+  if (ator !== "membro" && ator !== "adm_empresa")
+    return falha("sem_permissao");
+  if (!podeEditarConteudo(oferta.dados.status, ator)) {
+    return falha(
+      "regra_violada",
+      "As fotos desta oferta não podem ser alteradas no estado atual.",
+    );
+  }
+  if (data.removed_at !== null) {
+    return falha("regra_violada", "A foto já foi removida.");
+  }
+  return sucesso({ id: data.id });
+}
+
+/**
+ * Remove a foto da oferta: a linha marca `removed_at` e `removed_by` (o banco
+ * grava a hora e o ator), e o objeto fica guardado no bucket (B22).
+ */
+export function removerFotoDaOferta(
+  dependencias: Dependencias,
+  entrada: unknown,
+): Promise<Resultado<{ fotoId: string }>> {
+  return executarOperacao(
+    dependencias,
+    esquemaDaRemocaoDaFoto,
+    entrada,
+    async ({ fotoId }, contexto) => {
+      const foto = await fotoEditavel(dependencias, contexto, fotoId);
+      if (!foto.ok) return foto;
+      const { data, error } = await comRastreio(
+        dependencias.sessao
+          .from("offer_media")
+          .update({ removed_at: new Date().toISOString() })
+          .eq("id", fotoId)
+          .is("removed_at", null)
+          .select("id"),
+        dependencias.requestId,
+      ).overrideTypes<{ id: string }[], { merge: false }>();
+      if (error !== null) return traduzirErroDoBanco(error);
+      if (data.length === 0) {
+        return falha("regra_violada", "A foto já foi removida.");
+      }
+      return sucesso({ fotoId });
+    },
+  );
+}
+
+/** Muda a posição da foto na oferta, nos estados editáveis. */
+export function ordenarFotoDaOferta(
+  dependencias: Dependencias,
+  entrada: unknown,
+): Promise<Resultado<{ fotoId: string; ordem: number }>> {
+  return executarOperacao(
+    dependencias,
+    esquemaDaOrdemDaFoto,
+    entrada,
+    async ({ fotoId, ordem }, contexto) => {
+      const foto = await fotoEditavel(dependencias, contexto, fotoId);
+      if (!foto.ok) return foto;
+      const { data, error } = await comRastreio(
+        dependencias.sessao
+          .from("offer_media")
+          .update({ display_order: ordem })
+          .eq("id", fotoId)
+          .is("removed_at", null)
+          .select("id"),
+        dependencias.requestId,
+      ).overrideTypes<{ id: string }[], { merge: false }>();
+      if (error !== null) return traduzirErroDoBanco(error);
+      if (data.length === 0) {
+        return falha("regra_violada", "A foto já foi removida.");
+      }
+      return sucesso({ fotoId, ordem });
     },
   );
 }

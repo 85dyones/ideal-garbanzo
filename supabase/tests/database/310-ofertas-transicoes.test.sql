@@ -8,7 +8,7 @@
 -- com ela desligada. A expiração roda como postgres, sem sessão, como o
 -- pg_cron.
 begin;
-select plan(70);
+select plan(72);
 set constraints all immediate;
 
 -- Apoio do arquivo (objetos temporários, desfeitos no rollback) -------------------
@@ -557,7 +557,19 @@ select is(
   pg_temp.resultado($$update public.offers set status = 'draft' where id = pg_temp.id('Q')$$),
   'linhas: 1',
   'T15: o administrador reativa, e a oferta volta a rascunho');
+select pg_temp.entrar('O');
+select pg_temp.api('{"x-audit-reason": "Nova suspeita de adulteração."}');
+select is(
+  pg_temp.resultado($$update public.offers set status = 'suspended', suspended_category = 'forgery'
+    where id = pg_temp.id('Q')$$),
+  'linhas: 1',
+  'T14: a reativada pode ser suspensa de novo com a mesma categoria');
+select is(
+  (select suspended_reason from public.offers where id = pg_temp.id('Q')),
+  'Nova suspeita de adulteração.',
+  'T14: a nova suspensão grava o motivo novo');
 select pg_temp.api(null);
+select pg_temp.entrar('X');
 
 -- Revisão desligada (D10 = não) ------------------------------------------------------------
 

@@ -42,3 +42,10 @@ export const esquemaDoDocumento = z.strictObject({
 export const esquemaDaUrlDaFoto = z.strictObject({ fotoId: id });
 
 export const esquemaDaUrlDoDocumento = z.strictObject({ documentoId: id });
+
+export const esquemaDaRemocaoDaFoto = z.strictObject({ fotoId: id });
+
+export const esquemaDaOrdemDaFoto = z.strictObject({
+  fotoId: id,
+  ordem: z.int().min(0).max(999),
+});

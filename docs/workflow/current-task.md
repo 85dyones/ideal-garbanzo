@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 2 (oferta) em andamento. O Inc. 1 foi concluído em 28/10, com o gate cumprido, o ADR-0002 aceito e a I1.8 fechada; a R6 fica para este incremento, e a R7 para a I6.9.  
 **Próxima subtarefa:**
-- **I2.6 (T2):** as operações de servidor da oferta (`createOffer`, `updateOffer`, `publishOffer`, `withdrawOffer`, `suspendOffer`, `confirmAvailability`, `declareCategory` e as novas da ADR-0003 §2.15), com a tabela de transições em `src/modules/offers/rules/transicoes.ts` e o teste que a compara com o banco.
+- **I2.7 e I2.8 (T1), em paralelo:** os testes da máquina de estados, do versionamento e dos registros só de inclusão (I2.7) e as telas do fornecedor (I2.8), sobre as operações da I2.6.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -695,3 +695,32 @@
 - **Pendente:**
   - **documento e categoria:** a ligação entre documento anexado e categoria não existe no modelo da §5.2 e fica para o Inc. 3;
   - **textos das ressalvas:** precisam de revisão com a D5 antes do piloto.
+
+### 2026-10-29 · I2.6 · entregue (operações de servidor da oferta)
+
+- **Regras (`src/modules/offers/rules/`):**
+  - **`transicoes.ts`:** a tabela da ADR-0003 §2.3, com quem faz cada transição, o motivo por ator e as condições da D10 e da validade. `atorDaOferta` classifica a sessão em relação à empresa dona, com o conflito de interesse da B25;
+  - **`edicao.ts`:** quem edita o conteúdo e quem confirma a disponibilidade em cada estado (§2.5 e §2.9);
+  - **`veiculo.ts` e `oferta.ts`:** placa, RENAVAM e chassi, UFs, preço, categorias da suspensão, validade até 23:59:59 de Brasília e rótulos das pendências;
+  - **`snapshot.ts`:** o JSON canônico e o hash da §2.7, fora do banco.
+- **Operações:**
+  - **`server/ofertas.ts`:** criar, alterar (inclusive a validade), declarar, consultar as pendências e confirmar a disponibilidade;
+  - **`server/transicoes.ts`:** publicar ou enviar à revisão conforme a D10, cancelar o envio, revisar (publicar ou devolver com motivo), reservar, liberar, retirar, reabrir, suspender e reativar;
+  - **`storage/servidor.ts`:** remover e reordenar foto;
+  - **como recusam:** sem papel para a ação, "sem permissão"; com papel, mas no estado errado, regra violada. O servidor confere antes de escrever, e o banco decide de novo;
+  - **esquemas estritos:** os textos seguem os CHECKs do banco (`textoDeLinha` e `textoLivre` em `src/lib/operacao/campos.ts`).
+- **Defeitos corrigidos na migração da I2.3,** que ainda não saiu do repositório local, com reset do `dev`:
+  - **nova suspensão:** a oferta reativada não podia ser suspensa de novo com a mesma categoria, porque o gatilho exigia a categoria entre as colunas alteradas. Agora basta a categoria preenchida. Duas asserções novas no 310;
+  - **veículo da publicada:** com o token do `org_admin`, uma chamada direta à API apagava um dado obrigatório do veículo de uma oferta publicada ou reservada, e a oferta continuava publicada (conferido numa transação desfeita). O gatilho `proteger_veiculo` passou a recusar, com a mesma lista das pendências de publicação, agora numa função só (`private.dados_do_veiculo_faltando`). Três asserções novas no 320 e um teste novo na integração.
+- **Testes:**
+  - `test:db`: 20 arquivos, todos passando; o 310 passou de 70 para 72 asserções, e o 320, de 79 para 82;
+  - `test:integration`: 103 em 10 arquivos. São novos o `ofertas-transicoes` (3), que compara o banco e o servidor em 1.792 tentativas de transição e 256 de edição, e o `ofertas-operacoes` (28);
+  - `npm test`: 195, com os 30 novos das regras e dos esquemas;
+  - lint, tipos e formatação passam, menos o relatório da I1.7, que está fora do Git.
+- **Mutação:** 14 (O01 a O14), todas derrubando os casos esperados sem derrubar o contraste, em `supabase/tests/mutacoes/inc-2.md`:
+  - 5 no banco do `dev`, com as funções restauradas e conferidas por `pg_get_functiondef`;
+  - 7 no código, com os arquivos restaurados e conferidos com `cmp`;
+  - 2 no pgTAP, sobre as duas correções.
+- **Pendente:**
+  - **D10 desligada pelo servidor:** a publicação direta (T06) foi conferida no banco, pela comparação, mas não pela operação, porque mudar a configuração do `dev` afetaria a homologação;
+  - **CI:** o CI ainda não rodou as migrações do Inc. 2.

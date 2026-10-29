@@ -7,7 +7,7 @@
 -- uma versão por transação. As asserções do snapshot e do hash rodam como
 -- postgres, porque as funções do private não são executáveis por usuário.
 begin;
-select plan(79);
+select plan(82);
 set constraints all immediate;
 
 -- Apoio do arquivo (objetos temporários, desfeitos no rollback) -------------------
@@ -428,10 +428,21 @@ select throws_ok(
   $$select public.atualizar_oferta(pg_temp.id('P'), '{"renavam": "98765432103"}')$$,
   'P0001', 'placa, RENAVAM e chassi não mudam depois da primeira publicação',
   'X19/Q4: nem o RENAVAM');
+select throws_ok(
+  $$select public.atualizar_oferta(pg_temp.id('P'), '{"make": null}')$$,
+  'P0001', 'a oferta publicada ou reservada precisa dos dados do veículo: make',
+  'B16: a publicada não perde dado do veículo pela RPC');
+select throws_ok(
+  $$update public.vehicles set version = null, color = null where id = pg_temp.id('veículo P')$$,
+  'P0001', 'a oferta publicada ou reservada precisa dos dados do veículo: version, color',
+  'B16: nem pela API direta');
 select pg_temp.entrar('F2');
 select lives_ok(
   $$select public.atualizar_oferta(pg_temp.id('R'), '{"plate": "XYZ9A99"}')$$,
   'Q4: no rascunho nunca publicado, a placa muda (contraste)');
+select lives_ok(
+  $$select public.atualizar_oferta(pg_temp.id('R'), '{"color": null}')$$,
+  'B16: no rascunho, o dado do veículo pode ficar vazio (contraste)');
 select throws_ok(
   $$select public.atualizar_oferta(pg_temp.id('P'), '{"mileage_km": 47000}')$$,
   '42501', 'só o administrador da empresa altera oferta publicada ou reservada',
