@@ -335,13 +335,14 @@ Os IDs são os do anexo A.2. T18 e T19 são novas.
   - `offer-photos`, para JPEG, PNG e WebP;
   - `offer-documents`, para PDF, JPEG, PNG e WebP;
   - os dois seguem a convenção do ADR-0002 §2.14 e entram em `bucketsDaAplicacao`;
-  - os tamanhos máximos ficam para a I2.4.
+  - os dois aceitam até 10 MiB por arquivo, como a evidência da adesão (migração `20261029140000_storage_das_ofertas`).
 - **Caminho:** `<empresa>/<oferta>/<uuid>.<extensão>`. O nome original do arquivo não entra no caminho.
 - **Envio:**
   - F envia pela própria sessão, nas ofertas da empresa e nos estados editáveis da seção 2.5;
   - a política de INSERT em `storage.objects` confere empresa, oferta e estado;
-  - a linha em `offer_media` ou `offer_documents` exige que o objeto exista no caminho e tenha sido enviado pelo mesmo usuário. Essa conferência entra na I2.4, com os buckets; a I2.3 confere só o formato do caminho.
-- **Nenhum objeto é sobrescrito nem apagado:** não há política de UPDATE nem de DELETE em `storage.objects` (CT6.6).
+  - a linha em `offer_media` ou `offer_documents` exige que o objeto exista no caminho e tenha sido enviado pelo mesmo usuário (`owner_id` do objeto). Os gatilhos conferem isso desde a I2.4;
+  - o servidor exige vínculo ativo com a empresa dona antes de chegar ao Storage, então o staff é recusado antes do envio (Q3).
+- **Nenhum objeto é sobrescrito nem apagado:** não há política de UPDATE nem de DELETE em `storage.objects` (CT6.6). Além disso, o próprio Supabase recusa DELETE direto por SQL nessa tabela. A remoção pela API do Storage passa pela política, e é por ela que o teste de integração confere a falta de política de DELETE.
 - **Fotos:**
   - a empresa dona e o staff leem pela política de SELECT e geram a URL temporária com a própria sessão. O comprador entra no Inc. 4;
   - remover uma foto marca `removed_at` e `removed_by` em `offer_media`, colunas acrescentadas à §5.2. A foto some da oferta, mas o objeto fica guardado;
@@ -353,9 +354,9 @@ Os IDs são os do anexo A.2. T18 e T19 são novas.
   - no bucket de documentos, não há política de SELECT em `storage.objects` para `authenticated`;
   - quem quer baixar pede ao servidor, que confere a permissão com a sessão do usuário, grava em `restricted_access_logs` e só então gera a URL temporária com a chave secreta;
   - assim, nenhum caminho baixa um documento sem deixar registro, nem o do próprio dono. É o sexto uso da chave secreta (ADR-0002 §2.12);
-  - a I2.4 confere que o envio funciona sem política de SELECT;
+  - conferido na I2.4: o envio do documento funciona só com a política de INSERT, como diz a documentação do Supabase ("Storage Access Control"); o upsert exigiria também SELECT e UPDATE;
   - `buyer_visibility` só aceita `hidden` até a decisão D5. Como a tabela é só de inclusão, a forma de abrir (por linha ou por tipo, em configuração, §7.3) fica para quando a D5 for decidida;
-  - o servidor calcula o `sha256` no envio. Quem chamar a API direto pode informar outro valor para o próprio arquivo, e a I2.4 avalia uma conferência posterior;
+  - o servidor calcula o `sha256` no envio. Quem chamar a API direto pode informar outro valor para o próprio arquivo. A I2.4 manteve o cálculo só no servidor; conferir o conteúdo guardado contra o `sha256` fica para antes do piloto (Inc. 6);
   - documento enviado por engano continua guardado e oculto ao comprador. A remoção por obrigação legal vira um procedimento auditado, definido com o jurídico antes do piloto (Inc. 6).
 - **Prazo das URLs temporárias:** 60 segundos para documento e 10 minutos para foto. São valores técnicos e provisórios.
 
@@ -437,6 +438,10 @@ Mudar `material_fields` ou `document_categories` vale para frente (seção 2.6).
   - os arquivos de oferta tornam imediatos os gatilhos de versão (`set constraints all immediate`), para cada comando gravar a própria versão, e voltam a adiá-los só no caso que confere uma versão por transação;
   - 29 mutações, todas derrubando os casos esperados sem derrubar o contraste. Uma mutação é equivalente: a política de UPDATE de `offers` sozinha não muda nada, porque o UPDATE com WHERE também aplica a de SELECT, com o mesmo predicado;
   - ficam para depois o teste 6 (I2.4) e a comparação entre o banco e `transicoes.ts` (I2.6 e I2.7).
+- **Entregue na I2.4 (29/10):**
+  - `340-ofertas-storage` (30 asserções): buckets privados, políticas de envio e leitura, conferência do objeto e do dono, e escrita direta em `storage.objects`;
+  - `tests/integration/ofertas-storage.test.ts` (15 testes): endereço público, download e URL pelo caminho, listagem, envio ao prefixo alheio, sobrescrita, movimentação e remoção pela API, URL do documento só pelo servidor e com registro, e URL vencida (CT6.1 a CT6.7);
+  - 15 mutações, 10 de banco e 5 de integração, todas derrubando os casos esperados sem derrubar o contraste (`supabase/tests/mutacoes/inc-2.md`).
 
 ---
 

@@ -216,18 +216,23 @@ begin
 end;
 $f$;
 
--- Documento e foto da oferta, na sessão de quem envia, no caminho
--- <empresa>/<oferta>/<uuid>. O objeto no Storage é conferido a partir da I2.4.
+-- Documento e foto da oferta: o objeto entra no bucket como postgres, com o
+-- dono informado, como o Storage grava; a linha entra na sessão de quem envia,
+-- no caminho <empresa>/<oferta>/<uuid> (ADR-0003 §2.13).
 create function pg_temp.documento(nome text, oferta text, quem text) returns void
 language plpgsql
 as $f$
 declare
   novo uuid;
+  caminho text;
 begin
+  perform pg_temp.entrar(null);
+  select o.supplier_organization_id || '/' || o.id || '/' || gen_random_uuid() || '.pdf' into caminho
+  from public.offers o where o.id = pg_temp.id(oferta);
+  insert into storage.objects (bucket_id, name, owner_id) values ('offer-documents', caminho, pg_temp.id(quem)::text);
   perform pg_temp.entrar(quem);
   insert into public.offer_documents (offer_id, kind, storage_path, sha256)
-  select o.id, 'crlv', o.supplier_organization_id || '/' || o.id || '/' || gen_random_uuid() || '.pdf', repeat('b', 64)
-  from public.offers o where o.id = pg_temp.id(oferta)
+  values (pg_temp.id(oferta), 'crlv', caminho, repeat('b', 64))
   returning id into novo;
   insert into pg_temp.fixture values (nome, novo);
   perform pg_temp.entrar(null);
@@ -239,11 +244,15 @@ language plpgsql
 as $f$
 declare
   novo uuid;
+  caminho text;
 begin
+  perform pg_temp.entrar(null);
+  select o.supplier_organization_id || '/' || o.id || '/' || gen_random_uuid() || '.jpg' into caminho
+  from public.offers o where o.id = pg_temp.id(oferta);
+  insert into storage.objects (bucket_id, name, owner_id) values ('offer-photos', caminho, pg_temp.id(quem)::text);
   perform pg_temp.entrar(quem);
   insert into public.offer_media (offer_id, storage_path, display_order)
-  select o.id, o.supplier_organization_id || '/' || o.id || '/' || gen_random_uuid() || '.jpg', 1
-  from public.offers o where o.id = pg_temp.id(oferta)
+  values (pg_temp.id(oferta), caminho, 1)
   returning id into novo;
   insert into pg_temp.fixture values (nome, novo);
   perform pg_temp.entrar(null);
@@ -637,10 +646,15 @@ select pg_temp.entrar(null);
 
 -- CHECKs: a restrição certa recusa, mesmo fora do GRANT e do gatilho ---------------------
 
+-- Objeto no bucket para o documento do caso X18, como o Storage grava.
+insert into storage.objects (bucket_id, name, owner_id)
+select 'offer-documents', o.supplier_organization_id || '/' || o.id || '/00000000-0000-4000-8000-0000000000d5.pdf',
+       pg_temp.id('F1')::text
+from public.offers o where o.id = pg_temp.id('R');
 select pg_temp.entrar('F1');
 select throws_ok(
   $$insert into public.offer_documents (offer_id, kind, storage_path, sha256, buyer_visibility)
-    select o.id, 'crlv', o.supplier_organization_id || '/' || o.id || '/' || gen_random_uuid() || '.pdf',
+    select o.id, 'crlv', o.supplier_organization_id || '/' || o.id || '/00000000-0000-4000-8000-0000000000d5.pdf',
            repeat('c', 64), 'approved_buyers'
     from public.offers o where o.id = pg_temp.id('R')$$,
   '23514', 'new row for relation "offer_documents" violates check constraint "offer_documents_oculto_ate_d5"',

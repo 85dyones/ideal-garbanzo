@@ -17,8 +17,10 @@ export interface Dependencias {
   /**
    * Cliente com a chave secreta, criado só quando usado. Restrito aos usos da
    * ADR-0002 §2.12: API administrativa do Auth, busca do perfil pelo e-mail no
-   * convite e registro em `restricted_access_logs`. Nunca escreve em tabela de
-   * identidade (lá o `service_role` só lê).
+   * convite e registro em `restricted_access_logs`; e, pela ADR-0003 §2.13, a
+   * URL temporária do documento da oferta, depois da checagem e do registro.
+   * Nunca escreve em tabela de identidade nem de oferta (lá o `service_role`
+   * só lê).
    */
   readonly administrativo: () => SupabaseClient;
   /** Identificador da requisição, enviado em `x-request-id` e gravado na auditoria. */

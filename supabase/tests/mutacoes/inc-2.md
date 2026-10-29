@@ -358,3 +358,176 @@ alter table public.offers drop constraint offers_suspended_category_check;
 ```sql
 alter policy offers_leitura on public.offers using (true); alter policy offers_alteracao on public.offers using (true) with check (true);
 ```
+
+## I2.4: Storage das ofertas (29/10/2026)
+
+Resultado: 15 de 15 mutações derrubaram os casos esperados, sem derrubar o contraste.
+
+### Banco (`340-ofertas-storage`)
+
+Mesmo procedimento da I2.3: a mutação entra na cópia do arquivo e é desfeita no rollback.
+
+| ID  | Camada              | Mudança                                                        | Casos que devem cair                                                                                                                              | Contraste                                                 | Caíram | Resultado              |
+| --- | ------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------ | ---------------------- |
+| S01 | política do Storage | offer_photos_leitura só com o bucket (sem a função de leitura) | CT6.2: outra empresa não lê o objeto da foto pelo caminho; CT6.5: nem lista o prefixo da empresa; CT6.4:                                          | contraste: a empresa dona lê o objeto da foto             | 3      | caiu; contraste passou |
+| S02 | política do Storage | política de SELECT no bucket de documentos                     | nenhuma política de SELECT no bucket de documentos; nem o dono lê o objeto do documento direto; o operador também abre documento só pelo servidor | contraste: a empresa dona lê o objeto da foto             | 5      | caiu; contraste passou |
+| S03 | função do private   | oferta_do_caminho() sem conferir a empresa do caminho          | caminho com a empresa errada é recusado                                                                                                           | contraste: o member envia foto para o rascunho da empresa | 1      | caiu; contraste passou |
+| S04 | função do private   | pode_editar_oferta() sem exigir org_admin na publicada         | Q2: o member não envia arquivo para a publicada                                                                                                   | contraste: o org_admin envia arquivo para a publicada     | 1      | caiu; contraste passou |
+| S05 | função do private   | pode_editar_oferta() sem o vínculo com a empresa dona          | CT6.6: outra empresa não envia para a oferta alheia; CT6.6: outra empresa não envia para o prefixo da oferta alheia                               | contraste: o member envia foto para o rascunho da empresa | 4      | caiu; contraste passou |
+| S06 | gatilho             | proteger_foto sem conferir o objeto no bucket                  | a foto sem objeto no bucket não é registrada; ninguém registra como seu o objeto enviado por outra pessoa                                         | contraste: quem enviou o objeto registra a foto           | 2      | caiu; contraste passou |
+| S07 | gatilho             | proteger_foto sem conferir o dono do objeto                    | ninguém registra como seu o objeto enviado por outra pessoa                                                                                       | contraste: quem enviou o objeto registra a foto           | 1      | caiu; contraste passou |
+| S08 | gatilho             | proteger_documento sem conferir o objeto no bucket             | o documento sem objeto no bucket não é registrado                                                                                                 | contraste: quem enviou o objeto registra a foto           | 1      | caiu; contraste passou |
+| S09 | política do Storage | política de UPDATE no bucket de fotos                          | CT6.6: nenhuma política de UPDATE ou DELETE nos buckets das ofertas; CT6.6: nem o dono sobrescreve a foto                                         | contraste: a empresa dona lê o objeto da foto             | 2      | caiu; contraste passou |
+| S10 | bucket              | bucket de documentos público                                   | CT6.1: os dois buckets das ofertas são privados                                                                                                   | contraste: a empresa dona lê o objeto da foto             | 1      | caiu; contraste passou |
+
+### Integração (`tests/integration/ofertas-storage.test.ts`)
+
+Cada mutação foi aplicada no projeto de desenvolvimento (SQL gravado) ou no código do servidor, o teste rodou, e a mudança foi desfeita no fim. O script conferiu que `servidor.ts` voltou idêntico ao original, e a consulta final confirmou os buckets privados e só as políticas da migração.
+
+| ID  | Camada              | Mudança                                                             | Casos que devem cair                                                                                                                                           | Contraste                                                                              | Caíram | Resultado              |
+| --- | ------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------ | ---------------------- |
+| I01 | bucket              | bucket offer-documents público                                      | CT6.1: o endereço público não entrega a foto nem o documento                                                                                                   | contraste: o dono obtém a URL do documento pelo servidor, com o registro gravado antes | 4      | caiu; contraste passou |
+| I02 | servidor            | gerarUrlDoDocumento lê com a chave secreta e sem a segunda checagem | CT6.3: outra empresa não obtém URL temporária, nem pelo Storage nem pelo servidor                                                                              | contraste: o dono obtém a URL do documento pelo servidor, com o registro gravado antes | 1      | caiu; contraste passou |
+| I03 | servidor            | gerarUrlDoDocumento sem o registro em restricted_access_logs        | contraste: o dono obtém a URL do documento pelo servidor, com o registro gravado antes; contraste: o operador obtém a URL do documento, registrado sem empresa | CT6.3: outra empresa não obtém URL temporária, nem pelo Storage nem pelo servidor      | 2      | caiu; contraste passou |
+| I04 | política do Storage | política de DELETE nos buckets das ofertas                          | CT6.6: ninguém envia ao prefixo alheio, sobrescreve, move ou apaga                                                                                             | CT6.3: outra empresa não obtém URL temporária, nem pelo Storage nem pelo servidor      | 2      | caiu; contraste passou |
+| I05 | política do Storage | políticas de SELECT e UPDATE no bucket de documentos (upsert)       | CT6.6: ninguém envia ao prefixo alheio, sobrescreve, move ou apaga; nem o dono baixa o documento direto pelo Storage: só pelo servidor, com registro           | contraste: o dono obtém a URL da foto com a própria sessão                             | 6      | caiu; contraste passou |
+
+**Mudanças da integração:**
+
+- **I01:** `update storage.buckets set public = true where id = 'offer-documents'`.
+- **I02:** em `gerarUrlDoDocumento`, as duas leituras passam ao cliente da chave secreta, e a segunda checagem (membro ou staff) fica sempre falsa. É a camada inteira do servidor afrouxada: com a leitura pela sessão, a RLS já recusaria.
+- **I03:** em `gerarUrlDoDocumento`, `registrarAcessoRestrito` dá lugar a uma função que só devolve `true`.
+- **I04:** `create policy mutacao_i04 on storage.objects for delete to authenticated using (bucket_id in ('offer-photos', 'offer-documents'))`.
+- **I05:** políticas de SELECT e de UPDATE em `offer-documents` para `authenticated`, as duas que o upsert exige.
+
+**Não verificável pelo pgTAP:**
+
+- O Supabase recusa o DELETE direto em `storage.objects`, com ou sem política. A camada da política de DELETE só aparece pela API do Storage, na I04.
+
+### SQL das mutações de banco (I2.4)
+
+**S01**
+
+```sql
+alter policy offer_photos_leitura on storage.objects using (bucket_id = 'offer-photos');
+```
+
+**S02**
+
+```sql
+create policy mutacao_s02 on storage.objects for select to authenticated using (bucket_id = 'offer-documents');
+```
+
+**S03**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.oferta_do_caminho(text,text)'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, '\s+and o\.supplier_organization_id::text = split_part\(caminho, ''/'', 1\)', '');
+  if n = d then
+    raise exception 'mutação não aplicada em private.oferta_do_caminho(text,text)';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**S04**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.pode_editar_oferta(uuid)'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'array\[''org_admin''\]', 'null');
+  if n = d then
+    raise exception 'mutação não aplicada em private.pode_editar_oferta(uuid)';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**S05**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.pode_editar_oferta(uuid)'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'private\.membro_ativo\(o\.supplier_organization_id\)\)', 'true)');
+  if n = d then
+    raise exception 'mutação não aplicada em private.pode_editar_oferta(uuid)';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**S06**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.proteger_foto()'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'if not exists \(\s+select 1 from storage\.objects s', 'if false and not exists (select 1 from storage.objects s');
+  if n = d then
+    raise exception 'mutação não aplicada em private.proteger_foto()';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**S07**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.proteger_foto()'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'and s\.owner_id = ator::text', '');
+  if n = d then
+    raise exception 'mutação não aplicada em private.proteger_foto()';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**S08**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.proteger_documento()'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'if not exists \(\s+select 1 from storage\.objects s', 'if false and not exists (select 1 from storage.objects s');
+  if n = d then
+    raise exception 'mutação não aplicada em private.proteger_documento()';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**S09**
+
+```sql
+create policy mutacao_s09 on storage.objects for update to authenticated using (bucket_id = 'offer-photos') with check (bucket_id = 'offer-photos');
+```
+
+**S10**
+
+```sql
+update storage.buckets set public = true where id = 'offer-documents';
+```

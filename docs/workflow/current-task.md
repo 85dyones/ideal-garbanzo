@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 2 (oferta) em andamento. O Inc. 1 foi concluído em 28/10, com o gate cumprido, o ADR-0002 aceito e a I1.8 fechada; a R6 fica para este incremento, e a R7 para a I6.9.  
 **Próxima subtarefa:**
-- **I2.4 (T2):** Storage privado das ofertas: buckets `offer-photos` e `offer-documents`, políticas em `storage.objects`, conferência do objeto nas linhas de foto e documento, URLs temporárias e registro em `restricted_access_logs` (teste 6), conforme o ADR-0003 §2.13.
+- **I2.5 (T2):** função de estado documental a partir das declarações (`not_checked`, `declared_unverified`, `with_findings`), base da I3, conforme a §6.4 e o ADR-0003 §2.12. A I2.3 já criou `private.estado_pela_declaracao`, usada no snapshot; falta a função por oferta e categoria, com o lado do servidor em `src/modules/documental/`.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -646,3 +646,31 @@
   - o CI ainda não rodou as migrações novas, que entram no próximo push;
   - o Storage (teste 6) fica para a I2.4;
   - o servidor e a comparação com `transicoes.ts` ficam para a I2.6 e a I2.7.
+
+### 2026-10-29 · I2.4 · entregue (Storage das ofertas)
+
+- **Migração `20261029140000_storage_das_ofertas`:**
+  - **buckets:** `offer-photos` e `offer-documents`, privados, até 10 MiB, reaplicáveis e listados em `config/banco-dev.json`;
+  - **envio:** só quem pode editar o conteúdo da oferta no estado atual, no caminho `<empresa>/<oferta>/<uuid>.<extensão>`;
+  - **leitura:** das fotos, para a empresa dona e o staff. Os documentos não têm política de leitura;
+  - **sem UPDATE nem DELETE;**
+  - **gatilhos de foto e documento:** passaram a exigir o objeto no bucket, enviado pelo mesmo usuário.
+- **Servidor (`src/modules/offers/storage/`):**
+  - envio de foto e documento pela sessão, com a assinatura do arquivo conferida e o `sha256` calculado no servidor;
+  - URL da foto pela sessão, por 10 minutos;
+  - URL do documento só pelo servidor: lê pela sessão, confere de novo (membro ou staff), grava em `restricted_access_logs` e só então gera a URL com a chave secreta, por 60 segundos. Esse é o sexto uso da chave, registrado em `src/lib/operacao/dependencias.ts`.
+- **Conferido na I2.4:**
+  - **documentação do Supabase:** o envio exige só a política de INSERT, e o upsert exige também SELECT e UPDATE. O teste de integração confirmou que o documento sobe sem política de leitura;
+  - **dono do objeto:** o Storage grava o dono em `storage.objects.owner_id`, como texto;
+  - **DELETE direto:** o Supabase recusa DELETE direto em `storage.objects`, então a falta de política de DELETE só se prova pela API do Storage.
+- **Testes:**
+  - `test:db`: 19 arquivos, todos passando. O 340 é novo, com 30 asserções. O 320 e o 330 passaram a gravar o objeto no bucket antes da linha;
+  - `test:integration`: 69 em 7 arquivos, com o `ofertas-storage` novo (15);
+  - `npm test`: 156; lint, tipos e formatação passam, menos o relatório da I1.7, que está fora do Git.
+- **Mutação:** 15, todas derrubando os casos esperados sem derrubar o contraste, registradas em `supabase/tests/mutacoes/inc-2.md`:
+  - 10 de banco: S01 a S10;
+  - 5 de integração: I01 a I05. Foram aplicadas no `dev` ou no código e desfeitas no fim. O `servidor.ts` voltou idêntico, conferido com `cmp`, e os buckets e as políticas voltaram ao estado da migração.
+- **Pendente:**
+  - **conferência do `sha256`:** conferir o conteúdo guardado contra o `sha256`, antes do piloto;
+  - **CI:** o CI ainda não rodou as migrações do Inc. 2;
+  - **comprador:** a leitura das fotos pelo comprador fica para o Inc. 4.
