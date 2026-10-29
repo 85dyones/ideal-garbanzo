@@ -7,7 +7,8 @@
 begin;
 select plan(11);
 
--- Só dois gatilhos usam a saída de manutenção --------------------------------------
+-- Três gatilhos usam a saída de manutenção; o da oferta, só para a expiração
+-- (ADR-0003 §2.9) -------------------------------------------------------------------
 
 select is(
   (select array_agg(p.proname::text order by p.proname)
@@ -15,8 +16,8 @@ select is(
     where n.nspname in ('public', 'private')
       and p.proname <> 'manutencao'
       and p.prosrc like '%manutencao()%'),
-  array['proteger_configuracao', 'proteger_papel_da_plataforma'],
-  'R5: só proteger_configuracao e proteger_papel_da_plataforma chamam manutencao()');
+  array['proteger_configuracao', 'proteger_oferta', 'proteger_papel_da_plataforma'],
+  'R5: só proteger_configuracao, proteger_oferta e proteger_papel_da_plataforma chamam manutencao()');
 
 -- Lista de sessões -------------------------------------------------------------------
 

@@ -52,5 +52,6 @@ Procedimento, só no projeto de desenvolvimento:
 3. Rodar `npm run db:reset` e `npm run test:db` e confirmar que **o teste negativo falha** e o de contraste continua passando.
 4. Desfazer a mudança, rodar o reset de novo e confirmar que o teste volta a passar.
 5. Registrar a verificação no `docs/workflow/current-task.md` (teste, regra afrouxada, resultado nos dois sentidos).
+6. Desde o Inc. 2, a lista de cada ciclo fica versionada em `supabase/tests/mutacoes/`, com o SQL de cada mutação (R6 do ADR-0002). Nesse ciclo, a mutação entra logo depois do `set constraints all immediate;` de uma cópia do arquivo de teste e é desfeita no rollback do próprio teste, sem migração temporária nem reset.
 
 Teste que passa com e sem a regra não conta como evidência.

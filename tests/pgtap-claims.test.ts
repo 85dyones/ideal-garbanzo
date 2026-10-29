@@ -8,8 +8,9 @@
  * - `set local role X` troca o papel; `reset role` volta a postgres;
  * - `pg_temp.entrar('<nome>')` e `set_config('request.jwt.claims', '<json>')`
  *   definem as claims; `pg_temp.entrar(null)` e `set_config(..., '')` limpam;
- * - os apoios `pg_temp.admin`, `conceder`, `pedido`, `evidencia`, `empresa` e
- *   `vincular` limpam as claims ao terminar;
+ * - os apoios `pg_temp.admin`, `conceder`, `pedido`, `evidencia`, `empresa`,
+ *   `vincular` e, nos testes de oferta, `oferta`, `enviar`, `publicar`,
+ *   `documento` e `foto` limpam as claims ao terminar;
  * - corpos de `pg_temp.*` e blocos `do $$` não são asserções.
  * Uma convenção nova nos arquivos pede ajuste aqui.
  */
@@ -25,7 +26,7 @@ const PASTA = fileURLToPath(
 const ASSERCAO =
   /^select (throws_ok|throws_like|throws_matching|is|isnt|ok|lives_ok|results_eq|results_ne|set_eq|bag_eq|is_empty|isnt_empty|row_eq|cmp_ok|matches|imatches|alike|unalike)\(/;
 const APOIO_QUE_LIMPA =
-  /^select pg_temp\.(admin|conceder|pedido|evidencia|empresa|vincular)\(/;
+  /^select pg_temp\.(admin|conceder|pedido|evidencia|empresa|vincular|oferta|enviar|publicar|documento|foto)\(/;
 const CLAIMS_VAZIAS = /'request\.jwt\.claims',\s*''/;
 
 /** Linhas (1-based) de asserções com papel trocado e claims vazias. */

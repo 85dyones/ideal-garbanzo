@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 2 (oferta) em andamento. O Inc. 1 foi concluído em 28/10, com o gate cumprido, o ADR-0002 aceito e a I1.8 fechada; a R6 fica para este incremento, e a R7 para a I6.9.  
 **Próxima subtarefa:**
-- **I2.3 (T2):** migrações de `vehicles`, `offers`, `offer_versions`, `offer_media`, `offer_documents`, `supplier_declarations` e `offer_reviews`, com as transições, os CHECKs, a RLS, o snapshot e o hash, a expiração pelo `pg_cron` e os testes pgTAP, conforme o ADR-0003.
+- **I2.4 (T2):** Storage privado das ofertas: buckets `offer-photos` e `offer-documents`, políticas em `storage.objects`, conferência do objeto nas linhas de foto e documento, URLs temporárias e registro em `restricted_access_logs` (teste 6), conforme o ADR-0003 §2.13.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -617,3 +617,32 @@
   - Q5: validade padrão de 15 dias e teto de 30.
 - **Antecipado da I2.4:** nomes dos buckets, caminho dos objetos e regra de download dos documentos.
 - **Corrigido no plano:** caminho dos testes da I2.7 (`supabase/tests/database/3*`).
+
+### 2026-10-29 · I2.3 · entregue (migrações das ofertas)
+
+- **Migrações:**
+  - `20261029120000_ofertas`: `vehicles`, `offers`, `offer_versions`, `supplier_declarations`, `offer_media`, `offer_documents` e `offer_reviews`. Traz os gatilhos de transição (T01 a T19), os CHECKs por estado, a RLS, os GRANTs por coluna, o snapshot e o hash no banco, a versão por gatilho adiado, o histórico, a auditoria, as RPCs `criar_oferta`, `atualizar_oferta` e `pendencias_de_publicacao` e as cinco chaves de configuração;
+  - `20261029120100_expiracao_das_ofertas`: `pg_cron` e o job `expirar-ofertas`, a cada 10 minutos.
+- **Conferido na I2.3:**
+  - **RENAVAM:** a Portaria DENATRAN 27/2013 define "módulo 11, peso 9"; a ordem dos pesos não está escrita e será conferida com RENAVAMs reais antes do piloto;
+  - **pg_cron:** a documentação do Supabase manda ligar a extensão em `pg_catalog`;
+  - **escape do JSON:** o do Postgres coincide com o `JSON.stringify` e com os hashes de referência calculados em Node.
+- **Correções durante a subtarefa:**
+  - **GRANTs no cron:** os GRANTs do schema `cron` que a documentação sugere quebravam o reset seguinte ("dependent privileges exist", vindo do gatilho de eventos do Supabase). Saíram da migração, e os GRANTs que o `postgres` tinha feito para ele mesmo foram removidos do `dev`, com o acesso dado pelo `supabase_admin` mantido;
+  - **resposta igual:** os gatilhos de declaração, foto e documento passaram a responder "sem permissão" para oferta alheia e inexistente;
+  - **lista fechada:** a edição sem mudança de status ganhou uma lista fechada de colunas, que segura um GRANT ampliado.
+- **Testes:**
+  - `db:reset` com 8 migrações, rodado duas vezes seguidas;
+  - `test:db`: 18 arquivos e 711 asserções, todos passando. São novos o 300 (46), o 310 (70), o 320 (79) e o 330 (32); o 210 ganhou `proteger_oferta` entre os chamadores de `manutencao()`;
+  - `npm test`: 156; lint e tipos passam;
+  - `format:check` só acusa o `relatorio-auditoria-i1.7.md`, que está fora do Git;
+  - o verificador de claims conhece os apoios novos (`oferta`, `enviar`, `publicar`, `documento` e `foto`).
+- **Mutação (gate 3, R6):**
+  - 29 mutações em `supabase/tests/mutacoes/inc-2.md`, com o SQL de cada uma;
+  - todas derrubaram os casos esperados sem derrubar o contraste;
+  - uma é equivalente: a política de UPDATE de `offers` sozinha, porque o UPDATE com WHERE aplica também a de SELECT;
+  - na primeira rodada, duas mutações tiveram efeito em cascata. Dois passos de preparo do 310 viraram asserções, e os contrastes passaram a usar a oferta D.
+- **Pendente:**
+  - o CI ainda não rodou as migrações novas, que entram no próximo push;
+  - o Storage (teste 6) fica para a I2.4;
+  - o servidor e a comparação com `transicoes.ts` ficam para a I2.6 e a I2.7.

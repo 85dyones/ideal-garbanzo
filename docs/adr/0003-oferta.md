@@ -136,6 +136,8 @@ Os IDs são os do anexo A.2. T18 e T19 são novas.
   - ator, datas, versão e `is_test`;
   - as colunas de revisão, retirada e suspensão.
 - **Campo fora da lista:** é recusado pelo esquema estrito do servidor e pelo GRANT (CT12.5).
+- **Segunda camada (I2.3):** na edição sem mudança de status, o gatilho aceita só preço, condições, cidade, UF, validade e disponibilidade, mesmo que um GRANT seja ampliado por engano (mutação M10).
+- **Resposta igual para oferta alheia e inexistente:** nos gatilhos de declaração, foto e documento, as duas recebem "sem permissão", sem revelar se a oferta existe (CT2.11).
 
 ### 2.6. Versão e snapshot
 
@@ -206,7 +208,7 @@ Os IDs são os do anexo A.2. T18 e T19 são novas.
   - qualquer pessoa consegue recalcular o hash a partir do snapshot.
 - **Textos de entrada:**
   - chegam sem espaços nas pontas e sem caracteres invisíveis ou de controle (seção 2.12);
-  - a I2.3 confere em teste que o escape de texto do Postgres coincide com o do JCS.
+  - conferido na I2.3: o `300-ofertas-estrutura` compara o JSON canônico e o hash do banco com valores calculados em Node, com aspas, barra invertida, quebra de linha, caractere de controle, acento e emoji.
 - **Uso:** a ciência (Inc. 5) grava a versão e o hash. O servidor recusa a ciência se a versão não for a vigente ou se o hash não for o dela (§6.7, teste 8).
 
 ### 2.8. Histórico e auditoria
@@ -244,8 +246,9 @@ Os IDs são os do anexo A.2. T18 e T19 são novas.
   - O intervalo é técnico e provisório.
 - **Disponibilidade da extensão:**
   - o `pg_cron` 1.6.4 está disponível no projeto de desenvolvimento, mas ainda não foi ligado. Conferi em 29/10 em `pg_available_extensions`, no Postgres 17.11;
-  - a I2.3 liga a extensão por migração, conforme a documentação do Supabase, e confere o mesmo no CI;
-  - a migração é reaplicável (`cron.unschedule` antes de `cron.schedule`), como pede o `supabase/tests/README.md`.
+  - a I2.3 liga a extensão por migração (`20261029120100_expiracao_das_ofertas`), no schema `pg_catalog`, como manda a documentação do Supabase;
+  - a migração não faz GRANT no schema `cron`. O gatilho de eventos do próprio Supabase dá o acesso ao `postgres` ao criar a extensão e repete a revogação e a concessão a cada `create extension`. Um GRANT do `postgres` para ele mesmo fica dependente desse acesso, e o reset seguinte falha com "dependent privileges exist" (conferido em 29/10; os GRANTs da primeira versão foram removidos do `dev`);
+  - a migração é reaplicável: `cron.schedule` com o mesmo nome atualiza o job, e dois resets seguidos passaram. O CI ainda não rodou essa migração.
 - **Entre duas rodadas:**
   - a oferta vencida já se comporta como expirada;
   - catálogo (Inc. 4) e interesse (Inc. 5) usam o predicado `private.oferta_aberta(oferta)`: status `published` ou `reserved`, `valid_until` no futuro e empresa dona ativa;
@@ -289,7 +292,10 @@ Os IDs são os do anexo A.2. T18 e T19 são novas.
 - **Sem unicidade global de placa, RENAVAM ou chassi,** porque o erro de duplicidade revelaria o estoque de outra empresa. A tela avisa quando a própria empresa já tem oferta aberta com a mesma placa.
 - **Para publicar, todos os campos da §5.2 preenchidos,** com validação de formato e sem consulta externa:
   - placa no formato antigo (`AAA9999`) ou Mercosul (`AAA9A99`), guardada em maiúsculas e sem hífen;
-  - RENAVAM com 11 dígitos e dígito verificador. O algoritmo será conferido em fonte oficial na I2.3, antes de virar regra;
+  - RENAVAM com 11 dígitos e dígito verificador. A fonte oficial é a Portaria DENATRAN 27/2013, art. 1º, § 1º: "10 dígitos e um dígito verificador, calculado através do módulo 11, peso 9";
+    - a I2.3 lê "peso 9" como pesos de 2 a 9 da direita para a esquerda, como no CNPJ; resto 0 ou 1 dá dígito 0;
+    - o código antigo, de 9 dígitos, chega do servidor completado com zeros à esquerda;
+    - a ordem dos pesos não está escrita na portaria. Um RENAVAM real recusado barraria a publicação, então a regra é conferida com RENAVAMs reais antes do piloto (Inc. 6);
   - chassi com 17 caracteres, sem I, O e Q;
   - ano do modelo igual ao de fabricação ou ao seguinte;
   - quilometragem inteira e não negativa.
@@ -334,7 +340,7 @@ Os IDs são os do anexo A.2. T18 e T19 são novas.
 - **Envio:**
   - F envia pela própria sessão, nas ofertas da empresa e nos estados editáveis da seção 2.5;
   - a política de INSERT em `storage.objects` confere empresa, oferta e estado;
-  - a linha em `offer_media` ou `offer_documents` exige que o objeto exista no caminho e tenha sido enviado pelo mesmo usuário.
+  - a linha em `offer_media` ou `offer_documents` exige que o objeto exista no caminho e tenha sido enviado pelo mesmo usuário. Essa conferência entra na I2.4, com os buckets; a I2.3 confere só o formato do caminho.
 - **Nenhum objeto é sobrescrito nem apagado:** não há política de UPDATE nem de DELETE em `storage.objects` (CT6.6).
 - **Fotos:**
   - a empresa dona e o staff leem pela política de SELECT e geram a URL temporária com a própria sessão. O comprador entra no Inc. 4;
@@ -425,6 +431,12 @@ Mudar `material_fields` ou `document_categories` vale para frente (seção 2.6).
   - CT12.9 vira negativo (Q3): o operador não altera o preço;
   - CT2.12 continua com 0 linhas no Inc. 2, para qualquer empresa, porque o catálogo é do Inc. 4.
 - **Lista de mutações versionada** (R6 do ADR-0002): fica em `supabase/tests/mutacoes/inc-2.md`, com a camada mutada, a mudança, os casos que devem cair e o resultado observado. Cada mutação afrouxa uma camada de cada vez, e todo negativo tem contraste (ADR-0002 §3).
+- **Entregue na I2.3 (29/10):**
+  - arquivos `300-ofertas-estrutura` (46 asserções), `310-ofertas-transicoes` (70), `320-ofertas-versoes` (79) e `330-ofertas-isolamento` (32);
+  - o `210-manutencao` passou a fixar `proteger_oferta` entre os chamadores de `manutencao()`, só para a expiração;
+  - os arquivos de oferta tornam imediatos os gatilhos de versão (`set constraints all immediate`), para cada comando gravar a própria versão, e voltam a adiá-los só no caso que confere uma versão por transação;
+  - 29 mutações, todas derrubando os casos esperados sem derrubar o contraste. Uma mutação é equivalente: a política de UPDATE de `offers` sozinha não muda nada, porque o UPDATE com WHERE também aplica a de SELECT, com o mesmo predicado;
+  - ficam para depois o teste 6 (I2.4) e a comparação entre o banco e `transicoes.ts` (I2.6 e I2.7).
 
 ---
 
