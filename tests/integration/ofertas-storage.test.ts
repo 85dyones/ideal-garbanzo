@@ -10,12 +10,6 @@
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
-import { enviarPedidoDeAdesao } from "@/modules/membership/server/adesao";
-import {
-  decidirPedido,
-  enviarEvidencia,
-  registrarConferencia,
-} from "@/modules/membership/server/revisao";
 import {
   BUCKET_DAS_FOTOS,
   BUCKET_DOS_DOCUMENTOS,
@@ -30,12 +24,12 @@ import {
 import {
   SUFIXO,
   clienteAdministrativo,
-  cnpjDeTeste,
   comBanco,
   concederPapelNaPlataforma,
   criarUsuario,
   dependencias,
   dependenciasEspiadas,
+  empresaAprovada,
   entrar,
   pdfDeTeste,
   type UsuarioDeTeste,
@@ -51,46 +45,6 @@ const URL_DA_API = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 async function pessoa(papel: string): Promise<Pessoa> {
   const usuario = await criarUsuario(`arq-${papel}`);
   return { usuario, sessao: await entrar(usuario) };
-}
-
-/** Empresa pelo fluxo real: pedido, conferência, evidência e aprovação. */
-async function empresaAprovada(
-  requerente: Pessoa,
-  admin: Pessoa,
-  tipo: "supplier" | "buyer",
-  variante: string,
-): Promise<string> {
-  const pedido = await enviarPedidoDeAdesao(dependencias(requerente.sessao), {
-    nomeDaEmpresa: `Pátio ${variante} ${SUFIXO}`,
-    razaoSocial: `Pátio ${variante} ${SUFIXO} Ltda`,
-    cnpj: cnpjDeTeste(variante),
-    tipo,
-  });
-  if (!pedido.ok) throw new Error(`pedido ${variante}: ${pedido.mensagem}`);
-  const pedidoId = pedido.dados.pedidoId;
-  const conferencia = await registrarConferencia(dependencias(admin.sessao), {
-    pedidoId,
-    itens: [],
-  });
-  if (!conferencia.ok) throw new Error(`conferência ${variante}`);
-  const evidencia = await enviarEvidencia(dependencias(admin.sessao), {
-    pedidoId,
-    tipoDoArquivo: "application/pdf",
-    conteudo: pdfDeTeste(),
-  });
-  if (!evidencia.ok) throw new Error(`evidência ${variante}`);
-  const decisao = await decidirPedido(dependencias(admin.sessao), {
-    pedidoId,
-    decisao: "aprovar",
-    cnpjConferidoEm: new Date(Date.now() - 60_000).toISOString(),
-    fonteDaConferencia: "consulta de teste",
-    evidenciaId: evidencia.dados.evidenciaId,
-    dadosDeTeste: true,
-  });
-  if (!decisao.ok || decisao.dados.organizationId === null) {
-    throw new Error(`aprovação ${variante}`);
-  }
-  return decisao.dados.organizationId;
 }
 
 /** Conteúdo mínimo com a assinatura de PNG. */
@@ -139,9 +93,9 @@ beforeAll(async () => {
   c1 = await pessoa("c1");
   await concederPapelNaPlataforma(admin.usuario.id, "admin");
   await concederPapelNaPlataforma(operador.usuario.id, "operator");
-  empresaF = await empresaAprovada(f1, admin, "supplier", "F");
-  await empresaAprovada(g1, admin, "supplier", "G");
-  await empresaAprovada(c1, admin, "buyer", "C");
+  empresaF = await empresaAprovada(f1.sessao, admin.sessao, "supplier", "F");
+  await empresaAprovada(g1.sessao, admin.sessao, "supplier", "G");
+  await empresaAprovada(c1.sessao, admin.sessao, "buyer", "C");
   // As sessões releem o vínculo no banco a cada operação; o token não muda.
 
   const criada = await f1.sessao.rpc("criar_oferta", {

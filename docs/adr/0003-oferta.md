@@ -319,6 +319,12 @@ Os IDs são os do anexo A.2. T18 e T19 são novas.
   - `unknown` → `not_checked`;
   - `no_known_occurrence` → `declared_unverified`;
   - `has_occurrence` → `with_findings`.
+- **Implementado na I2.5** (migração `20261029160000_estado_documental`):
+  - uma função só, `private.estados_documentais_da_oferta`, calcula o estado e a origem (§6.5) de cada categoria. O snapshot da versão e a RPC da tela, `public.estados_documentais`, usam essa mesma função. A saída do snapshot não mudou, e os hashes gravados continuam conferindo;
+  - o estado de cada categoria é o candidato de maior precedência da §6.4 (`private.precedencia_documental`). No Inc. 2, o único candidato vem da declaração vigente; o Inc. 3 acrescenta consultas, revisões e impedimentos;
+  - nenhuma tabela guarda o estado: ele é calculado a cada leitura;
+  - o servidor (`src/modules/documental/`) acrescenta os rótulos da §6.4 e da §6.5, o catálogo de textos das ressalvas (`rules/avisos.ts`, com textos provisórios até a D5) e o resumo proporcional do catálogo;
+  - documento anexado ainda não confirma categoria: a ligação entre documento e categoria não existe no modelo da §5.2 e fica para o Inc. 3.
 - **Autorização de divulgação:**
   - F-adm declara a cada envio ou publicação;
   - o ator grava o próprio id em `publication_authorized_by`, e o gatilho confere que é ele mesmo e grava `publication_authorized_at`;
@@ -442,6 +448,11 @@ Mudar `material_fields` ou `document_categories` vale para frente (seção 2.6).
   - `340-ofertas-storage` (30 asserções): buckets privados, políticas de envio e leitura, conferência do objeto e do dono, e escrita direta em `storage.objects`;
   - `tests/integration/ofertas-storage.test.ts` (15 testes): endereço público, download e URL pelo caminho, listagem, envio ao prefixo alheio, sobrescrita, movimentação e remoção pela API, URL do documento só pelo servidor e com registro, e URL vencida (CT6.1 a CT6.7);
   - 15 mutações, 10 de banco e 5 de integração, todas derrubando os casos esperados sem derrubar o contraste (`supabase/tests/mutacoes/inc-2.md`).
+- **Entregue na I2.5 (29/10):**
+  - `350-estado-documental` (22 asserções): regras da §6.4 só com declarações, origem da §6.5, declaração vigente, quem lê pela RPC, snapshot com os mesmos estados e mudanças na lista de categorias;
+  - `tests/integration/estado-documental.test.ts` (3 testes): o banco e as regras do servidor dizem o mesmo (mapeamento, precedência e ressalvas), e a operação devolve estados, origens, ressalvas e resumo, ou "sem permissão";
+  - testes unitários das regras e do catálogo de ressalvas (9);
+  - 6 mutações, todas derrubando os casos esperados sem derrubar o contraste.
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 2 (oferta) em andamento. O Inc. 1 foi concluído em 28/10, com o gate cumprido, o ADR-0002 aceito e a I1.8 fechada; a R6 fica para este incremento, e a R7 para a I6.9.  
 **Próxima subtarefa:**
-- **I2.5 (T2):** função de estado documental a partir das declarações (`not_checked`, `declared_unverified`, `with_findings`), base da I3, conforme a §6.4 e o ADR-0003 §2.12. A I2.3 já criou `private.estado_pela_declaracao`, usada no snapshot; falta a função por oferta e categoria, com o lado do servidor em `src/modules/documental/`.
+- **I2.6 (T2):** as operações de servidor da oferta (`createOffer`, `updateOffer`, `publishOffer`, `withdrawOffer`, `suspendOffer`, `confirmAvailability`, `declareCategory` e as novas da ADR-0003 §2.15), com a tabela de transições em `src/modules/offers/rules/transicoes.ts` e o teste que a compara com o banco.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -674,3 +674,24 @@
   - **conferência do `sha256`:** conferir o conteúdo guardado contra o `sha256`, antes do piloto;
   - **CI:** o CI ainda não rodou as migrações do Inc. 2;
   - **comprador:** a leitura das fotos pelo comprador fica para o Inc. 4.
+
+### 2026-10-29 · I2.5 · entregue (estado documental)
+
+- **Migração `20261029160000_estado_documental`:**
+  - **função única:** `private.estados_documentais_da_oferta` calcula estado e origem por categoria (§6.4 e §6.5). O snapshot e a RPC `public.estados_documentais` usam a mesma função; a saída do snapshot não mudou, e os hashes gravados continuam conferindo;
+  - **precedência:** `private.precedencia_documental` traz a ordem da §6.4, e `private.estado_documental` escolhe o candidato de maior precedência. No Inc. 2, o único candidato é a declaração vigente;
+  - **ressalvas:** `private.aviso_do_estado` dá os códigos das ressalvas, com o texto no catálogo do servidor.
+- **Servidor (`src/modules/documental/`):**
+  - **regras:** estados, rótulos, precedência, origens, rótulos das categorias e resumo proporcional;
+  - **catálogo de ressalvas:** textos provisórios até a D5;
+  - **operação:** `consultarEstadosDocumentais`.
+- **Apoio dos testes:** a criação de empresa aprovada foi para `tests/integration/operacoes/apoio.ts` e é usada pelos testes do Storage e do estado documental.
+- **Testes:**
+  - `test:db`: 20 arquivos, todos passando; o 350 é novo, com 22 asserções;
+  - `test:integration`: 72 em 8 arquivos; o `estado-documental` é novo, com 3 testes;
+  - `npm test`: 165, com os 9 novos das regras e do catálogo;
+  - lint, tipos e formatação passam, menos o relatório da I1.7, que está fora do Git.
+- **Mutação:** 6 mutações (D01 a D06), todas derrubando os casos esperados sem derrubar o contraste, em `supabase/tests/mutacoes/inc-2.md`.
+- **Pendente:**
+  - **documento e categoria:** a ligação entre documento anexado e categoria não existe no modelo da §5.2 e fica para o Inc. 3;
+  - **textos das ressalvas:** precisam de revisão com a D5 antes do piloto.

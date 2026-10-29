@@ -9,6 +9,12 @@
 import { randomBytes } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Dependencias } from "@/lib/operacao/dependencias";
+import { enviarPedidoDeAdesao } from "@/modules/membership/server/adesao";
+import {
+  decidirPedido,
+  enviarEvidencia,
+  registrarConferencia,
+} from "@/modules/membership/server/revisao";
 import { conectar } from "../../../scripts/lib/banco.mjs";
 
 const URL_DA_API = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -208,4 +214,48 @@ export function cnpjDeTeste(variante = "A"): string {
   const primeiro = dv(valores);
   const segundo = dv([...valores, primeiro]);
   return `${base}${String(primeiro)}${String(segundo)}`;
+}
+
+/**
+ * Empresa pelo fluxo real das operações: pedido do requerente, conferência,
+ * evidência e aprovação pelo administrador. Devolve o id da empresa, com o
+ * requerente como org_admin ativo.
+ */
+export async function empresaAprovada(
+  requerente: SupabaseClient,
+  administrador: SupabaseClient,
+  tipo: "supplier" | "buyer" | "both",
+  variante: string,
+): Promise<string> {
+  const pedido = await enviarPedidoDeAdesao(dependencias(requerente), {
+    nomeDaEmpresa: `Pátio ${variante} ${SUFIXO}`,
+    razaoSocial: `Pátio ${variante} ${SUFIXO} Ltda`,
+    cnpj: cnpjDeTeste(variante),
+    tipo,
+  });
+  if (!pedido.ok) throw new Error(`pedido ${variante}: ${pedido.mensagem}`);
+  const pedidoId = pedido.dados.pedidoId;
+  const conferencia = await registrarConferencia(dependencias(administrador), {
+    pedidoId,
+    itens: [],
+  });
+  if (!conferencia.ok) throw new Error(`conferência ${variante}`);
+  const evidencia = await enviarEvidencia(dependencias(administrador), {
+    pedidoId,
+    tipoDoArquivo: "application/pdf",
+    conteudo: pdfDeTeste(),
+  });
+  if (!evidencia.ok) throw new Error(`evidência ${variante}`);
+  const decisao = await decidirPedido(dependencias(administrador), {
+    pedidoId,
+    decisao: "aprovar",
+    cnpjConferidoEm: new Date(Date.now() - 60_000).toISOString(),
+    fonteDaConferencia: "consulta de teste",
+    evidenciaId: evidencia.dados.evidenciaId,
+    dadosDeTeste: true,
+  });
+  if (!decisao.ok || decisao.dados.organizationId === null) {
+    throw new Error(`aprovação ${variante}`);
+  }
+  return decisao.dados.organizationId;
 }

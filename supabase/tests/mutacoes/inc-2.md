@@ -531,3 +531,120 @@ create policy mutacao_s09 on storage.objects for update to authenticated using (
 ```sql
 update storage.buckets set public = true where id = 'offer-documents';
 ```
+
+## I2.5: estado documental (29/10/2026)
+
+Resultado: 6 de 6 mutações derrubaram os casos esperados, sem derrubar o contraste. Mesmo procedimento da I2.3, sobre o `350-estado-documental`.
+
+| ID  | Camada            | Mudança                                                                  | Casos que devem cair                                                  | Contraste                                                   | Caíram | Resultado              |
+| --- | ----------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------- | ----------------------------------------------------------- | ------ | ---------------------- |
+| D01 | função do private | estado_pela_declaracao(): ocorrência declarada vira declared_unverified  | §6.4: ocorrência declarada dá "com apontamentos"                      | §6.4: "sem ocorrência conhecida" dá                         | 4      | caiu; contraste passou |
+| D02 | função do private | estado_documental(): vale a declaração mais antiga                       | §5.3: a declaração mais recente é a vigente                           | B29: sem declaração, a categoria fica como não consultada   | 1      | caiu; contraste passou |
+| D03 | função do private | estados_documentais_da_oferta() sem as categorias já declaradas          | remover a categoria da configuração não esconde o que foi declarado   | categoria nova aparece como não consultada e não confirmada | 1      | caiu; contraste passou |
+| D04 | RPC               | estados_documentais() sem conferir se a sessão lê a oferta               | outra empresa não lê os estados da oferta alheia                      | contraste: a empresa dona lê os estados das dez categorias  | 2      | caiu; contraste passou |
+| D05 | função do private | estados_documentais_da_oferta(): origem sempre declarada pelo fornecedor | §6.5: sem declaração, as dez categorias aparecem como não confirmadas | §6.4: ocorrência declarada dá "com apontamentos"            | 2      | caiu; contraste passou |
+| D06 | função do private | precedencia_documental(): with_findings abaixo de todos                  | precedência da §6.4                                                   | B29: sem declaração, a categoria fica como não consultada   | 1      | caiu; contraste passou |
+
+### SQL das mutações (I2.5)
+
+**D01**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.estado_pela_declaracao(text)'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'when ''has_occurrence'' then ''with_findings''', 'when ''has_occurrence'' then ''declared_unverified''');
+  if n = d then
+    raise exception 'mutação não aplicada em private.estado_pela_declaracao(text)';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**D02**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.estado_documental(uuid,text)'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'order by sd\.seq desc', 'order by sd.seq asc');
+  if n = d then
+    raise exception 'mutação não aplicada em private.estado_documental(uuid,text)';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**D03**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.estados_documentais_da_oferta(uuid)'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, '\s+union\s+select sd\.category from public\.supplier_declarations sd where sd\.offer_id = p_oferta', '');
+  if n = d then
+    raise exception 'mutação não aplicada em private.estados_documentais_da_oferta(uuid)';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**D04**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('public.estados_documentais(uuid)'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'if not exists \(select 1 from public\.offers o where o\.id = p_oferta\) then', 'if false then');
+  if n = d then
+    raise exception 'mutação não aplicada em public.estados_documentais(uuid)';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**D05**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.estados_documentais_da_oferta(uuid)'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'case when d\.declared_value is null then ''unconfirmed'' else ''supplier_declaration'' end', '''supplier_declaration''');
+  if n = d then
+    raise exception 'mutação não aplicada em private.estados_documentais_da_oferta(uuid)';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**D06**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.precedencia_documental(text)'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'when ''with_findings'' then 5', 'when ''with_findings'' then 0');
+  if n = d then
+    raise exception 'mutação não aplicada em private.precedencia_documental(text)';
+  end if;
+  execute n;
+end
+$m$;
+```
