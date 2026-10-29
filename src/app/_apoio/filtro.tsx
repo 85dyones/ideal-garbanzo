@@ -18,13 +18,16 @@ export function FiltroPorStatus({
   caminho,
   atual,
   opcoes,
+  rotuloDeTodos = "Todos",
 }: {
   readonly caminho: string;
   readonly atual: string | null;
   readonly opcoes: readonly (readonly [string, string])[];
+  /** "Todas" quando o substantivo é feminino (ofertas). */
+  readonly rotuloDeTodos?: string;
 }) {
   const todas: readonly (readonly [string | null, string])[] = [
-    [null, "Todos"],
+    [null, rotuloDeTodos],
     ...opcoes,
   ];
   return (

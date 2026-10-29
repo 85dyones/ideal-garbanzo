@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 2 (oferta) em andamento. O Inc. 1 foi concluído em 28/10, com o gate cumprido, o ADR-0002 aceito e a I1.8 fechada; a R6 fica para este incremento, e a R7 para a I6.9.  
 **Próxima subtarefa:**
-- **I2.7 e I2.8 (T1), em paralelo:** os testes da máquina de estados, do versionamento e dos registros só de inclusão (I2.7) e as telas do fornecedor (I2.8), sobre as operações da I2.6.
+- **I2.9 (T1):** telas administrativas das ofertas: lista, revisão (com a D10 ligada), devolução com motivo, suspensão com categoria e motivo e reativação, sobre as operações da I2.6. Depois, a revisão independente (I2.10, T3).
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -724,3 +724,38 @@
 - **Pendente:**
   - **D10 desligada pelo servidor:** a publicação direta (T06) foi conferida no banco, pela comparação, mas não pela operação, porque mudar a configuração do `dev` afetaria a homologação;
   - **CI:** o CI ainda não rodou as migrações do Inc. 2.
+
+### 2026-10-29 · I2.7 · entregue (testes da oferta)
+
+- **Despacho:** subagente `builder` (T1), em worktree isolado, com o modelo padrão da instalação (os modelos dos subagentes ainda não estão configurados). Nenhum fallback informado. O worktree nasceu num commit antigo (`100575f`), e o builder o alinhou ao `6e4bf01` com `git reset --keep`, sem perda.
+- **Divisão:** o builder escreveu os testes e rodou `npm test`, lint, tipos e formatação; o T2 rodou os pgTAP contra o banco, conferiu o conteúdo, fez as mutações e integrou.
+- **Entrega:**
+  - **`src/modules/offers/rules/transicoes.decisao.test.ts`** (22 testes): a tabela da ADR-0003 §2.3 como dados no próprio teste, comparada com o servidor em 1.536 combinações, mais os proibidos nomeados e as tabelas de edição e disponibilidade;
+  - **`360-ofertas-so-inclusao`** (99 asserções): teste 11 sistemático nas quatro tabelas só de inclusão e nas linhas de histórico e auditoria da oferta, para o dono, o administrador, `service_role` e `postgres`;
+  - **`370-ofertas-versionamento`** (32 asserções): versão só em campo material, coluna a coluna, e uma versão por transação.
+- **Testes:** os dois pgTAP passaram na primeira rodada contra o banco; `npm test` com 217.
+- **Mutação:** 11 (V01 a V11), todas derrubando os casos esperados sem derrubar o contraste, em `supabase/tests/mutacoes/inc-2.md`.
+- **Pendente:** a asserção do CT11.5 lista as chaves estrangeiras atuais para `offers` e `vehicles` e precisa de atualização no Inc. 3.
+
+### 2026-10-29 · I2.8 · entregue (telas do fornecedor)
+
+- **Despacho:** subagente `builder` (T1), em worktree isolado, com o modelo padrão da instalação; nenhum fallback informado. O worktree também nasceu no `100575f` e foi avançado ao `6e4bf01` (`git merge --ff-only`) antes de qualquer mudança. Revisão visual por um subagente `vision-review` (TV), com 20 capturas.
+- **Entrega do builder:**
+  - **rotas** em `src/app/(conta)/empresa/[empresaId]/ofertas/`: painel com filtro, nova oferta, resumo e envio, as etapas veículo, fotos, condições, declarações e documentos, e o histórico (versões, revisões e alterações por campo). Cada página com carregamento, sem permissão e registro inexistente;
+  - **leituras** pela sessão em `src/modules/offers/queries/`; onde reaproveitam operações, recebem dependências cuja chave secreta lança erro. Só abrir documento usa a chave, pelo caminho da ADR-0003 §2.13;
+  - **ações** em `src/app/_acoes/ofertas.ts`, com preço no formato brasileiro e validade em data;
+  - **e2e** `tests/e2e/ofertas.spec.mts`, com 4 testes.
+- **Feito pelo T2 na integração:**
+  - **`declararCategorias`:** gravar as dez declarações gerava dez versões e dez recargas de contexto. A operação nova grava todas numa inclusão só, com uma versão só, e nada se uma for recusada. O fluxo completo do e2e caiu de 45 s para 27 s;
+  - **texto da autorização** em forma neutra: "Declaro ter autorização para divulgar esta oferta.";
+  - **achados do TV:** nenhum crítico e nenhum termo proibido. Dos 6 importantes, todos corrigidos: o que bloqueia o envio ganhou tom próprio e link para a etapa; a retirada foi para "Outras ações", no fim; a categoria sem declaração aparece destacada, com a declaração vigente legível; o aviso de que documento não se apaga ficou junto do envio, em tom de alerta; o histórico deixou de se contradizer ("Alterações de campos"). Também corrigidos alguns menores ("Todas" no filtro, textos de fotos e retirada, "avisos documentais" no resumo das versões, link de volta no histórico).
+- **Testes:**
+  - `test:db`: 22 arquivos, todos passando;
+  - `test:integration`: 104 em 10 arquivos, com o teste novo da declaração em lote;
+  - `npm test`: 248; lint, tipos e build passam;
+  - e2e das ofertas: 4 passando, rodado três vezes (entrega, depois da declaração em lote e depois dos ajustes do TV).
+- **Mutação:** esconder o aviso documental no resumo derruba o fluxo completo do e2e; com o código restaurado (conferido com `cmp`), ele volta a passar. As telas não decidem permissão: toda checagem fica nas operações e no banco, já cobertos pelas mutações das I2.3 a I2.7.
+- **Pendente:**
+  - **achados menores do TV não tratados:** cor de link visitado no cabeçalho, título repetido nas etapas veículo e condições, quilometragem gravada sem separador de milhar, "Status" na tela da empresa e "Situação" nas ofertas, alvo de toque dos rádios abaixo de 44 px e o resumo das versões em parágrafo corrido;
+  - **capturas:** saíram com o indicador de desenvolvimento do Next, que cobre partes da tela no celular; as próximas devem usar o build de produção;
+  - **formatação e lint do repositório:** acusam só a pasta `entrepatios-brand/`, fora do Git, que apareceu durante a sessão e não é desta subtarefa (`tokens/tailwind.colors.js` tem erro de sintaxe). Se ela entrar no Git assim, o CI falha.

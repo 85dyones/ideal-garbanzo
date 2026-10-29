@@ -135,6 +135,31 @@ export const esquemaDaDeclaracao = z
     path: ["detalhe"],
   });
 
+const declaracaoDaLista = z
+  .strictObject({
+    categoria: z
+      .string()
+      .regex(/^[a-z][a-z0-9_]{0,63}$/, { error: "Categoria inválida." }),
+    valor: z.enum(VALORES_DECLARADOS),
+    detalhe: textoLivre(2000).optional(),
+  })
+  .refine((dados) => dados.valor !== "has_occurrence" || dados.detalhe, {
+    error: "Descreva a ocorrência.",
+    path: ["detalhe"],
+  });
+
+/** Várias categorias de uma vez, cada uma no máximo uma vez. */
+export const esquemaDasDeclaracoes = z
+  .strictObject({
+    ofertaId: id,
+    declaracoes: z.array(declaracaoDaLista).min(1).max(30),
+  })
+  .refine(
+    ({ declaracoes }) =>
+      new Set(declaracoes.map((d) => d.categoria)).size === declaracoes.length,
+    { error: "Cada categoria aparece uma vez só.", path: ["declaracoes"] },
+  );
+
 export const esquemaDaOferta = z.strictObject({ ofertaId: id });
 
 /** A autorização de divulgação é declarada a cada envio ou publicação (§2.12). */

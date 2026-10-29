@@ -348,6 +348,41 @@ export async function empresaDe(
   return aprovado.organization_id;
 }
 
+/**
+ * Membro (`member`) ativo da empresa, como em
+ * `tests/integration/apoio/identidade.ts`: convite pela API com a sessão do
+ * `org_admin` e aceite com a sessão do convidado.
+ */
+export async function membroDe(
+  dono: UsuarioDeTeste,
+  empresaId: string,
+  membro: UsuarioDeTeste,
+): Promise<void> {
+  const sessaoDoDono = await entrarNaApi(dono);
+  const vinculo = exigirDados(
+    await sessaoDoDono
+      .from("organization_members")
+      .insert({
+        organization_id: empresaId,
+        profile_id: membro.id,
+        role: "member",
+      })
+      .select("id")
+      .single(),
+    `convidar ${membro.email}`,
+  );
+  const sessaoDoMembro = await entrarNaApi(membro);
+  exigirDados(
+    await sessaoDoMembro
+      .from("organization_members")
+      .update({ status: "active" })
+      .eq("id", vinculo.id)
+      .select("id")
+      .single(),
+    `aceitar o convite ${vinculo.id}`,
+  );
+}
+
 /** Suspende a empresa pela API, com a sessão do administrador e o motivo da auditoria. */
 export async function suspenderEmpresa(
   administrador: UsuarioDeTeste,

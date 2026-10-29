@@ -84,6 +84,16 @@ export default async function PaginaDaEmpresa({
           ]}
         />
       </Secao>
+      {ativa && empresa.tipo !== "buyer" ? (
+        <nav aria-label="Áreas da empresa">
+          <Link
+            href={`/empresa/${encodeURIComponent(empresa.id)}/ofertas`}
+            className={LINK}
+          >
+            Ofertas
+          </Link>
+        </nav>
+      ) : null}
       {podeGerir ? (
         <Secao titulo="Alterar nome e contatos">
           <EdicaoDaEmpresa

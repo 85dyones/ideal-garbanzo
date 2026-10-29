@@ -85,11 +85,14 @@ export function Aviso({
   tom = "info",
 }: {
   readonly children: ReactNode;
-  readonly tom?: "info" | "alerta";
+  /** `bloqueio`: o que impede a ação; `alerta`: o que pede atenção, sem impedir. */
+  readonly tom?: "info" | "alerta" | "bloqueio";
 }) {
   const cores =
-    tom === "alerta"
-      ? "border-amber-600 bg-amber-50 text-amber-950"
-      : "border-blue-700 bg-blue-50 text-blue-950";
+    tom === "bloqueio"
+      ? "border-red-700 bg-red-50 text-red-950"
+      : tom === "alerta"
+        ? "border-amber-600 bg-amber-50 text-amber-950"
+        : "border-blue-700 bg-blue-50 text-blue-950";
   return <div className={`rounded border-l-4 p-3 ${cores}`}>{children}</div>;
 }

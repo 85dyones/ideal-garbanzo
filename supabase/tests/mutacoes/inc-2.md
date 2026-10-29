@@ -860,3 +860,96 @@ begin
 end
 $m$;
 ```
+
+## I2.7: testes da máquina de estados, do versionamento e do teste 11 (29/10/2026)
+
+Resultado: 11 de 11 mutações derrubaram os casos esperados, sem derrubar o contraste. Os testes foram escritos pelo builder (T1) e rodados pelo orquestrador.
+
+- **banco:** a mudança entra na cópia do arquivo de teste, depois do `set constraints all immediate;`, e é desfeita no rollback;
+- **código:** o arquivo é trocado, o teste roda, e o original volta. O script conferiu que cada arquivo voltou idêntico.
+
+Nas recusas do 360, o teste confere a mensagem exata. Por isso, ampliar um privilégio (V02 e V05) muda o resultado e derruba o caso, embora o gatilho continue recusando: na V02, a RLS deixa o UPDATE passar com 0 linhas; na V05, quem recusa passa a ser o gatilho, com outra mensagem.
+
+| ID  | Camada             | Teste                       | Mudança                                                 | Casos que devem cair                                                                                      | Contraste                                                 | Caíram | Resultado              |
+| --- | ------------------ | --------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------ | ---------------------- |
+| V01 | gatilho            | `360-ofertas-so-inclusao`   | só inclusão desligado em offer_documents                | CT11.4: o documento não se altera, nem como postgres; CT11.4: o documento não se apaga, nem como postgres | CT11.4: a declaração não se altera, nem como postgres     | 3      | caiu; contraste passou |
+| V02 | GRANT              | `360-ofertas-so-inclusao`   | UPDATE em supplier_declarations para authenticated      | CT11.1: o dono não altera o valor da declaração                                                           | CT11.1: o dono não altera o hash da versão                | 2      | caiu; contraste passou |
+| V03 | índice único       | `360-ofertas-so-inclusao`   | sem o único (offer_id, version_number)                  | CT11.6: version_number repetido na mesma oferta, nem como postgres (índice único)                         | CT11.5: sem exclusão de oferta, nem como postgres         | 1      | caiu; contraste passou |
+| V04 | chave estrangeira  | `360-ofertas-so-inclusao`   | offer_versions com exclusão em cascata                  | CT11.5: toda chave estrangeira para offers e vehicles é restrict, sem cascata                             | CT11.5: sem exclusão de oferta, nem como postgres         | 1      | caiu; contraste passou |
+| V05 | GRANT              | `360-ofertas-so-inclusao`   | TRUNCATE em offer_reviews para service_role             | CT11.4: service_role não esvazia as revisões                                                              | CT11.4: service_role não apaga a revisão                  | 1      | caiu; contraste passou |
+| V06 | configuração       | `370-ofertas-versionamento` | quilometragem fora de material_fields                   | quilometragem: material, uma versão e histórico                                                           | preço: material, uma versão e histórico                   | 3      | caiu; contraste passou |
+| V07 | gatilho            | `370-ofertas-versionamento` | versionamento do veículo desligado (vehicles_versionar) | Q4: marca é material                                                                                      | preço: material, uma versão e histórico                   | 7      | caiu; contraste passou |
+| V08 | gatilho            | `370-ofertas-versionamento` | histórico do veículo desligado (vehicles_historico)     | B14: cor não é material; só histórico                                                                     | preço: material, uma versão e histórico                   | 13     | caiu; contraste passou |
+| V09 | configuração       | `370-ofertas-versionamento` | cidade dentro de material_fields                        | A.4: cidade não é material; só histórico                                                                  | A.4: UF não é material; só histórico                      | 3      | caiu; contraste passou |
+| V10 | tabela do servidor | `transicoes.decisao`        | transicoes.ts: a devolução (T05) sem motivo             | todos os pares, atores e condições: o servidor devolve a linha da ADR, ou nenhuma, e o mesmo motivo       | X17: nenhuma transição leva a sold nem sai dela no Inc. 2 | 1      | caiu; contraste passou |
+| V11 | regra do servidor  | `transicoes.decisao`        | edicao.ts: o member edita a publicada e a reservada     | edição de conteúdo: todos os estados e atores, como na ADR                                                | disponibilidade: todos os estados e atores, como na ADR   | 2      | caiu; contraste passou |
+
+### Mudança de cada mutação (I2.7)
+
+**V01**
+
+```sql
+alter table public.offer_documents disable trigger offer_documents_so_inclusao;
+```
+
+**V02**
+
+```sql
+grant update on public.supplier_declarations to authenticated;
+```
+
+**V03**
+
+```sql
+alter table public.offer_versions drop constraint offer_versions_offer_id_version_number_key;
+```
+
+**V04**
+
+```sql
+alter table public.offer_versions drop constraint offer_versions_offer_id_fkey, add constraint offer_versions_offer_id_fkey foreign key (offer_id) references public.offers (id) on delete cascade;
+```
+
+**V05**
+
+```sql
+grant truncate on public.offer_reviews to service_role;
+```
+
+**V06**
+
+```sql
+update public.platform_settings set value = value - 'mileage_km' where key = 'material_fields';
+```
+
+**V07**
+
+```sql
+alter table public.vehicles disable trigger vehicles_versionar;
+```
+
+**V08**
+
+```sql
+alter table public.vehicles disable trigger vehicles_historico;
+```
+
+**V09**
+
+```sql
+update public.platform_settings set value = value || '["location_city"]'::jsonb where key = 'material_fields';
+```
+
+**V10**
+
+```diff
+- { id: "T05", de: ["under_review"], para: "draft", quem: ST, motivoDe: ST },
++ { id: "T05", de: ["under_review"], para: "draft", quem: ST, motivoDe: [] },
+```
+
+**V11**
+
+```diff
+-     return ator === "adm_empresa";
++     return FORNECEDOR.includes(ator);
+```

@@ -21,6 +21,7 @@ import {
   consultarPendenciasDePublicacao,
   criarOferta,
   declararCategoria,
+  declararCategorias,
 } from "@/modules/offers/server/ofertas";
 import {
   cancelarRevisao,
@@ -382,6 +383,63 @@ describe("declareCategory", () => {
         mensagem: "Categoria documental fora da configuração: categoria_nova.",
       }),
     );
+  });
+
+  it("várias declarações de uma vez geram uma versão só; uma recusada desfaz todas", async () => {
+    const { ofertaId } = exigir(
+      await criarOferta(dependencias(f1), {
+        empresaId: empresaF,
+        veiculo: { marca: "Fiat" },
+      }),
+      "criação",
+    );
+    criadas.push(ofertaId);
+    const antes = await versoes(ofertaId);
+    expect(
+      await declararCategorias(dependencias(f2), {
+        ofertaId,
+        declaracoes: [
+          { categoria: "auction", valor: "unknown" },
+          { categoria: "categoria_nova", valor: "unknown" },
+        ],
+      }),
+    ).toEqual(recusa("regra_violada"));
+    expect(await versoes(ofertaId)).toEqual(antes);
+    expect(
+      await consulta(
+        "select 1 from public.supplier_declarations where offer_id = $1",
+        [ofertaId],
+      ),
+    ).toEqual([]);
+
+    exigir(
+      await declararCategorias(dependencias(f2), {
+        ofertaId,
+        declaracoes: [
+          { categoria: "auction", valor: "unknown" },
+          { categoria: "lien", valor: "no_known_occurrence" },
+          {
+            categoria: "casualty",
+            valor: "has_occurrence",
+            detalhe: "Batida leve na porta traseira.",
+          },
+        ],
+      }),
+      "declarações",
+    );
+    const depois = await versoes(ofertaId);
+    expect(depois).toHaveLength(antes.length + 1);
+    expect(depois.at(-1)?.change_summary).toBe(
+      "categories.auction, categories.casualty, categories.lien, notices",
+    );
+    for (const sessao of [oper, g1]) {
+      expect(
+        await declararCategorias(dependencias(sessao), {
+          ofertaId,
+          declaracoes: [{ categoria: "lien", valor: "unknown" }],
+        }),
+      ).toEqual(recusa("sem_permissao"));
+    }
   });
 
   it("na publicada, só o org_admin declara (Q2)", async () => {

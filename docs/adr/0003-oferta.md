@@ -393,7 +393,7 @@ Vale a regra do ADR-0002 §2.12: as operações escrevem com a sessão do usuár
 |---|---|
 | `createOffer` | RPC `public.criar_oferta`: veículo e oferta numa transação; versão 1 |
 | `updateOffer` | RPC `public.atualizar_oferta`: oferta e veículo numa transação, com no máximo uma versão; também estende a validade |
-| `declareCategory` | INSERT em `supplier_declarations` |
+| `declareCategory` | INSERT em `supplier_declarations`; `declararCategorias` (I2.8) inclui várias numa inclusão só, com uma versão só |
 | `publishOffer` | UPDATE do status para `under_review` ou `published`, conforme a D10, com a autorização de divulgação |
 | `cancelReview` (nova) | UPDATE de `under_review` para `draft`, pelo fornecedor |
 | `reviewOffer` (nova) | UPDATE de `under_review` para `published` ou `draft`; o gatilho grava `offer_reviews` |
@@ -476,6 +476,16 @@ Mudar `material_fields` ou `document_categories` vale para frente (seção 2.6).
   - o `320-ofertas-versoes` ganhou 3 (82): a publicada não perde dado do veículo, pela RPC nem pela API direta, e o rascunho pode ficar incompleto (seção 2.11);
   - testes unitários da tabela, do ator, da edição, do veículo, do snapshot e dos esquemas (30);
   - 14 mutações, todas derrubando os casos esperados sem derrubar o contraste.
+- **Entregue na I2.7 (29/10),** escrito pelo builder (T1) e rodado pelo orquestrador:
+  - `src/modules/offers/rules/transicoes.decisao.test.ts` (22 testes): a tabela da seção 2.3 escrita como dados no próprio teste, sem importar a do servidor, comparada com `transicaoDaOferta` e `motivoObrigatorio` em 1.536 combinações (todos os pares de estados, 6 atores, os dois valores da D10 e a validade vencida ou não); por estado, ao menos um destino que ninguém alcança; X01, X04, X10, X11 e X17 nomeados; e as tabelas da seção 2.5 e da disponibilidade. Com a comparação da I2.6 entre o servidor e o banco, o ADR, o servidor e o banco ficam amarrados;
+  - `360-ofertas-so-inclusao` (99 asserções): o teste 11 sistemático. Em `supplier_declarations`, `offer_versions`, `offer_documents`, `offer_reviews` e nas linhas de `field_history` e `audit_logs` de uma operação de oferta, UPDATE, DELETE e TRUNCATE são recusados para o dono, o administrador, `service_role` e `postgres`, com a mensagem exata e as linhas conferidas intactas; CT11.5 confere no catálogo que toda chave estrangeira para `offers` e `vehicles` é `restrict`; CT11.6 para os três papéis. Para `authenticated` e `service_role`, quem recusa é o privilégio; o gatilho de só inclusão só é alcançado pelo `postgres`;
+  - `370-ofertas-versionamento` (32 asserções): coluna a coluna, campo material gera exatamente uma versão, com o resumo certo; campo não material, foto, documento e transição de status geram só histórico; várias mudanças materiais numa transação geram uma versão só;
+  - 11 mutações (V01 a V11), todas derrubando os casos esperados sem derrubar o contraste;
+  - a asserção do CT11.5 lista as chaves estrangeiras atuais e precisa ser atualizada quando o Inc. 3 ligar tabelas novas a `offers`.
+- **Entregue na I2.8 (29/10),** escrita pelo builder (T1), revisada pelo TV e integrada pelo T2:
+  - telas do fornecedor em `/empresa/[empresaId]/ofertas` (painel, nova oferta, resumo e envio, cinco etapas e histórico), com leituras pela sessão em `src/modules/offers/queries/` (a chave secreta não entra em leitura de tela) e ações em `src/app/_acoes/ofertas.ts`;
+  - `declararCategorias`, acrescentada pelo T2: as categorias marcadas entram numa inclusão só e geram uma versão só, em vez de uma por categoria; se uma for recusada, nenhuma é gravada (teste de integração novo);
+  - `tests/e2e/ofertas.spec.mts` (4 testes): fluxo completo do `org_admin` até "Em revisão", com o aviso documental visível; o `member` sem envio (Q2); outra empresa com "Sem permissão"; empresa só compradora. Mutação: esconder o aviso documental derruba o fluxo completo.
 - **Lacuna corrigida na I2.6:** com o token do `org_admin`, uma chamada direta à API apagava um dado do veículo de uma oferta publicada ou reservada (por exemplo, a marca), e a oferta continuava publicada. Conferido numa transação desfeita. O gatilho `proteger_veiculo` passou a recusar (seção 2.11).
 
 ---

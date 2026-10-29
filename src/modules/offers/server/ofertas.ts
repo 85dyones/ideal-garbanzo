@@ -38,6 +38,7 @@ import {
   esquemaDaAlteracao,
   esquemaDaCriacao,
   esquemaDaDeclaracao,
+  esquemaDasDeclaracoes,
   esquemaDaOferta,
   type DadosDaOferta,
   type DadosDoVeiculo,
@@ -211,6 +212,42 @@ export function declararCategoria(
       ).overrideTypes<{ id: string }, { merge: false }>();
       if (error !== null) return traduzirErroDoBanco(error);
       return sucesso({ declaracaoId: data.id });
+    },
+  );
+}
+
+/**
+ * Várias declarações numa inclusão só: a transação é uma, e a oferta ganha
+ * uma versão só, em vez de uma por categoria (ADR-0003 §2.6). Se uma linha
+ * for recusada, nenhuma é gravada.
+ */
+export function declararCategorias(
+  dependencias: Dependencias,
+  entrada: unknown,
+): Promise<Resultado<{ quantidade: number }>> {
+  return executarOperacao(
+    dependencias,
+    esquemaDasDeclaracoes,
+    entrada,
+    async ({ ofertaId, declaracoes }, contexto) => {
+      const editavel = await ofertaEditavel(dependencias, contexto, ofertaId);
+      if (!editavel.ok) return editavel;
+      const { data, error } = await comRastreio(
+        dependencias.sessao
+          .from("supplier_declarations")
+          .insert(
+            declaracoes.map(({ categoria, valor, detalhe }) => ({
+              offer_id: ofertaId,
+              category: categoria,
+              declared_value: valor,
+              detail: detalhe ?? null,
+            })),
+          )
+          .select("id"),
+        dependencias.requestId,
+      ).overrideTypes<{ id: string }[], { merge: false }>();
+      if (error !== null) return traduzirErroDoBanco(error);
+      return sucesso({ quantidade: data.length });
     },
   );
 }
