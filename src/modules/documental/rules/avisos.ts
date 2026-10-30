@@ -4,9 +4,10 @@
  * do comprador fica presa ao texto exato que foi mostrado. Mudar um texto cria
  * um código novo, e o antigo continua aqui.
  *
- * Os códigos saem de `private.aviso_do_estado` (migração
- * `20261029160000_estado_documental`). Textos provisórios, revistos com a
- * decisão D5 antes do piloto.
+ * Os códigos saem de `private.aviso_do_estado` (migrações
+ * `20261029160000_estado_documental` e `20261030120000_dominio_documental`) e,
+ * para o impedimento de transferência, do snapshot (ADR-0004 §2.13). Textos
+ * provisórios, revistos com a decisão D5 antes do piloto.
  */
 import type { EstadoDocumental } from "./estados";
 
@@ -17,6 +18,14 @@ export const AVISOS = {
     "Há informações declaradas pelo fornecedor, sem consulta nem documento que as confirme.",
   "categoria_com_apontamentos.v1":
     "Há categorias com apontamentos. Leia o detalhe de cada uma antes de seguir.",
+  "categoria_pendente.v1":
+    "Há categorias com consulta pendente ou incompleta. Leia o detalhe de cada uma antes de seguir.",
+  "categoria_em_analise.v1":
+    "Há categorias em análise pela plataforma, por divergência ou por apontamento que exige avaliação.",
+  "sem_apontamentos_nas_fontes_consultadas.v1":
+    "Há categorias sem apontamentos nas fontes consultadas. O resultado vale só para essas fontes, na data de cada consulta.",
+  "impedimento_de_transferencia.v1":
+    "Há impedimento de transferência ativo. Enquanto ele não for resolvido, o veículo não pode ser transferido ao comprador profissional.",
 } as const satisfies Readonly<Record<string, string>>;
 export type CodigoDoAviso = keyof typeof AVISOS;
 
@@ -26,7 +35,14 @@ const AVISO_DO_ESTADO: Readonly<
   not_checked: "categoria_nao_consultada.v1",
   declared_unverified: "declaracao_sem_comprovacao.v1",
   with_findings: "categoria_com_apontamentos.v1",
+  pending: "categoria_pendente.v1",
+  under_review: "categoria_em_analise.v1",
+  no_findings_in_sources: "sem_apontamentos_nas_fontes_consultadas.v1",
 };
+
+/** Ressalva do impedimento de transferência ativo (§6.11), separada dos estados. */
+export const AVISO_DO_IMPEDIMENTO: CodigoDoAviso =
+  "impedimento_de_transferencia.v1";
 
 /** Código da ressalva de um estado, como `private.aviso_do_estado`. */
 export function avisoDoEstado(

@@ -288,8 +288,8 @@ select is(
         private.aviso_do_estado('with_findings'), private.aviso_do_estado('pending'),
         private.aviso_do_estado('under_review'), private.aviso_do_estado('no_findings_in_sources')],
   array['categoria_nao_consultada.v1', 'declaracao_sem_comprovacao.v1', 'categoria_com_apontamentos.v1',
-        null, null, null],
-  'ressalvas dos estados que só a declaração produz');
+        'categoria_pendente.v1', 'categoria_em_analise.v1', 'sem_apontamentos_nas_fontes_consultadas.v1'],
+  'ressalvas de todos os estados (a I3.3 acrescentou os três que dependem de consulta e revisão)');
 select is(
   (select count(*)::int from information_schema.columns
     where table_schema = 'public' and column_name in ('state', 'documental_state')),

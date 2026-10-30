@@ -6,6 +6,7 @@
   "bucketsDaAplicacao": [
     "membership-evidence",
     "offer-photos",
-    "offer-documents"
+    "offer-documents",
+    "check-evidence"
   ]
 }

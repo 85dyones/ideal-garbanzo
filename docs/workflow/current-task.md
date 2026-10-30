@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 2 (oferta) concluído em 30/10, com o gate cumprido, o ADR-0003 aceito e a I2.11 fechada. O Inc. 1 foi concluído em 28/10, com o ADR-0002 aceito; a R7 fica para a I6.9.  
 **Próxima subtarefa:**
-- **Inc. 3 (domínio documental):** I3.3, as migrações de `vehicle_checks`, `documental_reviews`, `transfer_impediments` e `check_evidence_files`, com a função de estado completa, pelo T2 (ADR-0004 §2.16). O piloto com dados reais continua bloqueado pela D5.
+- **Inc. 3 (domínio documental):** I3.5, as operações de servidor (`recordCheck` com a evidência, revisão documental, resolução do impedimento), a regra de estado em `rules/estados.ts` com a paridade contra o banco e a lista de linguagem no texto livre (E28), pelo T2. Depois, a I3.4 (testes, T1) e a I3.6 (telas, T1) em paralelo. O piloto com dados reais continua bloqueado pela D5.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -935,3 +935,34 @@
   - o snapshot passa ao formato 2.
 - **Conferência:** um script implementou as regras da §2.1 e comparou com as 40 linhas do anexo A.2. Só a linha 25 difere, que é a mudança da P1. Em relação ao Inc. 2, mudam 32 linhas.
 - **Consequência registrada:** uma declaração por engano em `transfer_conditions` só sai com o administrador, porque não há resolução automática.
+
+### 2026-10-30 · I3.3 · migração do domínio documental
+
+- **Migração `20261030120000_dominio_documental`:**
+  - **tabelas:** `vehicle_checks`, `documental_reviews`, `transfer_impediments` e `check_evidence_files`, mais o bucket privado `check-evidence`, só com política de envio (a leitura será pelo servidor, com registro). `config/banco-dev.json` ganhou o bucket, para o reset limpar os arquivos;
+  - **estado:** `private.estado_documental` completo, com declaração, consultas vigentes, revisão aberta e divergência só pelo valor (P1). `private.consultas_vigentes` e `private.revisao_aberta` são as leituras auxiliares;
+  - **teste 7:** o gatilho copia `is_test` da oferta; chaves estrangeiras compostas prendem consulta, substituição e evidência à mesma oferta e ao mesmo lado da marca de teste;
+  - **dado pessoal:** CHECK `vehicle_checks_sem_dado_pessoal`, que quebra cada chave em palavras, sem maiúsculas nem acentos, em qualquer nível, e recusa também placa, RENAVAM e chassi;
+  - **registro:** o fornecedor registra pela tabela de edição, e a equipe sem vínculo em rascunho, revisão, publicada, reservada e suspensa. O fornecedor não substitui consulta da plataforma. Só o registro manual vale (C7), e a data não fica no futuro;
+  - **revisão:** só a equipe sem vínculo, com motivo e pareamento;
+  - **impedimento:** nasce sozinho de ocorrência em `transfer_conditions`; só o administrador resolve, com motivo e evidência; não se apaga. Com impedimento ativo, a oferta não é enviada nem publicada, sai de `private.oferta_aberta` e não é reservada;
+  - **snapshot:** consultas vigentes, revisão aberta e impedimentos entram como chaves opcionais. O formato continua 1, então a oferta sem registro novo não ganha versão;
+  - **ressalvas:** códigos novos para `pending`, `under_review`, `no_findings_in_sources` e o impedimento, com os textos provisórios em `src/modules/documental/rules/avisos.ts`.
+- **Ajustes de testes existentes**, sem afrouxar o que provam:
+  - **`350`:** as ressalvas dos três estados novos;
+  - **`360`:** a lista de chaves estrangeiras para `offers` e `vehicles` ganhou as tabelas novas. O TRUNCATE das declarações passou a incluir `transfer_impediments`, porque a chave estrangeira recusava antes do gatilho.
+- **Ajustes no ADR-0004:**
+  - o formato do snapshot fica no 1, com chaves opcionais;
+  - o resumo da consulta passa a ser obrigatório;
+  - entra a coluna `recorded_as`;
+  - a lista de linguagem no banco (E28) fica para a I3.5.
+- **Testes e mutações:**
+  - pgTAP `400-documental` com 70 asserções: os testes 7, 10 e 11 das tabelas novas, a trava de dado pessoal, o registro, a revisão, a evidência e o impedimento;
+  - 26 mutações em `supabase/tests/mutacoes/inc-3.md`: 24 caíram como esperado, sem derrubar o contraste; a D06 derruba o arquivo na preparação; a D01 é equivalente, porque a revisão aberta já vence pela precedência;
+  - duas expectativas foram corrigidas ao rodar: a D02 é detectada pelo caso inverso do CT10.6; a D19 não é equivalente, porque a política aberta muda a resposta do operador de 0 linhas para erro.
+- **Evidência no dev**, depois de `db:reset` com as 12 migrações:
+  - **banco:** `test:db` com os 24 arquivos passando;
+  - **integração:** `test:integration` com 109 testes passando;
+  - **e2e:** `test:e2e` com 25 passando;
+  - **código:** tipos, lint, 284 unitários e build passando.
+- **Fica para a I3.5:** as operações de servidor, a regra de estado no servidor com o teste de paridade, a ressalva do impedimento na tela e a lista de linguagem no texto livre.

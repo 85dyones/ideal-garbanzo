@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { AVISOS, avisoDoEstado, avisosDosEstados } from "./avisos";
+import {
+  AVISOS,
+  AVISO_DO_IMPEDIMENTO,
+  avisoDoEstado,
+  avisosDosEstados,
+} from "./avisos";
 import { ESTADOS_DOCUMENTAIS } from "./estados";
 
 describe("catálogo das ressalvas", () => {
@@ -9,7 +14,7 @@ describe("catálogo das ressalvas", () => {
     }
   });
 
-  it("os estados que só a declaração produz têm ressalva; os demais ainda não", () => {
+  it("todo estado tem ressalva (desde a I3.3), e o impedimento tem a sua", () => {
     expect(avisoDoEstado("not_checked")).toBe("categoria_nao_consultada.v1");
     expect(avisoDoEstado("declared_unverified")).toBe(
       "declaracao_sem_comprovacao.v1",
@@ -17,14 +22,17 @@ describe("catálogo das ressalvas", () => {
     expect(avisoDoEstado("with_findings")).toBe(
       "categoria_com_apontamentos.v1",
     );
-    const semAviso = ESTADOS_DOCUMENTAIS.filter(
-      (estado) => avisoDoEstado(estado) === undefined,
+    expect(avisoDoEstado("pending")).toBe("categoria_pendente.v1");
+    expect(avisoDoEstado("under_review")).toBe("categoria_em_analise.v1");
+    expect(avisoDoEstado("no_findings_in_sources")).toBe(
+      "sem_apontamentos_nas_fontes_consultadas.v1",
     );
-    expect(semAviso).toEqual([
-      "pending",
-      "under_review",
-      "no_findings_in_sources",
-    ]);
+    expect(
+      ESTADOS_DOCUMENTAIS.filter(
+        (estado) => avisoDoEstado(estado) === undefined,
+      ),
+    ).toEqual([]);
+    expect(AVISOS[AVISO_DO_IMPEDIMENTO]).toBeTruthy();
   });
 
   it("as ressalvas de vários estados saem sem repetição e em ordem de código", () => {

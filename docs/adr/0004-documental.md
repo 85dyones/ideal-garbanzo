@@ -114,7 +114,7 @@ As decisões seguem as leituras conservadoras do anexo A (A.9). A exceção são
   - a categoria precisa estar em `document_categories`;
   - `method = manual` até a C7;
   - `performed_at` não pode estar no futuro;
-  - `source_name`, `performed_at` e `known_limitations` obrigatórios, com o filtro de texto de linha ou livre do Inc. 2.
+  - `source_name`, `performed_at`, `result_summary` e `known_limitations` obrigatórios, com o filtro de texto de linha ou livre do Inc. 2. O resumo entrou na I3.3, porque a §6.3 o lista no registro manual e a §7.3 o mostra ao comprador.
 
 ### 2.10. Dado pessoal (E29 a E31)
 
@@ -152,7 +152,7 @@ As decisões seguem as leituras conservadoras do anexo A (A.9). A exceção são
 - **Lista (E25):** entra "sem ocorrências", com as flexões. "100% liberado" não aparece em tela. Outros termos, se surgirem, vão para a pessoa responsável.
 - **Data (E26):** o varredor continua aceitando a qualificação sem a data. A regra fica na tela: onde aparece `no_findings_in_sources`, a data da consulta e a fonte aparecem ao lado (§6.4, "Exibição"). Um teste da I3.6 confere isso.
 - **Alcance do varredor (E27):** passa a ler também os modelos de `supabase/templates/` e as mensagens de `raise exception` das migrações, que chegam à tela. As notificações do Inc. 5 ficam em pastas varridas.
-- **Texto livre gravado na hora (E28):** `result_summary`, `known_limitations` e os motivos das revisões e dos impedimentos passam pela mesma lista. A conferência é feita no servidor e num gatilho. A lista do banco fica numa chave de `platform_settings`, e um teste confere que ela é igual a `config/linguagem-proibida.json`.
+- **Texto livre gravado na hora (E28):** `result_summary`, `known_limitations` e os motivos das revisões e dos impedimentos passam pela mesma lista. A conferência é feita no servidor e num gatilho. A lista do banco fica numa chave de `platform_settings`, e um teste confere que ela é igual a `config/linguagem-proibida.json`. Entra na I3.5, com as operações; a I3.3 não a implementa.
 
 ### 2.13. Snapshot e versão (E32, E33)
 
@@ -161,7 +161,7 @@ As decisões seguem as leituras conservadoras do anexo A (A.9). A exceção são
   - Para cada consulta vigente da categoria: fonte, tipo de fonte, data da consulta (texto no formato `AAAA-MM-DDTHH:MM:SSZ`, em UTC), resultado, resumo, limitações e se há evidência anexada. Isso fica sob o campo material `findings`.
   - A revisão aberta entra como fato da categoria.
   - A seção `transfer_impediments` passa a listar cada impedimento, com base, situação e data.
-- **`schema_version` 2:** as versões criadas depois da migração do Inc. 3 usam o formato novo. As anteriores continuam com o snapshot e o hash gravados.
+- **Formato (ajuste da I3.3):** o snapshot continua com `schema_version` 1, e as chaves novas são opcionais: `checks` e `review` só aparecem na categoria que tem consulta vigente ou revisão aberta, e `transfer_impediments` continua `[]` sem impedimento. Assim, a oferta sem registro novo mantém o snapshot do Inc. 2 e não ganha versão só pela mudança de formato. A data da consulta e as do impedimento entram como texto no formato fixo acima, exceção registrada à regra do ADR-0003 §2.6 de não levar datas.
 - **Ressalvas novas (E33):** códigos `.v1` para `pending`, `under_review` e o impedimento, e um para `no_findings_in_sources`, que lembra que o resultado vale só para as fontes consultadas. Os textos são provisórios até a D5 e passam pelo teste de linguagem.
 - **Conferência de quem chama (R-I2.11-07 do ADR-0003):** no Inc. 3, todos os escritores leem a oferta (fornecedor, equipe, ou o gatilho do impedimento dentro da sessão de um deles). A variante interna sem conferência fica para antes do Inc. 4 ou 5, como registrado.
 
@@ -180,7 +180,7 @@ As decisões seguem as leituras conservadoras do anexo A (A.9). A exceção são
 ### 2.16. Tabelas (para a I3.3)
 
 - **`vehicle_checks`:**
-  - colunas da §5.3, mais `recorded_at`;
+  - colunas da §5.3, mais `seq`, `recorded_at` e `recorded_as` (`supplier` ou `platform`, gravado pelo gatilho: decide a origem 4 e quem substitui o quê);
   - só inclusão, com o gatilho do I0.6, que barra também `service_role` e `postgres`;
   - CHECKs com nome próprio: resultado, tipo de fonte, método, data e dado pessoal;
   - chaves estrangeiras compostas que garantem a mesma oferta e o mesmo `is_test` em `supersedes_check_id` e `evidence_document_id`.

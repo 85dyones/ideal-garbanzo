@@ -564,8 +564,10 @@ select throws_ok(
   $$delete from public.supplier_declarations where id = pg_temp.id('declaração')$$,
   'P0001', 'tabela só de inclusão: DELETE não é permitido em public.supplier_declarations',
   'CT11.4: a declaração não se apaga, nem como postgres');
+-- Desde a I3.3, transfer_impediments aponta para a declaração; as duas entram
+-- no mesmo TRUNCATE para a chave estrangeira não recusar antes do gatilho.
 select throws_ok(
-  $$truncate public.supplier_declarations$$,
+  $$truncate public.supplier_declarations, public.transfer_impediments$$,
   'P0001', 'tabela só de inclusão: TRUNCATE não é permitido em public.supplier_declarations',
   'CT11.4: as declarações não se esvaziam, nem como postgres');
 select throws_ok(
@@ -649,8 +651,9 @@ select is(
      from pg_constraint c
      join pg_class t on t.oid = c.conrelid
     where c.contype = 'f' and c.confrelid in ('public.offers'::regclass, 'public.vehicles'::regclass)),
-  array['offer_documents r', 'offer_media r', 'offer_reviews r', 'offer_versions r', 'offers r',
-        'supplier_declarations r'],
+  array['check_evidence_files r', 'documental_reviews r', 'offer_documents r', 'offer_media r',
+        'offer_reviews r', 'offer_versions r', 'offers r', 'supplier_declarations r',
+        'transfer_impediments r', 'vehicle_checks r', 'vehicle_checks r'],
   'CT11.5: toda chave estrangeira para offers e vehicles é restrict, sem cascata');
 select ok(
   exists (select 1 from public.offers where id = pg_temp.id('P'))
