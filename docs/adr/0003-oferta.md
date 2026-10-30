@@ -1,6 +1,6 @@
 # ADR-0003: Oferta
 
-**Status:** proposto em 29/10/2026. As decisões seguem as sugestões conservadoras da I2.1. A pessoa responsável respondeu às cinco perguntas da seção 6 em 29/10, todas pela sugestão; o que depende delas está marcado com o número da pergunta (Q1 a Q5). O aceite vem no gate do Inc. 2, depois da revisão independente (I2.10).  
+**Status:** aceito em 30/10/2026, no gate do Inc. 2, depois da revisão independente (I2.10) e da correção das ressalvas (I2.11; seção 8). Proposto em 29/10. As decisões seguem as sugestões conservadoras da I2.1. A pessoa responsável respondeu às cinco perguntas da seção 6 em 29/10, todas pela sugestão; o que depende delas está marcado com o número da pergunta (Q1 a Q5).  
 **Data:** 2026-10-29  
 **Subtarefa:** I2.1 (anexo A) e I2.2 (decisões) do plano orquestrado v2  
 **Base:** especificação v1.1 (§1.4, §3.3, §4.1 a §4.3, §5.2, §5.3, §5.6, §6.2, §6.4 a §6.11, §6.13, §7.1 a §7.4, §8, §13), ADR-0002, anexo A
@@ -74,8 +74,8 @@ Os IDs são os do anexo A.2. T18 e T19 são novas.
 | T04 | `under_review` | `published` | ST | requisitos conferidos de novo; nenhum impedimento ativo | `published_at`; `offer_reviews`; histórico; auditoria |
 | T05 | `under_review` | `draft` | ST | motivo | `offer_reviews` com o motivo; a autorização de divulgação é limpa |
 | T06 | `draft` | `published` | F-adm | revisão não exigida; requisitos; nenhum impedimento ativo | `published_at`; histórico; auditoria |
-| T08 | `published` | `reserved` | F-adm ou ST | — | histórico; auditoria |
-| T09 | `reserved` | `published` | F-adm ou ST | — | histórico; auditoria |
+| T08 | `published` | `reserved` | F-adm ou ST | dentro da validade (seção 2.9) | histórico; auditoria |
+| T09 | `reserved` | `published` | F-adm ou ST | dentro da validade (seção 2.9) | histórico; auditoria |
 | T11 | `draft`, `under_review`, `published`, `reserved` ou `expired` | `withdrawn` | F-adm; ST com motivo | — | `withdrawn_*`; histórico; auditoria |
 | T19 | `withdrawn` | `draft` | F-adm | — | a autorização de divulgação é limpa |
 | T12 | `published` ou `reserved` | `expired` | SIS | `valid_until` vencido | histórico, com o sistema como ator |
@@ -125,8 +125,9 @@ Os IDs são os do anexo A.2. T18 e T19 são novas.
 |---|---|---|
 | `draft` | F | tudo: veículo, oferta, declarações, fotos e documentos |
 | `under_review` | ninguém | o fornecedor cancela o envio para editar |
-| `published`, `reserved` | F-adm | oferta, veículo (com a identidade conforme a Q4), declarações, fotos e documentos. Mudança material gera versão |
-| `published`, `reserved` | F | confirmar a disponibilidade |
+| `published`, `reserved`, dentro da validade | F-adm | oferta, veículo (com a identidade conforme a Q4), declarações, fotos e documentos. Mudança material gera versão |
+| `published`, `reserved`, dentro da validade | F | confirmar a disponibilidade |
+| `published`, `reserved` com a validade vencida | ninguém | comporta-se como `expired` até a rodada da expiração (seção 2.9); seguem a retirada (T11) e a suspensão (T14) |
 | `sold`, `withdrawn`, `expired`, `suspended` | ninguém | reabrir antes, onde a seção 2.3 permite |
 
 - **Staff:** não edita conteúdo de oferta (Q3).
@@ -236,7 +237,7 @@ Os IDs são os do anexo A.2. T18 e T19 são novas.
 - **Valor sugerido:** o formulário sugere `offer_default_validity_days`.
 - **Fim do dia:** a data escolhida vale até 23:59:59 do horário de Brasília (`America/Sao_Paulo`).
 - **Valores:** 15 dias de padrão e 30 de teto (Q5).
-- **Extensão:** F-adm estende a validade em `draft`, `published` e `reserved`, sem mudar o estado. A extensão gera histórico, mas não versão, porque a validade não é campo material (§6.7).
+- **Extensão:** F-adm estende a validade em `published` e `reserved`, antes do vencimento e sem mudar o estado; no rascunho, F a muda a qualquer momento (seção 2.5). A extensão gera histórico, mas não versão, porque a validade não é campo material (§6.7).
 - **Depois de vencida:** renovar é reabrir como rascunho (T13) e publicar de novo, passando pelos requisitos e, com revisão exigida, pela revisão.
 
 **Expiração no banco** (§4.3):
@@ -250,12 +251,12 @@ Os IDs são os do anexo A.2. T18 e T19 são novas.
   - a migração não faz GRANT no schema `cron`. O gatilho de eventos do próprio Supabase dá o acesso ao `postgres` ao criar a extensão e repete a revogação e a concessão a cada `create extension`. Um GRANT do `postgres` para ele mesmo fica dependente desse acesso, e o reset seguinte falha com "dependent privileges exist" (conferido em 29/10; os GRANTs da primeira versão foram removidos do `dev`);
   - a migração é reaplicável: `cron.schedule` com o mesmo nome atualiza o job, e dois resets seguidos passaram. O CI rodou as migrações do Inc. 2 pela primeira vez em 29/10, num Supabase efêmero, com reset, pgTAP e integração passando (execução 40954243886).
 - **Entre duas rodadas:**
-  - a oferta vencida já se comporta como expirada;
+  - a oferta vencida já se comporta como expirada. Desde a I2.11 (ACH-I2.10-01), isso vale também para a escrita: ninguém altera o conteúdo, estende a validade, confirma a disponibilidade, reserva ou libera. Seguem a retirada (T11), a suspensão (T14) e a expiração pelo job; depois dela, a reabertura (T13). O banco usa `private.situacao_da_oferta(oferta)`, e o servidor, `situacaoParaEdicao` em `rules/edicao.ts`; o rascunho com a validade no passado continua editável, porque a validade só conta para enviar e publicar (seção 2.4);
   - catálogo (Inc. 4) e interesse (Inc. 5) usam o predicado `private.oferta_aberta(oferta)`: status `published` ou `reserved`, `valid_until` no futuro e empresa dona ativa;
   - o job só grava o status e o histórico.
 
 **Disponibilidade:**
-- **Quem confirma:** qualquer F, em `published` e `reserved`.
+- **Quem confirma:** qualquer F, em `published` e `reserved`, dentro da validade.
 - **Data:** o gatilho grava `now()`, qualquer que seja o valor enviado.
 - **Efeitos:** a confirmação gera histórico. Não gera versão e não mexe na validade nem no estado.
 - **Ficha:** mostra a data.
@@ -491,6 +492,12 @@ Mudar `material_fields` ou `document_categories` vale para frente (seção 2.6).
   - a tela mostra cada ação só quando a tabela da seção 2.3 permite ao ator (`src/modules/offers/ui/plataforma.ts`, com teste unitário contra `TRANSICOES` em todos os estados, para operador e administrador e os dois valores da D10). Com vínculo não removido com a empresa dona, a pessoa da equipe vê só o aviso do conflito (seção 2.14, B25). Quem decide continua sendo a operação e o gatilho;
   - a revisão lembra que pendência, apontamento ou divergência documental não justificam devolução (X07), e a suspensão, que pendência documental sozinha não é motivo (X09). O motivo da reativação vai só à auditoria, como diz a seção 2.8;
   - `tests/e2e/ofertas-admin.spec.mts` (10 testes): devolução sem e com motivo, reenvio pelo fornecedor e publicação, com a volta à fila; suspensão sem motivo recusada e, com categoria e motivo, visível ao fornecedor; reativação só pelo administrador; conflito de interesse sem ações; "Sem permissão" igual para quem não é da equipe e registro inexistente. Mutação: com a reativação visível ao operador, o caso da reativação falha.
+- **Entregue na I2.11 (30/10),** correção das ressalvas da I2.10 (seção 8), pelo T2, com o builder (T1) nos achados 03, 05 e 08 e na cópia do CT6.6:
+  - migração `20261030090000_ressalvas_da_oferta` (achados 01 e 02);
+  - `supabase/tests/database/380-ofertas-validade-e-leitura.test.sql` (44): cada caminho de escrita na publicada e na reservada vencidas, com contraste dentro da validade; retirada, suspensão, expiração e reabertura; a leitura pelas funções do `private`; um negativo próprio por política de escrita;
+  - o teste de paridade `ofertas-transicoes` roda as transições e as edições com a publicada e a reservada dentro e fora da validade; `transicoes.decisao.test.ts` ganhou a condição "dentro da validade" de T08 e T09 e a edição com a validade vencida;
+  - `ofertas-storage` ganhou a cópia pelo Storage (CT6.6): foto alheia e documento recusados, cópia da própria foto aceita;
+  - 25 mutações registradas em `supabase/tests/mutacoes/inc-2.md`.
 - **Lacuna corrigida na I2.6:** com o token do `org_admin`, uma chamada direta à API apagava um dado do veículo de uma oferta publicada ou reservada (por exemplo, a marca), e a oferta continuava publicada. Conferido numa transação desfeita. O gatilho `proteger_veiculo` passou a recusar (seção 2.11).
 
 ---
@@ -619,21 +626,27 @@ A revisão foi feita em 29/10 por um subagente `reasoning-review` (T3), só em l
 
 | ID | Severidade | Ressalva | Ação proposta |
 |---|---|---|---|
-| ACH-01 | baixa | **Oferta vencida antes do job.** Entre o vencimento e a rodada seguinte do job (até 10 minutos, ou mais se o job falhar), o `org_admin` ainda edita preço e condições, estende a validade, confirma a disponibilidade, reserva e libera. Estender a validade devolve a oferta ao catálogo sem a T13 nem a revisão. Isso contraria a seção 2.9 ("a oferta vencida já se comporta como expirada"). O teste de paridade codifica o comportamento atual. | No gatilho e em `rules/edicao.ts` e `rules/transicoes.ts`: oferta `published` ou `reserved` com a validade vencida é tratada como `expired`. Sem edição, extensão, disponibilidade, T08 nem T09; ficam a retirada (T11) e a expiração pelo job. Migração nova, porque a do Inc. 2 já está no `origin`. Ajustar o teste de paridade. |
-| ACH-02 | baixa | **Funções do `private` com EXECUTE para `authenticated` e sem conferir quem chama:** `private.pendencias_de_publicacao` e `private.estados_documentais_da_oferta`. Hoje só os invólucros públicos, que conferem a RLS, as alcançam. Uma exposição futura do `private`, ou uma função pública nova do Inc. 4 que as chame com id do usuário, abriria a outra empresa o detalhe das declarações e as pendências. | Conferir o chamador dentro das duas funções, ou tornar `estados_documentais_da_oferta` `security invoker`, com asserção no pgTAP. |
-| ACH-03 | baixa | **Sem teste de "o registro falhou, a URL não sai"** em `gerarUrlDoDocumento`. O código está certo, mas trocar o `return` por um log, ou mover o registro para depois da URL, não derruba nenhum teste. | Teste unitário com um cliente administrativo falso cuja inclusão em `restricted_access_logs` falha; registrar a mutação. |
-| ACH-04 | baixa | **Políticas de escrita sem mutação registrada:** `vehicles_cadastro`, `vehicles_alteracao`, `offers_cadastro`, `supplier_declarations_inclusao`, `offer_media_inclusao`, `offer_media_alteracao` e `offer_documents_inclusao`. O gatilho BEFORE de cada tabela recusa antes da WITH CHECK, com o mesmo predicado, então a mutação de cada uma deve ser equivalente. Só a de `offers_alteracao` está registrada (R6 do ADR-0002). | Rodar as sete mutações e registrar cada uma como equivalente ao gatilho, em `supabase/tests/mutacoes/inc-2.md`. |
-| ACH-05 | baixa | **Descrição do documento sem a conferência de caracteres no servidor.** `storage/esquemas.ts` usa `trim` e `max`, mas não `textoDeLinha`. Com um caractere invisível, o arquivo sobe, a linha cai no CHECK, a tela mostra um erro genérico, e o objeto fica no bucket sem linha, porque não há DELETE. | `textoDeLinha(300).optional()` no esquema. |
+| ACH-01 | baixa | **Oferta vencida antes do job.** Entre o vencimento e a rodada seguinte do job (até 10 minutos, ou mais se o job falhar), o `org_admin` ainda edita preço e condições, estende a validade, confirma a disponibilidade, reserva e libera. Estender a validade devolve a oferta ao catálogo sem a T13 nem a revisão. Isso contraria a seção 2.9 ("a oferta vencida já se comporta como expirada"). O teste de paridade codifica o comportamento atual. | No gatilho e em `rules/edicao.ts` e `rules/transicoes.ts`: oferta `published` ou `reserved` com a validade vencida é tratada como `expired`. Sem edição, extensão, disponibilidade, T08 nem T09; ficam a retirada (T11) e a expiração pelo job. Migração nova, porque a do Inc. 2 já está no `origin`. Ajustar o teste de paridade. **Corrigido em 30/10 (I2.11):** migração `20261030090000_ressalvas_da_oferta`, com `private.situacao_da_oferta` nos gatilhos da oferta, do veículo, da declaração, da foto e do documento e a validade em `private.pode_editar_oferta`; `situacaoParaEdicao` e `soComValidadeEmVigor` no servidor; paridade rodando com a publicada e a reservada dentro e fora da validade; pgTAP `380`. |
+| ACH-02 | baixa | **Funções do `private` com EXECUTE para `authenticated` e sem conferir quem chama:** `private.pendencias_de_publicacao` e `private.estados_documentais_da_oferta`. Hoje só os invólucros públicos, que conferem a RLS, as alcançam. Uma exposição futura do `private`, ou uma função pública nova do Inc. 4 que as chame com id do usuário, abriria a outra empresa o detalhe das declarações e as pendências. | Conferir o chamador dentro das duas funções, ou tornar `estados_documentais_da_oferta` `security invoker`, com asserção no pgTAP. **Corrigido em 30/10 (I2.11):** `private.conferir_leitura_da_oferta` nas duas funções, com a regra de `offers_leitura`; sem usuário, só a sessão de manutenção. Quando a leitura da oferta mudar no Inc. 4, a função muda junto com a política. |
+| ACH-03 | baixa | **Sem teste de "o registro falhou, a URL não sai"** em `gerarUrlDoDocumento`. O código está certo, mas trocar o `return` por um log, ou mover o registro para depois da URL, não derruba nenhum teste. | Teste unitário com um cliente administrativo falso cuja inclusão em `restricted_access_logs` falha; registrar a mutação. **Corrigido em 30/10 (I2.11):** `storage/servidor.test.ts`, com as duas mutações registradas. |
+| ACH-04 | baixa | **Políticas de escrita sem mutação registrada:** `vehicles_cadastro`, `vehicles_alteracao`, `offers_cadastro`, `supplier_declarations_inclusao`, `offer_media_inclusao`, `offer_media_alteracao` e `offer_documents_inclusao`. O gatilho BEFORE de cada tabela recusa antes da WITH CHECK, com o mesmo predicado, então a mutação de cada uma deve ser equivalente. Só a de `offers_alteracao` está registrada (R6 do ADR-0002). | Rodar as sete mutações e registrar cada uma como equivalente ao gatilho, em `supabase/tests/mutacoes/inc-2.md`. **Feito em 30/10 (I2.11):** cada política ganhou negativo próprio no `380`, com o gatilho desligado só durante a asserção, como no Inc. 1: nas cinco de inclusão, outra empresa recebe a recusa da RLS; nas duas de alteração, o staff, que lê a linha, altera 0 linhas. As sete mutações caem (P01 a P07 em `supabase/tests/mutacoes/inc-2.md`). Com o gatilho ligado, elas seriam equivalentes: a BEFORE recusa antes da WITH CHECK, com o mesmo predicado, e no UPDATE a política de leitura já filtra a linha de outra empresa. |
+| ACH-05 | baixa | **Descrição do documento sem a conferência de caracteres no servidor.** `storage/esquemas.ts` usa `trim` e `max`, mas não `textoDeLinha`. Com um caractere invisível, o arquivo sobe, a linha cai no CHECK, a tela mostra um erro genérico, e o objeto fica no bucket sem linha, porque não há DELETE. | `textoDeLinha(300).optional()` no esquema. **Corrigido em 30/10 (I2.11).** |
 | ACH-06 | informativa | `publicarOferta` com a D10 desligada não tem teste de integração. A T06 está coberta no pgTAP 310 e na paridade, e a D10 está decidida (revisão no piloto). | Opcional: teste unitário com sessão falsa. |
 | ACH-07 | informativa | Pela API direta, uma nova suspensão sem `suspended_category` herda a categoria da suspensão anterior (seção 2.10). O servidor sempre envia a categoria. | Registrar aqui; exigir a categoria na chamada se a API direta passar a importar. |
-| ACH-08 | informativa | O `?resultado=` do detalhe da administração pode ser forjado num link: mostra, por exemplo, "Oferta suspensa" sem a ação. O texto vem de lista fechada, e a situação real aparece ao lado. | Mostrar o aviso só quando ele bater com a situação atual. |
+| ACH-08 | informativa | O `?resultado=` do detalhe da administração pode ser forjado num link: mostra, por exemplo, "Oferta suspensa" sem a ação. O texto vem de lista fechada, e a situação real aparece ao lado. | Mostrar o aviso só quando ele bater com a situação atual. **Corrigido em 30/10 (I2.11):** `resultadoConfereComStatus`. Fica um resto: resultados que levam ao mesmo status (publicada e liberada; devolvida e reativada) ainda se confundem num link forjado, sempre com a situação real ao lado. |
 | ACH-09 | informativa | A leitura de foto é pelo caminho do objeto, e não por `offer_media`. Uma foto removida continua legível para quem passa na política, hoje só a empresa dona e o staff. | No Inc. 4, a política do comprador exige uma linha de `offer_media` não removida com aquele caminho. |
-| ACH-10 | informativa | Os testes desligam `offers_proteger` dentro da transação para simular a validade vencida e `sold`. O gatilho volta antes das asserções, e tudo é desfeito; o `ALTER TABLE` trava `offers` durante o teste. | Registrar a exceção em `supabase/tests/README.md`. |
+| ACH-10 | informativa | Os testes desligam `offers_proteger` dentro da transação para simular a validade vencida e `sold`. O gatilho volta antes das asserções, e tudo é desfeito; o `ALTER TABLE` trava `offers` durante o teste. | Registrar a exceção em `supabase/tests/README.md`. **Registrado em 30/10 (I2.11).** |
 | ACH-11 | informativa | O exemplo do snapshot (seção 2.6) usava `declarado_sem_comprovacao.v1`, diferente do catálogo. | **Corrigido em 29/10:** o exemplo usa `declaracao_sem_comprovacao.v1`. |
 
 **Bem coberto, segundo o revisor:** gatilho e servidor batem em T03 a T19, com motivos por ator, D10 e B25; isolamento com a mesma resposta para oferta alheia e inexistente; `manutencao()` fora do alcance de qualquer usuário; GRANTs por coluna, `search_path` vazio e grants mínimos em todas as funções; Storage só com INSERT, documento só pelo servidor e com registro antes; tabelas só de inclusão; evidência para cada item do gate (publicar com pendência e aviso; testes 2, 6, 11 e 12); nenhum termo proibido, segredo ou `console.*` no diff.
 
-**Também sugerido pelo revisor, para a próxima rodada de testes:** um teste de integração do CT6.6 com cópia de objeto no Storage (`copy` de foto alheia e de documento sem SELECT devem falhar), que a lista de mutações não cobre.
+**Revisão T3 da correção (I2.11, 30/10):** "aprovado com ressalvas", sem crítico nem alto. Corrigidos antes do fechamento: o registro das mutações (R-I2.11-01, média), um negativo próprio por política (02), a regra do README sobre gatilho desligado (03), o texto da disponibilidade em oferta já expirada (04), a orientação da vencida antes da rodada (05) e a redação da extensão da validade (10). Ficam registrados:
+- **R-I2.11-06:** o ramo sem usuário fora da sessão de manutenção recusa, mas não tem teste, porque no pgTAP e na integração a sessão é sempre `postgres`, e pela API `anon` e `service_role` não têm EXECUTE. É defesa em profundidade, registrada como mutação equivalente (N07);
+- **R-I2.11-07:** a conferência de quem chama roda também dentro do versionamento (gatilhos de versão → `snapshot_da_oferta` → `estados_documentais_da_oferta`). Hoje todo escritor lê a oferta. No Inc. 4 ou 5, um escritor que dispare o versionamento sem passar em `offers_leitura` aborta a transação; antes disso, separar uma variante interna sem conferência e sem EXECUTE para `authenticated`;
+- **R-I2.11-08:** o servidor usa o relógio da aplicação, e o banco, o `now()` da transação. Segundos antes do vencimento, a tela pode oferecer uma ação que o banco recusa; o banco decide;
+- **R-I2.11-09:** no envio de foto ou documento para a vencida, o servidor não confere antes, e a política do Storage recusa com "sem permissão" genérico. As telas escondem o formulário.
+
+**Também sugerido pelo revisor da I2.10, para a próxima rodada de testes:** um teste de integração do CT6.6 com cópia de objeto no Storage (`copy` de foto alheia e de documento sem SELECT devem falhar), que a lista de mutações não cobre. **Entrou na I2.11** em `tests/integration/ofertas-storage.test.ts`, com o contraste da cópia da própria foto.
 
 ---
 

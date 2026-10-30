@@ -88,6 +88,8 @@ function textosDasTelas(): string[] {
       ATORES_DA_OFERTA.flatMap((ator) => [
         orientacaoDoStatus(status, ator),
         motivoDaEtapaSoLeitura(status, ator),
+        orientacaoDoStatus(status, ator, true),
+        motivoDaEtapaSoLeitura(status, ator, true),
       ]),
     ),
   ];
@@ -115,6 +117,24 @@ describe("rótulos da oferta", () => {
     expect(orientacaoDoStatus("draft", "membro")).toContain("administrador");
     expect(motivoDaEtapaSoLeitura("published", "membro")).toContain(
       "administrador",
+    );
+  });
+
+  it("ACH-I2.10-01: a vencida antes da rodada não manda reabrir agora; a reabertura vem depois da expiração", () => {
+    for (const status of ["published", "reserved"] as const) {
+      const doAdministrador = orientacaoDoStatus(status, "adm_empresa", true);
+      expect(doAdministrador).toContain("retirar");
+      expect(doAdministrador).toContain("depois que ela passar a “Expirada”");
+      expect(orientacaoDoStatus(status, "membro", true)).toContain(
+        "administrador da empresa",
+      );
+      expect(motivoDaEtapaSoLeitura(status, "adm_empresa", true)).toContain(
+        "Depois que ela passar a “Expirada”",
+      );
+    }
+    // A expirada de fato segue com o texto da reabertura.
+    expect(orientacaoDoStatus("expired", "adm_empresa")).toContain(
+      "reabra como rascunho",
     );
   });
 

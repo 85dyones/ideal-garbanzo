@@ -15,6 +15,10 @@
  * `310-ofertas-transicoes`) e a rotina de expiração roda como o pg_cron; a
  * venda, que não tem transição no Inc. 2, é gravada com o gatilho desligado.
  * Cada tentativa roda num bloco que sempre se desfaz.
+ *
+ * A publicada e a reservada rodam duas vezes: dentro da validade e com ela
+ * vencida antes da rodada da expiração, quando já se comportam como
+ * expiradas (§2.9; ACH-I2.10-01).
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -63,7 +67,11 @@ let atores: AtorDeTeste[] = [];
 let ofertas = {} as Record<StatusDaOferta, string>;
 
 /** Estados cuja oferta fica com a validade vencida dentro da transação. */
-const VENCIDAS = new Set<StatusDaOferta>(["published", "reserved", "expired"]);
+function vencidas(publicadasVencidas: boolean): ReadonlySet<StatusDaOferta> {
+  return new Set<StatusDaOferta>(
+    publicadasVencidas ? ["published", "reserved", "expired"] : ["expired"],
+  );
+}
 
 beforeAll(async () => {
   const [admin, oper, f1u, f2u, svu, ssu, g1u] = await Promise.all([
@@ -202,11 +210,12 @@ beforeAll(async () => {
 type ClienteDoBanco = Parameters<Parameters<typeof comBanco>[0]>[0];
 
 /**
- * Abre a transação, leva as ofertas a `expired` e `sold` e cria a função que
- * tenta cada comando com o ator dado, sempre desfazendo. Tudo é desfeito no
- * fim.
+ * Abre a transação, leva as ofertas a `expired` e `sold`, vence a publicada
+ * e a reservada quando pedido e cria a função que tenta cada comando com o
+ * ator dado, sempre desfazendo. Tudo é desfeito no fim.
  */
 async function naTransacao<T>(
+  publicadasVencidas: boolean,
   tarefa: (cliente: ClienteDoBanco) => Promise<T>,
 ): Promise<T> {
   return comBanco(async (cliente) => {
@@ -228,16 +237,18 @@ async function naTransacao<T>(
         "alter table public.offers enable trigger offers_proteger",
       );
       await cliente.query("select private.expirar_ofertas()");
-      await cliente.query(
-        "alter table public.offers disable trigger offers_proteger",
-      );
-      await cliente.query(
-        "update public.offers set valid_until = now() - interval '1 minute' where id = any($1::uuid[])",
-        [[ofertas.published, ofertas.reserved]],
-      );
-      await cliente.query(
-        "alter table public.offers enable trigger offers_proteger",
-      );
+      if (publicadasVencidas) {
+        await cliente.query(
+          "alter table public.offers disable trigger offers_proteger",
+        );
+        await cliente.query(
+          "update public.offers set valid_until = now() - interval '1 minute' where id = any($1::uuid[])",
+          [[ofertas.published, ofertas.reserved]],
+        );
+        await cliente.query(
+          "alter table public.offers enable trigger offers_proteger",
+        );
+      }
       const { rows } = await cliente.query<{ status: StatusDaOferta }>(
         "select status from public.offers where id = any($1::uuid[]) order by array_position($1::uuid[], id)",
         [STATUS_DA_OFERTA.map((status) => ofertas[status])],
@@ -365,91 +376,112 @@ describe("banco e rules/transicoes.ts dizem o mesmo", () => {
     ]);
   });
 
-  it("todo par de estados, todo ator, os dois valores da D10, com e sem motivo", async () => {
-    const encontradas = await naTransacao(async (cliente) => {
-      const lista: string[] = [];
-      for (const revisaoExigida of [true, false]) {
-        await cliente.query(
-          "update public.platform_settings set value = $1::jsonb where key = 'offer_review_required'",
-          [JSON.stringify(revisaoExigida)],
-        );
-        const casos: Caso[] = [];
-        for (const de of STATUS_DA_OFERTA) {
-          for (const para of STATUS_DA_OFERTA) {
-            if (de === para) continue;
+  it.each([false, true])(
+    "todo par de estados, todo ator, os dois valores da D10, com e sem motivo (publicada e reservada vencidas: %s)",
+    async (publicadasVencidas) => {
+      const VENCIDAS = vencidas(publicadasVencidas);
+      const encontradas = await naTransacao(
+        publicadasVencidas,
+        async (cliente) => {
+          const lista: string[] = [];
+          for (const revisaoExigida of [true, false]) {
+            await cliente.query(
+              "update public.platform_settings set value = $1::jsonb where key = 'offer_review_required'",
+              [JSON.stringify(revisaoExigida)],
+            );
+            const casos: Caso[] = [];
+            for (const de of STATUS_DA_OFERTA) {
+              for (const para of STATUS_DA_OFERTA) {
+                if (de === para) continue;
+                for (const ator of atores) {
+                  const transicao = transicaoDaOferta(de, para, ator.ator, {
+                    revisaoExigida,
+                    validadeVencida: VENCIDAS.has(de),
+                  });
+                  for (const comMotivo of [true, false]) {
+                    casos.push({
+                      descricao: `D10=${String(revisaoExigida)} ${de} → ${para} ${comMotivo ? "com" : "sem"} motivo`,
+                      comando: comandoDaTransicao(de, para, ator),
+                      ator,
+                      comMotivo,
+                      esperado:
+                        transicao !== undefined &&
+                        (comMotivo || !motivoObrigatorio(transicao, ator.ator)),
+                    });
+                  }
+                }
+              }
+            }
+            expect(casos).toHaveLength(8 * 7 * atores.length * 2);
+            expect(
+              casos.filter((caso) => caso.esperado).length,
+            ).toBeGreaterThan(0);
+            lista.push(...(await divergencias(cliente, casos)));
+          }
+          return lista;
+        },
+      );
+      expect(encontradas).toEqual([]);
+    },
+    180_000,
+  );
+
+  it.each([false, true])(
+    "edição da oferta, do veículo, declaração e disponibilidade em cada estado (publicada e reservada vencidas: %s)",
+    async (publicadasVencidas) => {
+      const VENCIDAS = vencidas(publicadasVencidas);
+      const encontradas = await naTransacao(
+        publicadasVencidas,
+        async (cliente) => {
+          const casos: Caso[] = [];
+          for (const status of STATUS_DA_OFERTA) {
+            const oferta = ofertas[status];
+            const vencida = VENCIDAS.has(status);
             for (const ator of atores) {
-              const transicao = transicaoDaOferta(de, para, ator.ator, {
-                revisaoExigida,
-                validadeVencida: VENCIDAS.has(de),
-              });
-              for (const comMotivo of [true, false]) {
+              const conteudo = podeEditarConteudo(status, ator.ator, vencida);
+              const comandos: [string, string, boolean][] = [
+                [
+                  "preço",
+                  `update public.offers set asking_price = asking_price + 1 where id = '${oferta}'`,
+                  conteudo,
+                ],
+                [
+                  "quilometragem",
+                  `update public.vehicles set mileage_km = mileage_km + 1
+               where id = (select o.vehicle_id from public.offers o where o.id = '${oferta}')`,
+                  conteudo,
+                ],
+                [
+                  "declaração",
+                  `insert into public.supplier_declarations (offer_id, category, declared_value)
+               values ('${oferta}', 'auction', 'unknown')`,
+                  conteudo,
+                ],
+                [
+                  "disponibilidade",
+                  `update public.offers set availability_confirmed_at = now() where id = '${oferta}'`,
+                  podeConfirmarDisponibilidade(status, ator.ator, vencida),
+                ],
+              ];
+              for (const [nome, comando, esperado] of comandos) {
                 casos.push({
-                  descricao: `D10=${String(revisaoExigida)} ${de} → ${para} ${comMotivo ? "com" : "sem"} motivo`,
-                  comando: comandoDaTransicao(de, para, ator),
+                  descricao: `${nome} em ${status}`,
+                  comando,
                   ator,
-                  comMotivo,
-                  esperado:
-                    transicao !== undefined &&
-                    (comMotivo || !motivoObrigatorio(transicao, ator.ator)),
+                  comMotivo: false,
+                  esperado,
                 });
               }
             }
           }
-        }
-        expect(casos).toHaveLength(8 * 7 * atores.length * 2);
-        expect(casos.filter((caso) => caso.esperado).length).toBeGreaterThan(0);
-        lista.push(...(await divergencias(cliente, casos)));
-      }
-      return lista;
-    });
-    expect(encontradas).toEqual([]);
-  }, 180_000);
-
-  it("edição da oferta, do veículo, declaração e disponibilidade em cada estado", async () => {
-    const encontradas = await naTransacao(async (cliente) => {
-      const casos: Caso[] = [];
-      for (const status of STATUS_DA_OFERTA) {
-        const oferta = ofertas[status];
-        for (const ator of atores) {
-          const conteudo = podeEditarConteudo(status, ator.ator);
-          const comandos: [string, string, boolean][] = [
-            [
-              "preço",
-              `update public.offers set asking_price = asking_price + 1 where id = '${oferta}'`,
-              conteudo,
-            ],
-            [
-              "quilometragem",
-              `update public.vehicles set mileage_km = mileage_km + 1
-               where id = (select o.vehicle_id from public.offers o where o.id = '${oferta}')`,
-              conteudo,
-            ],
-            [
-              "declaração",
-              `insert into public.supplier_declarations (offer_id, category, declared_value)
-               values ('${oferta}', 'auction', 'unknown')`,
-              conteudo,
-            ],
-            [
-              "disponibilidade",
-              `update public.offers set availability_confirmed_at = now() where id = '${oferta}'`,
-              podeConfirmarDisponibilidade(status, ator.ator),
-            ],
-          ];
-          for (const [nome, comando, esperado] of comandos) {
-            casos.push({
-              descricao: `${nome} em ${status}`,
-              comando,
-              ator,
-              comMotivo: false,
-              esperado,
-            });
-          }
-        }
-      }
-      expect(casos.filter((caso) => caso.esperado).length).toBeGreaterThan(0);
-      return divergencias(cliente, casos);
-    });
-    expect(encontradas).toEqual([]);
-  }, 180_000);
+          expect(casos.filter((caso) => caso.esperado).length).toBeGreaterThan(
+            0,
+          );
+          return divergencias(cliente, casos);
+        },
+      );
+      expect(encontradas).toEqual([]);
+    },
+    180_000,
+  );
 });

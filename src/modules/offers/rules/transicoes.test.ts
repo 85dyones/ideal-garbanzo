@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { ContextoDoUsuario } from "@/modules/auth/tipos";
 import type { VinculoDoUsuario } from "@/modules/organizations/tipos";
-import { podeConfirmarDisponibilidade, podeEditarConteudo } from "./edicao";
+import {
+  podeConfirmarDisponibilidade,
+  podeEditarConteudo,
+  situacaoParaEdicao,
+} from "./edicao";
 import {
   STATUS_DA_OFERTA,
   TRANSICOES,
   atorDaOferta,
   motivoObrigatorio,
   transicaoDaOferta,
+  validadeVencida,
 } from "./transicoes";
 
 const F = "a0000000-0000-4000-8000-000000000001";
@@ -187,12 +192,12 @@ describe("ator da oferta", () => {
 
 describe("edição por estado (ADR-0003 §2.5)", () => {
   it("F no rascunho; só o org_admin na publicada ou reservada; staff nunca", () => {
-    expect(podeEditarConteudo("draft", "membro")).toBe(true);
-    expect(podeEditarConteudo("published", "membro")).toBe(false);
-    expect(podeEditarConteudo("reserved", "adm_empresa")).toBe(true);
+    expect(podeEditarConteudo("draft", "membro", false)).toBe(true);
+    expect(podeEditarConteudo("published", "membro", false)).toBe(false);
+    expect(podeEditarConteudo("reserved", "adm_empresa", false)).toBe(true);
     for (const status of STATUS_DA_OFERTA) {
-      expect(podeEditarConteudo(status, "operador")).toBe(false);
-      expect(podeEditarConteudo(status, "administrador")).toBe(false);
+      expect(podeEditarConteudo(status, "operador", false)).toBe(false);
+      expect(podeEditarConteudo(status, "administrador", false)).toBe(false);
     }
     for (const status of [
       "under_review",
@@ -201,14 +206,70 @@ describe("edição por estado (ADR-0003 §2.5)", () => {
       "expired",
       "suspended",
     ] as const) {
-      expect(podeEditarConteudo(status, "adm_empresa")).toBe(false);
+      expect(podeEditarConteudo(status, "adm_empresa", false)).toBe(false);
     }
   });
 
   it("disponibilidade: qualquer F, na publicada ou reservada", () => {
-    expect(podeConfirmarDisponibilidade("published", "membro")).toBe(true);
-    expect(podeConfirmarDisponibilidade("reserved", "adm_empresa")).toBe(true);
-    expect(podeConfirmarDisponibilidade("draft", "adm_empresa")).toBe(false);
-    expect(podeConfirmarDisponibilidade("published", "operador")).toBe(false);
+    expect(podeConfirmarDisponibilidade("published", "membro", false)).toBe(
+      true,
+    );
+    expect(podeConfirmarDisponibilidade("reserved", "adm_empresa", false)).toBe(
+      true,
+    );
+    expect(podeConfirmarDisponibilidade("draft", "adm_empresa", false)).toBe(
+      false,
+    );
+    expect(podeConfirmarDisponibilidade("published", "operador", false)).toBe(
+      false,
+    );
+  });
+
+  it("ACH-I2.10-01: a publicada ou reservada vencida se comporta como expirada (§2.9)", () => {
+    expect(situacaoParaEdicao("published", true)).toBe("expired");
+    expect(situacaoParaEdicao("reserved", true)).toBe("expired");
+    expect(situacaoParaEdicao("published", false)).toBe("published");
+    // O rascunho com a validade no passado continua editável: a validade só
+    // conta para enviar e publicar (§2.4).
+    expect(situacaoParaEdicao("draft", true)).toBe("draft");
+    expect(podeEditarConteudo("draft", "membro", true)).toBe(true);
+    expect(podeEditarConteudo("published", "adm_empresa", true)).toBe(false);
+    expect(podeEditarConteudo("reserved", "adm_empresa", true)).toBe(false);
+    expect(podeConfirmarDisponibilidade("published", "membro", true)).toBe(
+      false,
+    );
+    expect(podeConfirmarDisponibilidade("reserved", "adm_empresa", true)).toBe(
+      false,
+    );
+  });
+});
+
+describe("validade vencida", () => {
+  it("vence no instante gravado; sem validade, não vence", () => {
+    const agora = new Date("2026-10-30T01:00:00Z");
+    expect(validadeVencida("2026-10-30T01:00:00Z", agora)).toBe(true);
+    expect(validadeVencida("2026-10-30T01:00:01Z", agora)).toBe(false);
+    expect(validadeVencida(null, agora)).toBe(false);
+  });
+
+  it("ACH-I2.10-01: vencida, a oferta não é reservada nem liberada; a retirada segue", () => {
+    const vencida = { revisaoExigida: true, validadeVencida: true };
+    for (const ator of ["adm_empresa", "operador", "administrador"] as const) {
+      expect(
+        transicaoDaOferta("published", "reserved", ator, vencida),
+      ).toBeUndefined();
+      expect(
+        transicaoDaOferta("reserved", "published", ator, vencida),
+      ).toBeUndefined();
+      expect(
+        transicaoDaOferta("published", "reserved", ator, COM_REVISAO)?.id,
+      ).toBe("T08");
+    }
+    expect(
+      transicaoDaOferta("reserved", "withdrawn", "adm_empresa", vencida)?.id,
+    ).toBe("T11");
+    expect(
+      transicaoDaOferta("published", "suspended", "operador", vencida)?.id,
+    ).toBe("T14");
   });
 });

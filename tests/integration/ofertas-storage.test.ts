@@ -7,7 +7,7 @@
  * no `340-ofertas-storage`; aqui ficam o endereço público, a URL temporária, o
  * registro de acesso e a remoção pela API, que o SQL direto não exercita.
  */
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
@@ -73,12 +73,28 @@ async function registrosDeAcesso(
   });
 }
 
+/** Quantos objetos há no caminho, lidos direto no banco (sem RLS). */
+async function objetosNoCaminho(
+  bucket: string,
+  caminho: string,
+): Promise<number | undefined> {
+  return comBanco(async (cliente) => {
+    const { rows } = await cliente.query<{ total: number }>(
+      "select count(*)::int as total from storage.objects where bucket_id = $1 and name = $2",
+      [bucket, caminho],
+    );
+    return rows[0]?.total;
+  });
+}
+
 let operador: Pessoa;
 let f1: Pessoa;
 let g1: Pessoa;
 let c1: Pessoa;
 let empresaF = "";
+let empresaG = "";
 let ofertaR = "";
+let ofertaG = "";
 let fotoR = "";
 let documentoR = "";
 let caminhoDaFoto = "";
@@ -94,7 +110,7 @@ beforeAll(async () => {
   await concederPapelNaPlataforma(admin.usuario.id, "admin");
   await concederPapelNaPlataforma(operador.usuario.id, "operator");
   empresaF = await empresaAprovada(f1.sessao, admin.sessao, "supplier", "F");
-  await empresaAprovada(g1.sessao, admin.sessao, "supplier", "G");
+  empresaG = await empresaAprovada(g1.sessao, admin.sessao, "supplier", "G");
   await empresaAprovada(c1.sessao, admin.sessao, "buyer", "C");
   // As sessões releem o vínculo no banco a cada operação; o token não muda.
 
@@ -105,6 +121,15 @@ beforeAll(async () => {
   });
   if (criada.error !== null) throw new Error(criada.error.message);
   ofertaR = criada.data as string;
+
+  // Rascunho da própria G: destino válido para os envios de G (cópia do CT6.6).
+  const deG = await g1.sessao.rpc("criar_oferta", {
+    p_empresa: empresaG,
+    p_veiculo: { make: "Fiat", model: "Uno" },
+    p_oferta: { location_city: "Santos", location_state: "SP" },
+  });
+  if (deG.error !== null) throw new Error(deG.error.message);
+  ofertaG = deG.data as string;
 
   const foto = await enviarFotoDaOferta(dependencias(f1.sessao), {
     ofertaId: ofertaR,
@@ -251,6 +276,49 @@ describe("teste 6: arquivo privado da oferta", () => {
       return rows[0]?.total;
     });
     expect(restantes).toBe(2);
+  });
+
+  // Cópia pela API do Storage, com o token do usuário: a origem passa pela
+  // política de leitura, e o destino, pela de envio (revisão da I2.10).
+  it("CT6.6: outra empresa não copia a foto alheia para a própria oferta", async () => {
+    // Contraste do destino: G envia ao prefixo da própria oferta, então a
+    // recusa da cópia vem da leitura da origem, e não do destino.
+    const enviada = await g1.sessao.storage
+      .from(BUCKET_DAS_FOTOS)
+      .upload(`${empresaG}/${ofertaG}/${randomUUID()}.png`, pngDeTeste(), {
+        contentType: "image/png",
+        upsert: false,
+      });
+    expect(enviada.error).toBeNull();
+
+    const destino = `${empresaG}/${ofertaG}/${randomUUID()}.png`;
+    const copia = await g1.sessao.storage
+      .from(BUCKET_DAS_FOTOS)
+      .copy(caminhoDaFoto, destino);
+    expect(copia.error).not.toBeNull();
+    expect(copia.data).toBeNull();
+    expect(await objetosNoCaminho(BUCKET_DAS_FOTOS, destino)).toBe(0);
+  });
+
+  it("CT6.6: nem o dono copia o documento, que não tem política de leitura", async () => {
+    // O destino é da própria oferta, onde o fornecedor já enviou o documento.
+    const destino = `${empresaF}/${ofertaR}/${randomUUID()}.pdf`;
+    const copia = await f1.sessao.storage
+      .from(BUCKET_DOS_DOCUMENTOS)
+      .copy(caminhoDoDocumento, destino);
+    expect(copia.error).not.toBeNull();
+    expect(copia.data).toBeNull();
+    expect(await objetosNoCaminho(BUCKET_DOS_DOCUMENTOS, destino)).toBe(0);
+  });
+
+  it("contraste: o fornecedor copia a própria foto para outro caminho da própria oferta", async () => {
+    // O objeto copiado fica no bucket até o próximo reset, como os demais.
+    const destino = `${empresaF}/${ofertaR}/${randomUUID()}.png`;
+    const copia = await f1.sessao.storage
+      .from(BUCKET_DAS_FOTOS)
+      .copy(caminhoDaFoto, destino);
+    expect(copia.error).toBeNull();
+    expect(await objetosNoCaminho(BUCKET_DAS_FOTOS, destino)).toBe(1);
   });
 
   it("nem o dono baixa o documento direto pelo Storage: só pelo servidor, com registro", async () => {

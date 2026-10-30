@@ -37,7 +37,8 @@ export default async function PaginaDasDeclaracoes({
   const { empresaId, ofertaId } = await params;
   const carga = await carregarOferta(empresaId, ofertaId, "/declaracoes");
   if (!carga.ok) return carga.resposta;
-  const { sessao, oferta, editavel, ator, base } = carga;
+  const { sessao, oferta, editavel, vencidaAntesDaExpiracao, ator, base } =
+    carga;
   const [configuracao, estados] = await Promise.all([
     lerConfiguracaoDaOferta(sessao),
     lerEstadosDocumentais(dependenciasDaLeitura(sessao), oferta.id),
@@ -111,7 +112,11 @@ export default async function PaginaDasDeclaracoes({
         ) : (
           <>
             <p className="text-sm text-neutral-700">
-              {motivoDaEtapaSoLeitura(oferta.status, ator)}
+              {motivoDaEtapaSoLeitura(
+                oferta.status,
+                ator,
+                vencidaAntesDaExpiracao,
+              )}
             </p>
             <EstadosPorCategoria categorias={estados.categorias} />
           </>

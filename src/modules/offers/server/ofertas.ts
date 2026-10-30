@@ -24,13 +24,16 @@ import { vinculoAtivo } from "@/modules/auth/rules/permissoes";
 import { executarOperacao } from "@/modules/auth/server/operacao";
 import type { ContextoDoUsuario } from "@/modules/auth/tipos";
 import {
+  MENSAGEM_DA_VALIDADE_VENCIDA,
   podeConfirmarDisponibilidade,
   podeEditarConteudo,
+  vencidaAntesDaExpiracao,
 } from "../rules/edicao";
 import { fimDoDiaEmBrasilia, rotuloDaPendencia } from "../rules/oferta";
 import {
   ROTULO_DO_STATUS,
   atorDaOferta,
+  validadeVencida,
   type AtorDaOferta,
   type StatusDaOferta,
 } from "../rules/transicoes";
@@ -89,16 +92,26 @@ function colunasDaOferta(
   return colunas;
 }
 
-/** Recusa da edição: o papel errado é "sem permissão"; o estado errado, regra. */
-function edicaoRecusada(status: StatusDaOferta, ator: AtorDaOferta): Falha {
+/**
+ * Recusa da edição: o papel errado é "sem permissão"; o estado errado, regra.
+ * A publicada ou reservada vencida já se comporta como expirada (§2.9).
+ */
+function edicaoRecusada(
+  status: StatusDaOferta,
+  ator: AtorDaOferta,
+  vencida: boolean,
+): Falha {
+  if (ator !== "membro" && ator !== "adm_empresa")
+    return falha("sem_permissao");
+  if (vencidaAntesDaExpiracao(status, vencida)) {
+    return falha("regra_violada", MENSAGEM_DA_VALIDADE_VENCIDA);
+  }
   if (ator === "membro" && (status === "published" || status === "reserved")) {
     return falha(
       "sem_permissao",
       "Só o administrador da empresa altera oferta publicada ou reservada.",
     );
   }
-  if (ator !== "membro" && ator !== "adm_empresa")
-    return falha("sem_permissao");
   return falha(
     "regra_violada",
     `A oferta em "${ROTULO_DO_STATUS[status]}" não pode ser editada.`,
@@ -114,8 +127,9 @@ async function ofertaEditavel(
   const oferta = await lerOferta(dependencias, ofertaId);
   if (!oferta.ok) return oferta;
   const quem = atorDaOferta(contexto, oferta.dados.empresaId);
-  if (!podeEditarConteudo(oferta.dados.status, quem)) {
-    return edicaoRecusada(oferta.dados.status, quem);
+  const vencida = validadeVencida(oferta.dados.validaAte);
+  if (!podeEditarConteudo(oferta.dados.status, quem, vencida)) {
+    return edicaoRecusada(oferta.dados.status, quem, vencida);
   }
   return oferta;
 }
@@ -323,10 +337,13 @@ export function confirmarDisponibilidade(
       if (ator !== "membro" && ator !== "adm_empresa") {
         return falha("sem_permissao");
       }
-      if (!podeConfirmarDisponibilidade(oferta.dados.status, ator)) {
+      const vencida = validadeVencida(oferta.dados.validaAte);
+      if (!podeConfirmarDisponibilidade(oferta.dados.status, ator, vencida)) {
         return falha(
           "regra_violada",
-          "A disponibilidade se confirma em oferta publicada ou reservada.",
+          vencidaAntesDaExpiracao(oferta.dados.status, vencida)
+            ? MENSAGEM_DA_VALIDADE_VENCIDA
+            : "A disponibilidade se confirma em oferta publicada ou reservada.",
         );
       }
       const { data, error } = await comRastreio(

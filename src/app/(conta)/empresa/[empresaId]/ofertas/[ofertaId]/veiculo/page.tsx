@@ -23,7 +23,7 @@ export default async function PaginaDoVeiculo({
   const { empresaId, ofertaId } = await params;
   const carga = await carregarOferta(empresaId, ofertaId, "/veiculo");
   if (!carga.ok) return carga.resposta;
-  const { oferta, editavel, ator, base } = carga;
+  const { oferta, editavel, vencidaAntesDaExpiracao, ator, base } = carga;
 
   return (
     <PaginaDaOferta carga={carga} atual="veiculo">
@@ -42,7 +42,11 @@ export default async function PaginaDoVeiculo({
         ) : (
           <>
             <p className="text-sm text-neutral-700">
-              {motivoDaEtapaSoLeitura(oferta.status, ator)}
+              {motivoDaEtapaSoLeitura(
+                oferta.status,
+                ator,
+                vencidaAntesDaExpiracao,
+              )}
             </p>
             <DadosDoVeiculo veiculo={oferta.veiculo} />
           </>

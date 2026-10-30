@@ -74,6 +74,8 @@ interface LinhaDaAdr {
   readonly d10?: boolean;
   /** Só com `valid_until` vencido. */
   readonly vencida?: true;
+  /** Só dentro da validade: a publicada ou reservada vencida se comporta como expirada (§2.9). */
+  readonly emVigor?: true;
 }
 
 /**
@@ -119,6 +121,7 @@ const TABELA_DA_ADR: readonly LinhaDaAdr[] = [
     para: "reserved",
     quem: ["adm_empresa", "operador", "administrador"],
     motivo: NINGUEM,
+    emVigor: true,
   },
   {
     id: "T09",
@@ -126,6 +129,7 @@ const TABELA_DA_ADR: readonly LinhaDaAdr[] = [
     para: "published",
     quem: ["adm_empresa", "operador", "administrador"],
     motivo: NINGUEM,
+    emVigor: true,
   },
   {
     // "F-adm; ST com motivo"
@@ -187,7 +191,7 @@ const EDICAO_DA_ADR: Readonly<Record<StatusDaOferta, Quem>> = {
   suspended: NINGUEM,
 };
 
-/** ADR-0003 §2.9: quem confirma a disponibilidade ("qualquer F, em published e reserved"). */
+/** ADR-0003 §2.9: quem confirma a disponibilidade ("qualquer F, em published e reserved", dentro da validade). */
 const DISPONIBILIDADE_DA_ADR: Readonly<Record<StatusDaOferta, Quem>> = {
   draft: NINGUEM,
   under_review: NINGUEM,
@@ -198,6 +202,13 @@ const DISPONIBILIDADE_DA_ADR: Readonly<Record<StatusDaOferta, Quem>> = {
   expired: NINGUEM,
   suspended: NINGUEM,
 };
+
+/** §2.9: a publicada ou reservada com a validade vencida se comporta como expirada. */
+function comoNaAdr(status: StatusDaOferta, vencida: boolean): StatusDaOferta {
+  return vencida && (status === "published" || status === "reserved")
+    ? "expired"
+    : status;
+}
 
 interface Condicoes {
   readonly d10: boolean;
@@ -237,7 +248,8 @@ function pelaAdr(
       linha.para === para &&
       linha.quem.includes(ator) &&
       (linha.d10 === undefined || linha.d10 === c.d10) &&
-      (linha.vencida === undefined || c.vencida),
+      (linha.vencida === undefined || c.vencida) &&
+      (linha.emVigor === undefined || !c.vencida),
   );
 }
 
@@ -479,30 +491,38 @@ describe("transições (ADR-0003 §2.3)", () => {
 });
 
 describe("edição e disponibilidade (ADR-0003 §2.5 e §2.9)", () => {
-  it("edição de conteúdo: todos os estados e atores, como na ADR", () => {
+  it("edição de conteúdo: todos os estados e atores, com e sem a validade vencida, como na ADR", () => {
     const divergencias: string[] = [];
     for (const status of ESTADOS) {
       for (const ator of ATORES) {
-        const esperado = EDICAO_DA_ADR[status].includes(ator);
-        if (podeEditarConteudo(status, ator) !== esperado) {
-          divergencias.push(
-            `${status} ${ator}: a ADR diz ${esperado ? "edita" : "não edita"}`,
-          );
+        for (const vencida of [false, true]) {
+          const esperado =
+            EDICAO_DA_ADR[comoNaAdr(status, vencida)].includes(ator);
+          if (podeEditarConteudo(status, ator, vencida) !== esperado) {
+            divergencias.push(
+              `${status} ${ator}${vencida ? ", vencida" : ""}: a ADR diz ${esperado ? "edita" : "não edita"}`,
+            );
+          }
         }
       }
     }
     expect(divergencias).toEqual([]);
   });
 
-  it("disponibilidade: todos os estados e atores, como na ADR", () => {
+  it("disponibilidade: todos os estados e atores, com e sem a validade vencida, como na ADR", () => {
     const divergencias: string[] = [];
     for (const status of ESTADOS) {
       for (const ator of ATORES) {
-        const esperado = DISPONIBILIDADE_DA_ADR[status].includes(ator);
-        if (podeConfirmarDisponibilidade(status, ator) !== esperado) {
-          divergencias.push(
-            `${status} ${ator}: a ADR diz ${esperado ? "confirma" : "não confirma"}`,
-          );
+        for (const vencida of [false, true]) {
+          const esperado =
+            DISPONIBILIDADE_DA_ADR[comoNaAdr(status, vencida)].includes(ator);
+          if (
+            podeConfirmarDisponibilidade(status, ator, vencida) !== esperado
+          ) {
+            divergencias.push(
+              `${status} ${ator}${vencida ? ", vencida" : ""}: a ADR diz ${esperado ? "confirma" : "não confirma"}`,
+            );
+          }
         }
       }
     }
@@ -512,25 +532,56 @@ describe("edição e disponibilidade (ADR-0003 §2.5 e §2.9)", () => {
   it("Q3: o staff não edita conteúdo nem confirma disponibilidade em estado nenhum", () => {
     for (const status of ESTADOS) {
       for (const ator of ST) {
-        expect(podeEditarConteudo(status, ator), `${status} ${ator}`).toBe(
-          false,
-        );
-        expect(
-          podeConfirmarDisponibilidade(status, ator),
-          `${status} ${ator}`,
-        ).toBe(false);
+        for (const vencida of [false, true]) {
+          expect(
+            podeEditarConteudo(status, ator, vencida),
+            `${status} ${ator}`,
+          ).toBe(false);
+          expect(
+            podeConfirmarDisponibilidade(status, ator, vencida),
+            `${status} ${ator}`,
+          ).toBe(false);
+        }
       }
     }
   });
 
-  it("Q2 e B31: o member edita só o rascunho; ninguém edita em revisão, vendida, retirada, vencida ou suspensa", () => {
+  it("Q2 e B31: o member edita só o rascunho; ninguém edita em revisão, vendida, retirada, expirada ou suspensa", () => {
     expect(
-      ESTADOS.filter((status) => podeEditarConteudo(status, "membro")),
+      ESTADOS.filter((status) => podeEditarConteudo(status, "membro", false)),
     ).toEqual(["draft"]);
     expect(
       ESTADOS.filter((status) =>
-        ATORES.some((ator) => podeEditarConteudo(status, ator)),
+        ATORES.some((ator) => podeEditarConteudo(status, ator, false)),
       ),
     ).toEqual(["draft", "published", "reserved"]);
+  });
+
+  it("ACH-I2.10-01: com a validade vencida, só o rascunho segue editável, e só a retirada, a suspensão e a expiração saem da publicada ou reservada", () => {
+    expect(
+      ESTADOS.filter((status) =>
+        ATORES.some(
+          (ator) =>
+            podeEditarConteudo(status, ator, true) ||
+            podeConfirmarDisponibilidade(status, ator, true),
+        ),
+      ),
+    ).toEqual(["draft"]);
+    expect([
+      ...new Set(
+        aceitas({
+          de: ["published", "reserved"],
+          condicoes: CONDICOES.filter((c) => c.vencida),
+        }).map((a) => a.id),
+      ),
+    ]).toEqual(["T11", "T12", "T14"]);
+    expect([
+      ...new Set(
+        aceitas({
+          de: ["published", "reserved"],
+          condicoes: CONDICOES.filter((c) => !c.vencida),
+        }).map((a) => a.id),
+      ),
+    ]).toEqual(["T08", "T11", "T14", "T09"]);
   });
 });

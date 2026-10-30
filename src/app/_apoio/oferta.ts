@@ -137,13 +137,7 @@ export function limitesDaValidade(
   };
 }
 
-/** A validade gravada já passou (a oferta se comporta como expirada; ADR-0003 §2.9). */
-export function validadeVencida(
-  validaAte: string | null,
-  agora: Date = new Date(),
-): boolean {
-  return validaAte !== null && Date.parse(validaAte) <= agora.getTime();
-}
+export { validadeVencida } from "@/modules/offers/rules/transicoes";
 
 /** Validade sugerida no formulário: hoje mais o padrão da configuração; vazio sem padrão. */
 export function validadeSugerida(

@@ -25,10 +25,14 @@ import {
   vinculoAtivoCom,
 } from "@/modules/auth/queries/acesso";
 import type { ContextoDoUsuario } from "@/modules/auth/tipos";
-import { podeEditarConteudo } from "@/modules/offers/rules/edicao";
+import {
+  podeEditarConteudo,
+  vencidaAntesDaExpiracao,
+} from "@/modules/offers/rules/edicao";
 import {
   ROTULO_DO_STATUS,
   atorDaOferta,
+  validadeVencida,
   type AtorDaOferta,
 } from "@/modules/offers/rules/transicoes";
 import { obterOferta, type Oferta } from "@/modules/offers/queries/ofertas";
@@ -193,6 +197,11 @@ export type CargaDaOferta =
       readonly empresa: Empresa;
       readonly oferta: Oferta;
       readonly ator: AtorDaOferta;
+      /**
+       * Publicada ou reservada com a validade vencida, à espera da rodada da
+       * expiração: já se comporta como expirada (ADR-0003 §2.9).
+       */
+      readonly vencidaAntesDaExpiracao: boolean;
       /** O ator altera o conteúdo no estado atual (ADR-0003 §2.5). */
       readonly editavel: boolean;
       /** `/empresa/<empresa>/ofertas/<oferta>`. */
@@ -224,11 +233,13 @@ export async function carregarOferta(
   const oferta = await obterOferta(empresa.sessao, ofertaId);
   if (oferta?.empresaId !== empresaId) return inexistente;
   const ator = atorDaOferta(empresa.contexto, empresaId);
+  const vencida = validadeVencida(oferta.validaAte);
   return {
     ...empresa,
     oferta,
     ator,
-    editavel: podeEditarConteudo(oferta.status, ator),
+    vencidaAntesDaExpiracao: vencidaAntesDaExpiracao(oferta.status, vencida),
+    editavel: podeEditarConteudo(oferta.status, ator, vencida),
     base,
   };
 }

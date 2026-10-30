@@ -77,6 +77,11 @@ export interface Transicao {
   readonly revisaoExigida?: boolean;
   /** Vale só com a validade vencida. */
   readonly soComValidadeVencida?: true;
+  /**
+   * Vale só dentro da validade: a publicada ou reservada vencida já se
+   * comporta como expirada, antes da rodada da expiração (ADR-0003 §2.9).
+   */
+  readonly soComValidadeEmVigor?: true;
 }
 
 const F: readonly AtorDaOferta[] = ["membro", "adm_empresa"];
@@ -116,6 +121,7 @@ export const TRANSICOES: readonly Transicao[] = [
     para: "reserved",
     quem: [...F_ADM, ...ST],
     motivoDe: [],
+    soComValidadeEmVigor: true,
   },
   {
     id: "T09",
@@ -123,6 +129,7 @@ export const TRANSICOES: readonly Transicao[] = [
     para: "published",
     quem: [...F_ADM, ...ST],
     motivoDe: [],
+    soComValidadeEmVigor: true,
   },
   {
     id: "T11",
@@ -193,8 +200,17 @@ export function transicaoDaOferta(
       transicao.quem.includes(ator) &&
       (transicao.revisaoExigida === undefined ||
         transicao.revisaoExigida === condicoes.revisaoExigida) &&
-      (transicao.soComValidadeVencida !== true || condicoes.validadeVencida),
+      (transicao.soComValidadeVencida !== true || condicoes.validadeVencida) &&
+      (transicao.soComValidadeEmVigor !== true || !condicoes.validadeVencida),
   );
+}
+
+/** A validade gravada já passou (a oferta se comporta como expirada; ADR-0003 §2.9). */
+export function validadeVencida(
+  validaAte: string | null,
+  agora: Date = new Date(),
+): boolean {
+  return validaAte !== null && Date.parse(validaAte) <= agora.getTime();
 }
 
 export function motivoObrigatorio(

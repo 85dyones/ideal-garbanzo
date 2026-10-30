@@ -21,6 +21,7 @@ import {
 import { comRastreio } from "@/modules/audit/server/rastreio";
 import { executarOperacao } from "@/modules/auth/server/operacao";
 import type { ContextoDoUsuario } from "@/modules/auth/tipos";
+import { MENSAGEM_DA_VALIDADE_VENCIDA } from "../rules/edicao";
 import { mensagemDasPendencias } from "../rules/oferta";
 import {
   ROTULO_DO_STATUS,
@@ -29,6 +30,7 @@ import {
   motivoObrigatorio,
   transicaoDaOferta,
   transicoesEntre,
+  validadeVencida,
   type IdDaTransicao,
   type StatusDaOferta,
 } from "../rules/transicoes";
@@ -69,10 +71,6 @@ function motivoAusente(): Falha {
   };
 }
 
-function validadeVencida(validaAte: string | null): boolean {
-  return validaAte !== null && Date.parse(validaAte) <= Date.now();
-}
-
 async function mudarStatus(
   dependencias: Dependencias,
   contexto: ContextoDoUsuario,
@@ -111,11 +109,18 @@ async function mudarStatus(
     if (lidaDaConfiguracao === null) return falha("falha");
     revisao = lidaDaConfiguracao;
   }
+  const vencida = validadeVencida(oferta.validaAte);
   const transicao = transicaoDaOferta(oferta.status, pedido.para, ator, {
     revisaoExigida: revisao ?? true,
-    validadeVencida: validadeVencida(oferta.validaAte),
+    validadeVencida: vencida,
   });
   if (transicao === undefined || !pedido.permitidas.includes(transicao.id)) {
+    if (
+      vencida &&
+      candidatas.some((candidata) => candidata.soComValidadeEmVigor === true)
+    ) {
+      return falha("regra_violada", MENSAGEM_DA_VALIDADE_VENCIDA);
+    }
     return falha("regra_violada");
   }
   if (motivoObrigatorio(transicao, ator) && pedido.motivo === undefined) {

@@ -63,6 +63,7 @@ import {
   MENSAGEM_DO_RESULTADO,
   TEXTO_DA_PLATAFORMA,
   ehResultadoDaPlataforma,
+  resultadoConfereComStatus,
   situacaoDaPlataforma,
 } from "@/modules/offers/ui/plataforma";
 import {
@@ -190,10 +191,16 @@ export default async function PaginaDaOfertaNaAdministracao({
   const ultimaRevisao = revisoes[0];
   const devolvida =
     oferta.status === "draft" && ultimaRevisao?.decisao === "returned";
-  const resultado = lerFiltro(
+  const resultadoDoLink = lerFiltro(
     (await searchParams).resultado,
     ehResultadoDaPlataforma,
   );
+  // O link pode ser forjado ou ficar velho: sem conferir com a situação atual, vale como ausente (ACH-08).
+  const resultado =
+    resultadoDoLink !== null &&
+    resultadoConfereComStatus(resultadoDoLink, oferta.status)
+      ? resultadoDoLink
+      : null;
   const nomeDaEmpresa = empresa?.nome ?? "Empresa sem nome";
   // Quem revisa trabalha em sequência: da oferta em revisão ou recém-revisada, a volta é para a fila.
   const daFila =

@@ -32,8 +32,12 @@ import {
 } from "@/modules/auth/rules/permissoes";
 import { executarOperacao } from "@/modules/auth/server/operacao";
 import type { ContextoDoUsuario } from "@/modules/auth/tipos";
-import { podeEditarConteudo } from "../rules/edicao";
-import { atorDaOferta } from "../rules/transicoes";
+import {
+  MENSAGEM_DA_VALIDADE_VENCIDA,
+  podeEditarConteudo,
+  vencidaAntesDaExpiracao,
+} from "../rules/edicao";
+import { atorDaOferta, validadeVencida } from "../rules/transicoes";
 import { lerOferta } from "../server/leitura";
 import {
   BUCKET_DAS_FOTOS,
@@ -301,10 +305,13 @@ async function fotoEditavel(
   const ator = atorDaOferta(contexto, oferta.dados.empresaId);
   if (ator !== "membro" && ator !== "adm_empresa")
     return falha("sem_permissao");
-  if (!podeEditarConteudo(oferta.dados.status, ator)) {
+  const vencida = validadeVencida(oferta.dados.validaAte);
+  if (!podeEditarConteudo(oferta.dados.status, ator, vencida)) {
     return falha(
       "regra_violada",
-      "As fotos desta oferta não podem ser alteradas no estado atual.",
+      vencidaAntesDaExpiracao(oferta.dados.status, vencida)
+        ? MENSAGEM_DA_VALIDADE_VENCIDA
+        : "As fotos desta oferta não podem ser alteradas no estado atual.",
     );
   }
   if (data.removed_at !== null) {

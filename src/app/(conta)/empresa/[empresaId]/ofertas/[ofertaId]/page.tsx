@@ -36,7 +36,10 @@ import {
   listarRevisoes,
   outrasOfertasComAPlaca,
 } from "@/modules/offers/queries/ofertas";
-import { podeConfirmarDisponibilidade } from "@/modules/offers/rules/edicao";
+import {
+  podeConfirmarDisponibilidade,
+  vencidaAntesDaExpiracao,
+} from "@/modules/offers/rules/edicao";
 import { ROTULO_DA_CATEGORIA_DA_SUSPENSAO } from "@/modules/offers/rules/oferta";
 import {
   ROTULO_DO_STATUS,
@@ -147,7 +150,13 @@ export default async function PaginaDoResumoDaOferta({
   return (
     <PaginaDaOferta carga={carga} atual="resumo">
       <Secao titulo="Situação">
-        <p>{orientacaoDoStatus(oferta.status, ator)}</p>
+        <p>
+          {orientacaoDoStatus(
+            oferta.status,
+            ator,
+            vencidaAntesDaExpiracao(oferta.status, vencida),
+          )}
+        </p>
         {oferta.status === "suspended" ? (
           <Aviso tom="alerta">
             Suspensa pela plataforma em {formatarDataHora(oferta.suspensaEm)}.
@@ -222,7 +231,7 @@ export default async function PaginaDoResumoDaOferta({
               acao={cancelarEnvioAcao}
             />
           ) : null}
-          {podeConfirmarDisponibilidade(oferta.status, ator) ? (
+          {podeConfirmarDisponibilidade(oferta.status, ator, vencida) ? (
             <AcaoDaOferta
               ofertaId={oferta.id}
               rotulo="Confirmar a disponibilidade"

@@ -33,7 +33,8 @@ export default async function PaginaDosDocumentos({
   const { empresaId, ofertaId } = await params;
   const carga = await carregarOferta(empresaId, ofertaId, "/documentos");
   if (!carga.ok) return carga.resposta;
-  const { sessao, oferta, editavel, ator, base } = carga;
+  const { sessao, oferta, editavel, vencidaAntesDaExpiracao, ator, base } =
+    carga;
   const documentos = await listarDocumentos(sessao, oferta.id);
   const pessoas = await listarPerfisPorId(
     sessao,
@@ -98,7 +99,11 @@ export default async function PaginaDosDocumentos({
           </>
         ) : (
           <p className="text-sm text-neutral-700">
-            {motivoDaEtapaSoLeitura(oferta.status, ator)}
+            {motivoDaEtapaSoLeitura(
+              oferta.status,
+              ator,
+              vencidaAntesDaExpiracao,
+            )}
           </p>
         )}
       </Secao>

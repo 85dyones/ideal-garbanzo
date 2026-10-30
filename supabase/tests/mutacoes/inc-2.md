@@ -953,3 +953,303 @@ update public.platform_settings set value = value || '["location_city"]'::jsonb 
 -     return ator === "adm_empresa";
 +     return FORNECEDOR.includes(ator);
 ```
+
+## I2.11: correção das ressalvas da I2.10 (30/10/2026)
+
+Resultado: 21 mutações do banco e do servidor, mais 4 do código do builder. Todas as que precisavam cair caíram sem derrubar o contraste; a N07 é equivalente, como a revisão T3 previu (R-I2.11-06). Procedimentos:
+
+- **banco (N e P):** como na I2.3, a mutação entra na cópia do arquivo de teste e é desfeita no rollback. As P entram em todos os arquivos de oferta com escrita;
+- **servidor (S):** o arquivo é trocado, o teste de integração `ofertas-transicoes` roda, e o original volta, conferido byte a byte pelo script;
+- **código do builder (B):** o arquivo é trocado, o teste unitário roda, e o original volta, conferido com `cmp`.
+
+### Achados 01 e 02
+
+| ID  | Camada                        | Teste                            | Mudança                                                                          | Casos que devem cair                                                                                                                                                                                                                                                                                                                                                                                                                                              | Contraste                                                                                                         | Caíram  | Resultado                   |
+| --- | ----------------------------- | -------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------- | --------------------------- |
+| N01 | função do private             | `380-ofertas-validade-e-leitura` | situacao_da_oferta() devolve sempre o status gravado                             | ACH-01: vencida, o org_admin não altera o preço; ACH-01: nem estende a validade; ACH-01: nem na reservada vencida; ACH-01: nem o veículo; ACH-01: nem declara; ACH-01: nem remove foto; ACH-01: nem registra foto nova; ACH-01: nem registra documento; ACH-01: o org_admin não reserva a vencida (T08); ACH-01: nem libera a reserva vencida (T09); ACH-01: o member não confirma a disponibilidade da vencida (T16); ACH-01: nem a plataforma reserva a vencida | contraste ACH-01: dentro da validade, o org_admin altera o preço; contraste ACH-01: e reserva                     | 15      | caiu; contraste passou      |
+| N02 | gatilho                       | `380-ofertas-validade-e-leitura` | proteger_oferta(): T08 e T09 sem conferir a validade                             | ACH-01: o org_admin não reserva a vencida (T08); ACH-01: nem libera a reserva vencida (T09); ACH-01: nem a plataforma reserva a vencida                                                                                                                                                                                                                                                                                                                           | contraste ACH-01: e reserva; contraste ACH-01: e libera                                                           | 3       | caiu; contraste passou      |
+| N03 | gatilho                       | `380-ofertas-validade-e-leitura` | proteger_oferta(): disponibilidade sem conferir a validade                       | ACH-01: o member não confirma a disponibilidade da vencida (T16)                                                                                                                                                                                                                                                                                                                                                                                                  | contraste ACH-01: o member confirma a disponibilidade dentro da validade                                          | 1       | caiu; contraste passou      |
+| N04 | função da política do Storage | `380-ofertas-validade-e-leitura` | pode_editar_oferta() sem a validade                                              | ACH-01: a política do Storage recusa arquivo novo na vencida                                                                                                                                                                                                                                                                                                                                                                                                      | contraste ACH-01: a política do Storage aceita arquivo novo dentro da validade                                    | 1       | caiu; contraste passou      |
+| N05 | função do private             | `380-ofertas-validade-e-leitura` | conferir_leitura_da_oferta() não confere nada                                    | ACH-02: fornecedor de outra empresa não lê as pendências; ACH-02: nem o detalhe das declarações; ACH-02: oferta inexistente dá a mesma resposta; ACH-02: comprador não lê os estados da publicada                                                                                                                                                                                                                                                                 | contraste ACH-02: o member da empresa dona lê as pendências; contraste ACH-02: a plataforma lê os estados         | 4       | caiu; contraste passou      |
+| N06 | função do private             | `380-ofertas-validade-e-leitura` | conferir_leitura_da_oferta() aceita qualquer sessão sem usuário                  | contraste ACH-02: sem usuário, na sessão de manutenção, a função responde                                                                                                                                                                                                                                                                                                                                                                                         | contraste ACH-02: o member da empresa dona lê as pendências                                                       | arquivo | o arquivo cai na preparação |
+| N07 | função do private             | `380-ofertas-validade-e-leitura` | conferir_leitura_da_oferta() sem usuário aceita qualquer sessão (sugestão da T3) | —                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | —                                                                                                                 | 0       | equivalente: nada caiu      |
+| S01 | regra do servidor             | `ofertas-transicoes`             | situacaoParaEdicao() devolve sempre o status gravado                             | edição da oferta, do veículo, declaração e disponibilidade em cada estado (publicada e reservada vencidas: true)                                                                                                                                                                                                                                                                                                                                                  | edição da oferta, do veículo, declaração e disponibilidade em cada estado (publicada e reservada vencidas: false) | 1       | caiu; contraste passou      |
+| S02 | tabela do servidor            | `ofertas-transicoes`             | transicaoDaOferta() sem a condição da validade em vigor (T08 e T09)              | todo par de estados, todo ator, os dois valores da D10, com e sem motivo (publicada e reservada vencidas: true)                                                                                                                                                                                                                                                                                                                                                   | todo par de estados, todo ator, os dois valores da D10, com e sem motivo (publicada e reservada vencidas: false)  | 1       | caiu; contraste passou      |
+
+- **N01:** além dos 12 esperados, caíram 3 em cascata. Com a mutação, a extensão da validade foi aceita, e a oferta deixou de estar vencida para a política do Storage, para a rodada da expiração e para a reabertura.
+- **N06:** a mutação recusa toda sessão sem usuário. O arquivo cai já na preparação, porque o versionamento que roda sem usuário passa pela função. Isso mostra que o ramo da sessão de manutenção é usado.
+- **N07:** a mutação inversa aceita qualquer sessão sem usuário. Nada cai, porque no pgTAP e na integração a sessão é sempre `postgres`, e pela API `anon` e `service_role` não têm EXECUTE. O ramo fica como defesa em profundidade.
+
+### Achado 04: políticas de escrita
+
+Cada política foi afrouxada sozinha (P). As de inclusão também foram afrouxadas junto com a checagem de vínculo do gatilho da tabela (Pd).
+
+| ID   | Mudança                                                                                           | Caíram | Casos                                                                                                                                                                               |
+| ---- | ------------------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P01  | política vehicles_cadastro com with check true                                                    | 1      | ACH-04 (política): vehicles_cadastro recusa veículo em nome de outra empresa                                                                                                        |
+| P01d | política vehicles_cadastro com with check true e o gatilho sem a checagem de vínculo              | 2      | CT2.11: não cria oferta em nome de outra empresa; ACH-04 (política): vehicles_cadastro recusa veículo em nome de outra empresa                                                      |
+| P02  | política vehicles_alteracao com using true with check true                                        | 1      | ACH-04 (política): vehicles_alteracao não deixa o staff alterar o veículo                                                                                                           |
+| P03  | política offers_cadastro com with check true                                                      | 1      | ACH-04 (política): offers_cadastro recusa oferta em nome de outra empresa                                                                                                           |
+| P03d | política offers_cadastro com with check true e o gatilho sem a checagem de vínculo                | 2      | ACH-04/CT2.11: outra empresa não cadastra oferta na empresa dona pela API direta, nem com o veículo dela; ACH-04 (política): offers_cadastro recusa oferta em nome de outra empresa |
+| P04  | política supplier_declarations_inclusao com with check true                                       | 1      | ACH-04 (política): supplier_declarations_inclusao recusa declaração na oferta alheia                                                                                                |
+| P04d | política supplier_declarations_inclusao com with check true e o gatilho sem a checagem de vínculo | 3      | B5: o staff não declara; CT2.11: não declara na oferta alheia; ACH-04 (política): supplier_declarations_inclusao recusa declaração na oferta alheia                                 |
+| P05  | política offer_media_inclusao com with check true                                                 | 1      | ACH-04 (política): offer_media_inclusao recusa foto na oferta alheia                                                                                                                |
+| P05d | política offer_media_inclusao com with check true e o gatilho sem a checagem de vínculo           | 2      | CT2.11: não envia foto para a oferta alheia; ACH-04 (política): offer_media_inclusao recusa foto na oferta alheia                                                                   |
+| P06  | política offer_media_alteracao com using true with check true                                     | 1      | ACH-04 (política): offer_media_alteracao não deixa o staff alterar a foto                                                                                                           |
+| P07  | política offer_documents_inclusao com with check true                                             | 1      | ACH-04 (política): offer_documents_inclusao recusa documento na oferta alheia                                                                                                       |
+| P07d | política offer_documents_inclusao com with check true e o gatilho sem a checagem de vínculo       | 2      | CT2.11: nem documento; ACH-04 (política): offer_documents_inclusao recusa documento na oferta alheia                                                                                |
+
+- **Primeira rodada, antes do negativo próprio:**
+  - as sete P não derrubaram nada, porque o gatilho BEFORE recusa antes da WITH CHECK, com o mesmo predicado, e no UPDATE a política de leitura já filtra a linha de outra empresa. Eram equivalentes;
+  - por sugestão da revisão T3 (R-I2.11-02), e como no Inc. 1, o `380` ganhou um negativo por política, com o gatilho desligado só durante a asserção. Nas de inclusão, outra empresa recebe a recusa da RLS. Nas de alteração, o staff, que lê a linha, altera 0 linhas. As sete passaram a cair, com o contraste da empresa dona intacto.
+- **Lacuna achada e fechada:**
+  - na primeira rodada, a P03d não derrubou nada, porque nenhum teste tentava cadastrar oferta de outra empresa pela API direta com um veículo da empresa dona. O CT2.11 existente passa pela RPC, que cai antes no gatilho do veículo;
+  - o caso entrou no `380` (ACH-04/CT2.11, com contraste).
+
+### Código do builder
+
+| ID  | Teste                      | Mudança                                                      | Resultado                                                   |
+| --- | -------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------- |
+| B01 | `storage/servidor.test.ts` | a falha do registro em `restricted_access_logs` vira um log  | caiu o caso da falha; o contraste passou                    |
+| B02 | `storage/servidor.test.ts` | o registro vai para depois da URL                            | caíram o caso da falha e o contraste, pela ordem dos passos |
+| B03 | `storage/esquemas.test.ts` | a descrição do documento volta ao esquema sem `textoDeLinha` | caíram U+200B e U+0000; os demais passaram                  |
+| B04 | `ui/plataforma.test.ts`    | `resultadoConfereComStatus` sempre verdadeiro                | caiu o teste dos sete resultados contra os oito status      |
+
+### Mudança de cada mutação (I2.11)
+
+**N01**
+
+```sql
+create or replace function private.situacao_da_oferta(o public.offers) returns text language sql stable set search_path = '' as $f$ select o.status $f$;
+```
+
+**N02**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.proteger_oferta()'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'if private\.situacao_da_oferta\(old\) = ''expired'' then\s+raise exception ''a validade da oferta venceu: ela não pode ser reservada nem liberada''', 'if false then raise exception ''mutado''');
+  if n = d then
+    raise exception 'mutação não aplicada em private.proteger_oferta()';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**N03**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.proteger_oferta()'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'if private\.situacao_da_oferta\(old\) = ''expired'' then\s+raise exception ''a validade da oferta venceu: a disponibilidade não se confirma''', 'if false then raise exception ''mutado''');
+  if n = d then
+    raise exception 'mutação não aplicada em private.proteger_oferta()';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**N04**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.pode_editar_oferta(uuid)'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, ' and o\.valid_until > now\(\)', '');
+  if n = d then
+    raise exception 'mutação não aplicada em private.pode_editar_oferta(uuid)';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**N05**
+
+```sql
+create or replace function private.conferir_leitura_da_oferta(p_oferta uuid) returns void language plpgsql stable security definer set search_path = '' as $f$ begin return; end $f$;
+```
+
+**N06**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.conferir_leitura_da_oferta(uuid)'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'if private\.sessao_de_manutencao\(session_user\) then\s+return;\s+end if;\s+raise exception ''sem permissão'' using errcode = ''42501'';', 'raise exception ''sem permissão'' using errcode = ''42501'';');
+  if n = d then
+    raise exception 'mutação não aplicada em private.conferir_leitura_da_oferta(uuid)';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**N07**
+
+```sql
+do $m$
+declare
+  d text := pg_get_functiondef('private.conferir_leitura_da_oferta(uuid)'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'if private\.sessao_de_manutencao\(session_user\) then\s+return;\s+end if;\s+raise exception ''sem permissão'' using errcode = ''42501'';', 'return;');
+  if n = d then
+    raise exception 'mutação não aplicada em private.conferir_leitura_da_oferta(uuid)';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**S01**
+
+Em `src/modules/offers/rules/edicao.ts`: situacaoParaEdicao() devolve sempre o status gravado.
+
+**S02**
+
+Em `src/modules/offers/rules/transicoes.ts`: transicaoDaOferta() sem a condição da validade em vigor (T08 e T09).
+
+**P01**
+
+```sql
+alter policy vehicles_cadastro on public.vehicles with check (true);
+```
+
+**P01d**
+
+```sql
+alter policy vehicles_cadastro on public.vehicles with check (true);
+do $m$
+declare
+  d text := pg_get_functiondef('private.proteger_veiculo()'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'if ator is null or not private\.membro_ativo\(new\.organization_id\) then', 'if ator is null then');
+  if n = d then
+    raise exception 'mutação não aplicada em private.proteger_veiculo()';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**P02**
+
+```sql
+alter policy vehicles_alteracao on public.vehicles using (true) with check (true);
+```
+
+**P03**
+
+```sql
+alter policy offers_cadastro on public.offers with check (true);
+```
+
+**P03d**
+
+```sql
+alter policy offers_cadastro on public.offers with check (true);
+do $m$
+declare
+  d text := pg_get_functiondef('private.proteger_oferta()'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'if not private\.membro_ativo\(new\.supplier_organization_id\) then\s+raise exception ''só membro ativo da empresa fornecedora cadastra oferta''', 'if false then raise exception ''mutado''');
+  if n = d then
+    raise exception 'mutação não aplicada em private.proteger_oferta()';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**P04**
+
+```sql
+alter policy supplier_declarations_inclusao on public.supplier_declarations with check (true);
+```
+
+**P04d**
+
+```sql
+alter policy supplier_declarations_inclusao on public.supplier_declarations with check (true);
+do $m$
+declare
+  d text := pg_get_functiondef('private.proteger_declaracao()'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'if not found or not private\.membro_ativo\(oferta\.supplier_organization_id\) then', 'if not found then');
+  if n = d then
+    raise exception 'mutação não aplicada em private.proteger_declaracao()';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**P05**
+
+```sql
+alter policy offer_media_inclusao on public.offer_media with check (true);
+```
+
+**P05d**
+
+```sql
+alter policy offer_media_inclusao on public.offer_media with check (true);
+do $m$
+declare
+  d text := pg_get_functiondef('private.proteger_foto()'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'if not found or not private\.membro_ativo\(oferta\.supplier_organization_id\) then', 'if not found then');
+  if n = d then
+    raise exception 'mutação não aplicada em private.proteger_foto()';
+  end if;
+  execute n;
+end
+$m$;
+```
+
+**P06**
+
+```sql
+alter policy offer_media_alteracao on public.offer_media using (true) with check (true);
+```
+
+**P07**
+
+```sql
+alter policy offer_documents_inclusao on public.offer_documents with check (true);
+```
+
+**P07d**
+
+```sql
+alter policy offer_documents_inclusao on public.offer_documents with check (true);
+do $m$
+declare
+  d text := pg_get_functiondef('private.proteger_documento()'::regprocedure);
+  n text;
+begin
+  n := regexp_replace(d, 'if not found or not private\.membro_ativo\(oferta\.supplier_organization_id\) then', 'if not found then');
+  if n = d then
+    raise exception 'mutação não aplicada em private.proteger_documento()';
+  end if;
+  execute n;
+end
+$m$;
+```

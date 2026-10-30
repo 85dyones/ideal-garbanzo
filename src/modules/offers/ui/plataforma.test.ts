@@ -9,20 +9,24 @@ import {
 import {
   STATUS_DA_OFERTA,
   TRANSICOES,
+  type IdDaTransicao,
   type StatusDaOferta,
 } from "../rules/transicoes";
 import {
   MENSAGEM_DO_RESULTADO,
   OPCOES_DA_CATEGORIA_DA_SUSPENSAO,
   RESULTADOS_DA_PLATAFORMA,
+  STATUS_DEPOIS_DO_RESULTADO,
   STATUS_DO_FILTRO_DA_PLATAFORMA,
   TEXTO_DA_PLATAFORMA,
   dataRelevante,
   ehResultadoDaPlataforma,
   ehStatusDoFiltroDaPlataforma,
+  resultadoConfereComStatus,
   situacaoDaPlataforma,
   type AcoesDaPlataforma,
   type DatasDaLinha,
+  type ResultadoDaPlataforma,
 } from "./plataforma";
 
 const EMPRESA = "a0000000-0000-4000-8000-000000000001";
@@ -334,6 +338,48 @@ describe("resultado das ações", () => {
     }
     for (const valor of ["", "outra", "<script>", null, undefined, 1]) {
       expect(ehResultadoDaPlataforma(valor)).toBe(false);
+    }
+  });
+
+  it("ACH-08: o resultado só confere com a situação em que a ação deixa a oferta", () => {
+    const esperado: Readonly<Record<ResultadoDaPlataforma, StatusDaOferta>> = {
+      publicada: "published",
+      devolvida: "draft",
+      suspensa: "suspended",
+      reativada: "draft",
+      retirada: "withdrawn",
+      reservada: "reserved",
+      liberada: "published",
+    };
+    for (const resultado of RESULTADOS_DA_PLATAFORMA) {
+      for (const status of STATUS_DA_OFERTA) {
+        expect(
+          resultadoConfereComStatus(resultado, status),
+          `${resultado} com ${status}`,
+        ).toBe(status === esperado[resultado]);
+      }
+    }
+  });
+
+  it("a situação esperada é o destino da transição de cada ação", () => {
+    const transicaoDaAcao: Readonly<
+      Record<ResultadoDaPlataforma, IdDaTransicao>
+    > = {
+      publicada: "T04",
+      devolvida: "T05",
+      suspensa: "T14",
+      reativada: "T15",
+      retirada: "T11",
+      reservada: "T08",
+      liberada: "T09",
+    };
+    for (const resultado of RESULTADOS_DA_PLATAFORMA) {
+      const transicao = TRANSICOES.find(
+        (candidata) => candidata.id === transicaoDaAcao[resultado],
+      );
+      expect(transicao?.para, resultado).toBe(
+        STATUS_DEPOIS_DO_RESULTADO[resultado],
+      );
     }
   });
 });

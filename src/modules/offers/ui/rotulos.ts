@@ -176,7 +176,7 @@ export const TEXTO = {
   retirarRascunho:
     "Oferta não se exclui: para deixar de usar o rascunho, retire-o. A oferta retirada pode ser reaberta depois.",
   validadeVencida:
-    "A validade desta oferta já passou. Ela passa a “Expirada” automaticamente.",
+    "A validade desta oferta já passou. Ela passa a “Expirada” automaticamente e, até lá, não pode ser alterada, reservada nem liberada.",
   placaRepetida:
     "Sua empresa tem outra oferta em andamento com a mesma placa. Confira se não é o mesmo veículo cadastrado duas vezes.",
 } as const;
@@ -185,8 +185,15 @@ export const TEXTO = {
 export function orientacaoDoStatus(
   status: StatusDaOferta,
   ator: AtorDaOferta,
+  vencidaAntesDaExpiracao = false,
 ): string {
   const administrador = ator === "adm_empresa";
+  // Publicada ou reservada vencida, à espera da rodada da expiração (§2.9).
+  if (vencidaAntesDaExpiracao) {
+    return administrador
+      ? "A validade venceu. Você ainda pode retirar a oferta; depois que ela passar a “Expirada”, pode reabri-la como rascunho e enviar outra vez."
+      : "A validade venceu. Retirar a oferta ou, depois que ela passar a “Expirada”, reabri-la fica com o administrador da empresa.";
+  }
   switch (status) {
     case "draft":
       return administrador
@@ -221,7 +228,11 @@ export function orientacaoDoStatus(
 export function motivoDaEtapaSoLeitura(
   status: StatusDaOferta,
   ator: AtorDaOferta,
+  vencidaAntesDaExpiracao = false,
 ): string {
+  if (vencidaAntesDaExpiracao) {
+    return "A validade venceu, e a oferta não pode ser alterada. Depois que ela passar a “Expirada”, o que acontece automaticamente, o administrador da empresa pode reabri-la como rascunho.";
+  }
   if (status === "published" || status === "reserved") {
     return ator === "adm_empresa"
       ? "Esta etapa não pode ser alterada agora."

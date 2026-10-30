@@ -1,8 +1,8 @@
 # Tarefa atual
 
-**Etapa:** Inc. 2 (oferta) em andamento. O Inc. 1 foi concluído em 28/10, com o gate cumprido, o ADR-0002 aceito e a I1.8 fechada; a R6 fica para este incremento, e a R7 para a I6.9.  
+**Etapa:** Inc. 2 (oferta) concluído em 30/10, com o gate cumprido, o ADR-0003 aceito e a I2.11 fechada. O Inc. 1 foi concluído em 28/10, com o ADR-0002 aceito; a R7 fica para a I6.9.  
 **Próxima subtarefa:**
-- **Gate do Inc. 2:** a I2.10 não deixou crítico aberto. Falta a pessoa responsável decidir se as ressalvas baixas do ADR-0003 §8 (ACH-01 a ACH-05) são corrigidas antes de fechar o gate, como na I1.8, ou ficam registradas. Fechado o gate, o ADR-0003 passa a aceito.
+- **Inc. 3 (domínio documental):** I3.1, a tabela de decisão da §6.4 a §6.6, pelo `fast-helper` (T0). A D9 já está decidida (impedimento ativo não publica no piloto). O piloto com dados reais continua bloqueado pela D5.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -856,3 +856,45 @@
   - ACH-05: `textoDeLinha` na descrição do documento;
   - ACH-08 e ACH-10: ajustes pequenos;
   - o teste do CT6.6 com cópia de objeto, sugerido pelo revisor.
+
+### 2026-10-30 · I2.11 · correção das ressalvas da I2.10 e gate do Inc. 2
+
+- **Decisão da pessoa responsável:** corrigir as ressalvas antes de fechar o gate, como na I1.8.
+- **Despacho:**
+  - **T2:** achados 01, 02, 04 e 10;
+  - **builder (T1), em worktree:** achados 03, 05 e 08 e o teste de cópia no Storage. Ele rodou lint, tipos, unitários e formatação e não tocou nos arquivos do T2. O T2 conferiu o diff e trouxe os 7 arquivos;
+  - **revisão T3** da correção, só em leitura.
+- **ACH-01 (oferta vencida antes da rodada):**
+  - migração `20261030090000_ressalvas_da_oferta`, gerada a partir das definições vigentes; o diff de cada função mostra só a mudança;
+  - `private.situacao_da_oferta` nos gatilhos da oferta, do veículo, da declaração, da foto e do documento; T08, T09 e a disponibilidade recusadas com mensagem própria; a validade em `private.pode_editar_oferta`, que serve à política de envio do Storage;
+  - continuam valendo a retirada, a suspensão, a expiração pelo job e a reabertura depois dela. O rascunho com a validade no passado continua editável;
+  - **servidor:** `vencidaAntesDaExpiracao` e `situacaoParaEdicao` em `rules/edicao.ts`; `soComValidadeEmVigor` em T08 e T09; `validadeVencida` num lugar só (`rules/transicoes.ts`); mensagens próprias nas operações;
+  - **telas:** a etapa e o resumo explicam que a reabertura vem depois da expiração.
+- **ACH-02:** `private.conferir_leitura_da_oferta` em `pendencias_de_publicacao` e `estados_documentais_da_oferta`, com a regra de `offers_leitura`. Sem usuário, só a sessão de manutenção passa.
+- **ACH-04:** cada política de escrita ganhou um negativo próprio no `380`, com o gatilho desligado só durante a asserção, como no Inc. 1.
+  - Antes disso, as sete mutações eram equivalentes ao gatilho.
+  - A rodada dupla, política e gatilho afrouxados juntos, achou uma lacuna: nenhum teste cadastrava oferta de outra empresa pela API direta. O caso entrou no `380`.
+- **ACH-03, 05, 08 e 10** e a cópia no Storage, como na tabela do ADR-0003 §8. O resto do ACH-08 ficou registrado: resultados que levam ao mesmo status.
+- **Mutações:** 25, registradas em `supabase/tests/mutacoes/inc-2.md`:
+  - 7 do banco para os achados 01 e 02, uma delas equivalente, como a T3 previu;
+  - 12 de política;
+  - 2 do servidor contra a paridade;
+  - 4 do código do builder.
+
+  Todas as que precisavam cair caíram, sem derrubar o contraste. Os arquivos trocados voltaram idênticos.
+- **Revisão T3 da correção:** "aprovado com ressalvas", sem crítico nem alto.
+  - **Corrigidos:** R-I2.11-01 (média: o registro das mutações ainda não estava escrito), 02, 03, 04, 05 e 10.
+  - **Registrados no ADR-0003 §8:** 06 a 09. A 07 pede uma variante interna sem conferência, antes de o Inc. 4 ou 5 criar um escritor que dispare o versionamento sem ler a oferta.
+- **Evidência no dev**, depois de `db:reset` com as 11 migrações:
+  - **banco:** `test:db` com os 23 arquivos passando, o `380` com 44 asserções;
+  - **integração:** `test:integration` com 10 arquivos e 109 testes passando, inclusive a paridade dentro e fora da validade e a cópia no Storage;
+  - **e2e:** `test:e2e` com 25 passando;
+  - **código:** lint e formatação dos versionados, tipos, 284 unitários e build passando.
+
+  Depois dos ajustes da revisão T3, tudo rodou de novo: unitários, tipos, lint, build, `test:db`, as mutações, `test:integration` (109) e `test:e2e` (25), todos passando.
+- **Gate do Inc. 2 cumprido:**
+  - aceite demonstrado: publica com pendência e mostra o aviso;
+  - testes 2, 6, 11 e 12 com mutação;
+  - T3 sem crítico aberto;
+  - o ADR-0003 passou a aceito.
+- **Fora do Git:** o lint e a formatação ainda acusam o kit da marca e o relatório externo, que não são versionados.

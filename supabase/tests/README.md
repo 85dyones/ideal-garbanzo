@@ -35,6 +35,12 @@ O projeto de desenvolvimento é um só para todos os agentes. Reset, testes de b
 - **Objetos fora desses schemas** (buckets, políticas em `storage.objects` sem dependência do `private`, jobs do `pg_cron`): a migração que os cria precisa ser reaplicável (`insert ... on conflict (id) do update`, `drop policy if exists`, `cron.unschedule`). Decidido na I1.3 (ADR-0002 §2.14).
 - **Buckets da aplicação:** `config/banco-dev.json` → `bucketsDaAplicacao`. O reset apaga os arquivos pela API do Storage antes de limpar o banco, com `NEXT_PUBLIC_SUPABASE_URL` e `SUPABASE_SECRET_KEY` do mesmo destino do banco (a trava recusa outro projeto). Apagar `storage.objects` por SQL deixaria o arquivo órfão, e o Supabase recusa.
 - **Atuar como usuário:** o papel `postgres` ignora a RLS. Asserção de acesso roda com `set local role authenticated` e `request.jwt.claims` com o `sub`; a fixture de administrador está no `100-identidade-estrutura.test.sql` (ADR-0002 §3).
+- **Gatilho de proteção desligado dentro do teste (exceção):** sempre com `alter table ... disable trigger`, só dentro da transação do arquivo e desfeito no rollback. O `ALTER TABLE` trava a tabela até o fim da transação, por isso esses testes rodam um de cada vez, como os demais (ACH-I2.10-10). Há dois usos, e só eles:
+  - **chegar a um estado que só existe pelo banco** (validade vencida antes da rodada da expiração, `sold` no Inc. 2): o `310`, o `380` e o teste de integração `ofertas-transicoes` desligam `offers_proteger`, gravam o estado como `postgres` e religam o gatilho **antes** das asserções;
+  - **isolar uma camada**, para que a política ou o CHECK tenha negativo próprio, sem o gatilho recusar antes: o `120`, o `130`, o `140`, o `320` e o `380` fazem as asserções com o gatilho desligado e o religam logo depois. O caso de contraste continua com a camada ligada.
+
+  Fora desses usos, nenhum teste desliga gatilho de proteção, e uma mutação que desliga gatilho é afrouxamento, não preparação.
+
 - **Claims sempre definidas:** toda asserção com papel trocado (`anon`, `authenticated`, `service_role`) roda com `request.jwt.claims` definidas, como o PostgREST faz, e as claims são limpas ao voltar a `postgres`. O `tests/pgtap-claims.test.ts`, no `npm test`, recusa o arquivo que quebrar essa regra e documenta as convenções de linha que ele entende (R4 da I1.7).
 
 ## Verificação de mutação (gate 3)

@@ -192,6 +192,34 @@ export function ehResultadoDaPlataforma(
   return RESULTADOS_DA_PLATAFORMA.some((resultado) => resultado === valor);
 }
 
+/**
+ * A situação em que cada ação deixa a oferta (ADR-0003 §2.3): T04, T05, T14,
+ * T15, T11, T08 e T09.
+ */
+export const STATUS_DEPOIS_DO_RESULTADO: Readonly<
+  Record<ResultadoDaPlataforma, StatusDaOferta>
+> = {
+  publicada: "published",
+  devolvida: "draft",
+  suspensa: "suspended",
+  reativada: "draft",
+  retirada: "withdrawn",
+  reservada: "reserved",
+  liberada: "published",
+};
+
+/**
+ * O resultado confere com a situação atual da oferta. O `?resultado=` vem do
+ * link e pode ser forjado ou ficar velho; o detalhe trata o que não confere
+ * como ausente, sem mostrar o aviso (ADR-0003 §8, ACH-08).
+ */
+export function resultadoConfereComStatus(
+  resultado: ResultadoDaPlataforma,
+  status: StatusDaOferta,
+): boolean {
+  return STATUS_DEPOIS_DO_RESULTADO[resultado] === status;
+}
+
 export const MENSAGEM_DO_RESULTADO: Readonly<
   Record<ResultadoDaPlataforma, string>
 > = {

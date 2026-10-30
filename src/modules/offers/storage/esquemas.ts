@@ -3,7 +3,7 @@
  * estritos: campo a mais no payload é erro, não é ignorado.
  */
 import { z } from "zod";
-import { id } from "@/lib/operacao/campos";
+import { id, textoDeLinha } from "@/lib/operacao/campos";
 import {
   TAMANHO_MAXIMO_DO_ARQUIVO,
   TIPOS_DE_ARQUIVO_DO_DOCUMENTO,
@@ -31,12 +31,9 @@ export const esquemaDoDocumento = z.strictObject({
   tipo: z.enum(TIPOS_DE_DOCUMENTO),
   tipoDoArquivo: z.enum(TIPOS_DE_ARQUIVO_DO_DOCUMENTO),
   conteudo,
-  descricao: z
-    .string()
-    .trim()
-    .min(1, { error: "Campo obrigatório." })
-    .max(300, { error: "Use no máximo 300 caracteres." })
-    .optional(),
+  // Como `offer_documents.description` (`private.texto_de_linha`, 300): sem
+  // controle nem invisível, para a recusa sair antes do envio ao bucket.
+  descricao: textoDeLinha(300).optional(),
 });
 
 export const esquemaDaUrlDaFoto = z.strictObject({ fotoId: id });
