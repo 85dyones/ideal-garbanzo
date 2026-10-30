@@ -1072,3 +1072,20 @@
   - **e2e:** `test:e2e` com 31 passando;
   - **código:** 405 unitários, tipos, lint, formatação e build passando.
 
+### 2026-10-30 · I3.6 · segunda rodada da revisão visual
+
+- **Captura nova:** 58 recortes do tamanho da tela e por região (impedimento, condições de transferência, ações documentais, pendências, ficha), em pt-BR e sem o indicador do Next, inclusive o fornecedor com o impedimento ativo. Foi feita por uma cópia temporária do e2e, que não entra no repositório.
+- **Resultado:** os 9 itens corrigidos ficaram resolvidos; TV-02, TV-03 e TV-12 também. TV-10 foi encerrado, porque o e2e preenche a hora de propósito.
+- **Corrigido pelo T2:**
+  - **TV-19:** a borda vermelha só no formulário de resolver;
+  - **TV-21:** a data do impedimento numa linha própria;
+  - **TV-22:** saiu do aviso a frase de especificação;
+  - **TV-23:** "[data da consulta]" no lugar de "<data>".
+- **Registrados para depois:**
+  - TV-08 e TV-20: as mensagens de resultado de vários formulários na tela ao mesmo tempo;
+  - TV-11: os controles nativos em inglês e um botão de arquivo próprio;
+  - TV-13: os links iguais da placa repetida, que vêm do Inc. 2;
+  - TV-16, TV-18 e TV-24: sugestões de layout.
+- **Teste de linguagem com limite próprio:** com as migrações e os modelos de e-mail, a varredura passou dos 5 s padrão do Vitest com a suíte inteira, e uma rodada falhou por tempo. O teste ganhou 30 s.
+- **Evidência:** 405 unitários, build, e os e2e `documental` e `ofertas-admin` (16) passando depois dos ajustes.
+

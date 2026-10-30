@@ -70,7 +70,7 @@ describe("esquema da consulta (ADR-0004 §2.9 e §2.12)", () => {
     );
     expect(resultado.success).toBe(false);
     expect(resultado.error?.issues.map((issue) => issue.message)).toEqual([
-      `“${termo}” não pode aparecer sozinho. Descreva o que a fonte mostrou ou acrescente “nas fontes consultadas, em <data>”.`,
+      `“${termo}” não pode aparecer sozinho. Descreva o que a fonte mostrou ou acrescente “nas fontes consultadas, em [data da consulta]”.`,
     ]);
     expect(trechosProibidos(EXEMPLO_DE_CERTIDAO)).toEqual([termo]);
   });
@@ -82,7 +82,7 @@ describe("esquema da consulta (ADR-0004 §2.9 e §2.12)", () => {
     const texto = `${EXEMPLO_DE_CERTIDAO} ${EXEMPLO_DE_RESULTADO} ${EXEMPLO_DE_CERTIDAO} ${EXEMPLO_DE_MOTIVO}`;
     expect(trechosProibidos(texto)).toEqual([certidao, resultado, motivo]);
     expect(mensagemDaLinguagem(trechosProibidos(texto))).toBe(
-      `“${certidao}”, “${resultado}” e “${motivo}” não podem aparecer sozinhos. Descreva o que a fonte mostrou ou acrescente “nas fontes consultadas, em <data>”.`,
+      `“${certidao}”, “${resultado}” e “${motivo}” não podem aparecer sozinhos. Descreva o que a fonte mostrou ou acrescente “nas fontes consultadas, em [data da consulta]”.`,
     );
     const revisao = esquemaDaRevisao.safeParse({
       ofertaId: OFERTA,

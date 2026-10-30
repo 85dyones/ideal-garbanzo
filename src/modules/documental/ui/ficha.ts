@@ -68,8 +68,6 @@ export const TEXTO_DOCUMENTAL = {
   impedimento: "Impedimento de transferência",
   efeitoDoImpedimento:
     "Enquanto houver impedimento de transferência ativo, a oferta não é enviada, publicada nem reservada, e fica fora do catálogo.",
-  separadoDasPendencias:
-    "O impedimento é um aviso próprio, separado das pendências documentais.",
   resolucaoPelaAdministracao:
     "Só a administração da plataforma resolve o impedimento, com o motivo e a evidência da regularização. Corrigir a declaração ou registrar outra consulta não o resolve.",
   impedimentosResolvidos: "Impedimentos de transferência resolvidos",

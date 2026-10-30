@@ -173,7 +173,9 @@ describe("linguagem proibida no repositório", () => {
       'Use a qualificação "nas fontes consultadas, em [data]" ou, se o uso for legítimo, ' +
         'o marcador "linguagem-permitida: <motivo>" na mesma linha.',
     ).toEqual([]);
-  });
+    // Com as migrações e os modelos de e-mail (E27), a varredura passou de 5 s
+    // com a suíte inteira rodando em paralelo.
+  }, 30_000);
 });
 
 describe("varredor das mensagens do banco (E27)", () => {

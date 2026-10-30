@@ -482,13 +482,15 @@ export function ImpedimentosDaOferta({
             <ul className="list-disc pl-5">
               {ativos.map((impedimento) => (
                 <li key={impedimento.id} className="break-words">
-                  {impedimento.base} (identificado em{" "}
-                  {formatarDataHora(impedimento.identificadoEm)})
+                  <p>{impedimento.base}</p>
+                  <p className="text-sm">
+                    Identificado em{" "}
+                    {formatarDataHora(impedimento.identificadoEm)}.
+                  </p>
                 </li>
               ))}
             </ul>
             <p className="text-sm">
-              {TEXTO_DOCUMENTAL.separadoDasPendencias}{" "}
               {TEXTO_DOCUMENTAL.resolucaoPelaAdministracao}
             </p>
           </section>

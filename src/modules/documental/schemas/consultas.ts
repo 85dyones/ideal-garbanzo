@@ -37,7 +37,7 @@ export function mensagemDaLinguagem(trechos: readonly string[]): string {
     trechos.length === 1
       ? "não pode aparecer sozinho"
       : "não podem aparecer sozinhos";
-  return `${citados} ${verbo}. Descreva o que a fonte mostrou ou acrescente “nas fontes consultadas, em <data>”.`;
+  return `${citados} ${verbo}. Descreva o que a fonte mostrou ou acrescente “nas fontes consultadas, em [data da consulta]”.`;
 }
 
 /** Os trechos com termo da §6.6 sem a qualificação, como digitados e sem repetir. */

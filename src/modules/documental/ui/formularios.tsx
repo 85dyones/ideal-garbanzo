@@ -460,7 +460,7 @@ export function ResolucaoDoImpedimento({
   return (
     <form
       action={enviar}
-      className={CAIXA_DE_RISCO}
+      className={impedimentos.length === 0 ? CAIXA : CAIXA_DE_RISCO}
       noValidate
       aria-label="Resolver impedimento de transferência"
     >

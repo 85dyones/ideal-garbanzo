@@ -550,7 +550,7 @@ export default async function PaginaDaOfertaNaAdministracao({
                         (impedimento) =>
                           [
                             impedimento.id,
-                            `${impedimento.base} (identificado em ${formatarDataHora(impedimento.identificadoEm)})`,
+                            `${impedimento.base} Identificado em ${formatarDataHora(impedimento.identificadoEm)}.`,
                           ] as const,
                       )}
                       semImpedimento="Nenhum impedimento de transferência ativo."
