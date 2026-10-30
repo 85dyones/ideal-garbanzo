@@ -41,6 +41,10 @@
     {
       "termo": "nada consta",
       "variantes": ["nada consta", "nada-consta"]
+    },
+    {
+      "termo": "sem ocorrências",
+      "variantes": ["sem ocorrências"]
     }
   ]
 }

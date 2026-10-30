@@ -1,9 +1,10 @@
 /**
  * Estados documentais e origem da informação (especificação v1.1, §6.4 e
- * §6.5; ADR-0003 §2.12). O estado é calculado no banco
- * (`private.estado_documental`, migração `20261029160000_estado_documental`);
- * estas regras repetem o mapeamento para a tela e para os testes que conferem
- * que os dois lados dizem o mesmo.
+ * §6.5; ADR-0003 §2.12; ADR-0004 §2.1 a §2.7). O estado é calculado no banco
+ * (`private.estado_documental`, migração `20261030120000_dominio_documental`);
+ * estas regras repetem o cálculo para a tela e para o teste de integração
+ * `estado-documental-paridade`, que confere os dois lados em todas as linhas
+ * da tabela de decisão.
  *
  * Os rótulos são os da tabela da §6.4. Nenhum deles afirma verificação: o
  * único estado "sem apontamentos" leva a qualificação "nas fontes
@@ -78,6 +79,94 @@ export function estadoPelaDeclaracao(
     default:
       return "not_checked";
   }
+}
+
+/**
+ * Estado da categoria pelos registros vigentes (ADR-0004 §2.1): declaração,
+ * consultas não substituídas e revisão aberta. Divergência só pelo valor:
+ * "sem ocorrência conhecida" com consulta que tem ocorrência (§2.4; P1).
+ */
+export function estadoDaCategoria(registros: {
+  readonly declaracao: ValorDeclarado | null;
+  readonly consultasVigentes: readonly ResultadoDaConsulta[];
+  readonly revisaoAberta: boolean;
+}): EstadoDocumental {
+  const { declaracao, consultasVigentes, revisaoAberta } = registros;
+  const candidatos: EstadoDocumental[] = [];
+  let confirmada = false;
+  let ocorrenciaNaConsulta = false;
+  for (const resultado of consultasVigentes) {
+    if (resultado === "awaiting_result" || resultado === "inconclusive") {
+      candidatos.push("pending");
+    } else if (resultado === "has_occurrence") {
+      candidatos.push("with_findings");
+      ocorrenciaNaConsulta = true;
+    } else {
+      confirmada = true;
+      if (!revisaoAberta) candidatos.push("no_findings_in_sources");
+    }
+  }
+  // "Desconhece" não é candidata (B29); "sem ocorrência conhecida" deixa de
+  // ser quando uma consulta vigente a confirma (R2).
+  if (declaracao === "no_known_occurrence" && !confirmada) {
+    candidatos.push("declared_unverified");
+  } else if (declaracao === "has_occurrence") {
+    candidatos.push("with_findings");
+  }
+  if (revisaoAberta) candidatos.push("under_review");
+  if (declaracao === "no_known_occurrence" && ocorrenciaNaConsulta) {
+    candidatos.push("under_review");
+  }
+  return estadoPrevalente(candidatos);
+}
+
+export const RESULTADOS_DA_CONSULTA = [
+  "awaiting_result",
+  "no_occurrence_in_source",
+  "has_occurrence",
+  "inconclusive",
+] as const;
+export type ResultadoDaConsulta = (typeof RESULTADOS_DA_CONSULTA)[number];
+
+export const ROTULO_DO_RESULTADO: Readonly<
+  Record<ResultadoDaConsulta, string>
+> = {
+  awaiting_result: "Aguardando resultado",
+  no_occurrence_in_source: "Sem ocorrência na fonte",
+  has_occurrence: "Com ocorrência na fonte",
+  inconclusive: "Inconclusivo",
+};
+
+export const TIPOS_DE_FONTE = ["official", "commercial", "other"] as const;
+export type TipoDeFonte = (typeof TIPOS_DE_FONTE)[number];
+
+export const ROTULO_DO_TIPO_DE_FONTE: Readonly<Record<TipoDeFonte, string>> = {
+  official: "Fonte oficial",
+  commercial: "Fonte comercial",
+  other: "Outra fonte",
+};
+
+/**
+ * Origem de uma consulta vigente (§6.5; ADR-0004 §2.7): "confirmada por
+ * evidência independente" só com fonte oficial, evidência anexada, resultado
+ * conclusivo e registro pela equipe da plataforma; senão, "resultado de
+ * consulta".
+ */
+export function origemDaConsulta(consulta: {
+  readonly tipoDeFonte: TipoDeFonte;
+  readonly resultado: ResultadoDaConsulta;
+  readonly temEvidencia: boolean;
+  readonly registradaPelaPlataforma: boolean;
+}): "check_result" | "independent_evidence" {
+  const conclusiva =
+    consulta.resultado === "no_occurrence_in_source" ||
+    consulta.resultado === "has_occurrence";
+  return consulta.tipoDeFonte === "official" &&
+    consulta.temEvidencia &&
+    conclusiva &&
+    consulta.registradaPelaPlataforma
+    ? "independent_evidence"
+    : "check_result";
 }
 
 /** Origens da informação da §6.5, que a interface nunca funde num rótulo só. */

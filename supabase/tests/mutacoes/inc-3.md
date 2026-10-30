@@ -401,3 +401,21 @@ begin
 end
 $m$;
 ```
+
+## I3.5: operações de servidor e linguagem no texto livre (30/10/2026)
+
+Resultado: 8 mutações. 7 derrubaram os casos esperados sem derrubar o contraste; a S07 é equivalente. Código: o arquivo é trocado, o teste de integração indicado roda, e o original volta, conferido byte a byte. Banco: o gatilho é desligado no projeto de desenvolvimento e religado depois, conferido no catálogo.
+
+| ID  | Camada                 | Teste                        | Mudança                                                                                      | Casos que devem cair                                           | Caíram | Resultado              |
+| --- | ---------------------- | ---------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------ | ---------------------- |
+| S01 | `rules/estados.ts`     | `estado-documental-paridade` | estadoDaCategoria() sem a divergência                                                        | as 40 linhas da tabela de decisão                              | 2      | caiu; contraste passou |
+| S02 | `rules/estados.ts`     | `estado-documental-paridade` | estadoDaCategoria(): sem apontamentos mesmo com revisão aberta, sem a revisão como candidata | as 40 linhas da tabela de decisão                              | 2      | caiu; contraste passou |
+| S03 | `schemas/consultas.ts` | `documental-operacoes`       | esquema da consulta sem a lista de linguagem no resumo                                       | linguagem proibida e data futura são recusadas no servidor     | 1      | caiu; contraste passou |
+| S04 | `rules/estados.ts`     | `documental-operacoes`       | origemDaConsulta() sem exigir o registro pela plataforma                                     | o member registra no rascunho                                  | 1      | caiu; contraste passou |
+| S05 | `server/estados.ts`    | `documental-operacoes`       | consultarEstadosDocumentais() mostra também as consultas substituídas                        | a equipe registra na publicada                                 | 1      | caiu; contraste passou |
+| S06 | `server/estados.ts`    | `documental-operacoes`       | consultarEstadosDocumentais() sem a ressalva do impedimento                                  | nasce da declaração em transfer_conditions                     | 1      | caiu; contraste passou |
+| S07 | `server/consultas.ts`  | `documental-operacoes`       | registrarConsulta() sem recusar quem não age na oferta                                       | o member não registra na publicada; outra empresa não registra | 0      | equivalente: nada caiu |
+| S08 | gatilho do banco       | `documental-operacoes`       | gatilho vehicle_checks_revisar_linguagem desligado                                           | linguagem proibida e data futura são recusadas no servidor     | 1      | caiu; contraste passou |
+
+- **S07:** para outra empresa, a leitura da oferta pela sessão já responde "sem permissão" antes da checagem do ator. A checagem pesa só no caso da equipe com vínculo pendente ou suspenso com a empresa dona (B25), que lê a oferta pela política da equipe e que o banco recusa em `private.lado_na_oferta`.
+- **Contraste:** nas mutações do teste de paridade (S01 e S02), o contraste é o próprio teste dos casos com mais de uma consulta, que só cai quando a mutação toca a regra que ele exercita.

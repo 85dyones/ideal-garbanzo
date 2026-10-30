@@ -124,7 +124,7 @@ As decisões seguem as leituras conservadoras do anexo A (A.9). A exceção são
   - recusa também a chave composta que contenha um identificador da lista, por exemplo `cpf_proprietario`.
 - **Lista:** a do código a portar (descrita no anexo A.6), mais identificadores genéricos do proprietário e de contato. O nome do provedor daquele projeto não entra.
 - **Placa, RENAVAM e chassi em `details` (E30):** recusados. Esses dados ficam só em `vehicles`.
-- **Servidor (E31):** monta `details` por lista positiva de chaves, com esquema estrito, e nunca grava a resposta crua de uma fonte. A tela orienta a não pôr dado do proprietário nos textos livres. Evidência que traga dado do proprietário depende da D5 e fica oculta ao comprador.
+- **Servidor (E31):** monta `details` por lista positiva de chaves, com esquema estrito, e nunca grava a resposta crua de uma fonte. No piloto, o registro é manual, e a lista positiva começa vazia: `recordCheck` não aceita `details` (ajuste da I3.5). Ela cresce com a integração automática (C7). A tela orienta a não pôr dado do proprietário nos textos livres. Evidência que traga dado do proprietário depende da D5 e fica oculta ao comprador.
 - **Vale para todo papel:** o CHECK recusa também pela `service_role` e pelo `postgres`.
 
 ### 2.11. Impedimento de transferência (E20 a E24)
@@ -149,10 +149,10 @@ As decisões seguem as leituras conservadoras do anexo A (A.9). A exceção são
 
 ### 2.12. Linguagem proibida (E25 a E28)
 
-- **Lista (E25):** entra "sem ocorrências", com as flexões. "100% liberado" não aparece em tela. Outros termos, se surgirem, vão para a pessoa responsável.
+- **Lista (E25):** entra "sem ocorrências", só no plural (ajuste da I3.5): no singular, a expressão colidiria com "sem ocorrência conhecida", o valor legítimo da declaração. "100% liberado" não aparece em tela. Outros termos, se surgirem, vão para a pessoa responsável.
 - **Data (E26):** o varredor continua aceitando a qualificação sem a data. A regra fica na tela: onde aparece `no_findings_in_sources`, a data da consulta e a fonte aparecem ao lado (§6.4, "Exibição"). Um teste da I3.6 confere isso.
 - **Alcance do varredor (E27):** passa a ler também os modelos de `supabase/templates/` e as mensagens de `raise exception` das migrações, que chegam à tela. As notificações do Inc. 5 ficam em pastas varridas.
-- **Texto livre gravado na hora (E28):** `result_summary`, `known_limitations` e os motivos das revisões e dos impedimentos passam pela mesma lista. A conferência é feita no servidor e num gatilho. A lista do banco fica numa chave de `platform_settings`, e um teste confere que ela é igual a `config/linguagem-proibida.json`. Entra na I3.5, com as operações; a I3.3 não a implementa.
+- **Texto livre gravado na hora (E28):** `result_summary`, `known_limitations` e os motivos das revisões e dos impedimentos passam pela mesma lista. A conferência é feita no servidor e num gatilho. A lista do banco fica numa chave de `platform_settings`, e um teste confere que ela é igual a `config/linguagem-proibida.json`. Entrou na I3.5: migração `20261030150000_linguagem_no_texto_livre`, com a busca do varredor repetida no banco (sem maiúsculas nem acentos, palavra inteira, linha com a qualificação ou com o marcador não conta) e gatilhos em `vehicle_checks`, `documental_reviews` e na resolução do impedimento.
 
 ### 2.13. Snapshot e versão (E32, E33)
 
@@ -172,10 +172,12 @@ As decisões seguem as leituras conservadoras do anexo A (A.9). A exceção são
 
 ### 2.15. Operações de servidor
 
-- **`recordCheck`:** consulta e evidência numa operação. O arquivo vai antes, pela sessão, e a linha da consulta depois, como o envio de documento da I2.4.
+- **`recordCheck`:** consulta e evidência numa operação. O arquivo vai antes, pela sessão, e a linha da consulta depois, como o envio de documento da I2.4. Implementada na I3.5 em `src/modules/documental/server/consultas.ts` (`registrarConsulta`), com `gerarUrlDaEvidencia` (registro em `restricted_access_logs` com o tipo `check_evidence` antes da URL).
 - **`openDocumentalReview` e `closeDocumentalReview`:** com motivo.
 - **`resolveTransferImpediment` (nova):** só o administrador, com motivo e evidência.
 - **Regras gerais:** o mesmo padrão das operações da I2.6, isto é, esquema estrito, ator da sessão, resposta igual para oferta alheia e inexistente, e o banco como quem decide.
+- **Leitura para a tela:** `consultarEstadosDocumentais` devolve, por categoria, o estado, a declaração, as consultas vigentes com a origem de cada uma e a revisão aberta, e, para a oferta, os impedimentos e as ressalvas, as mesmas do snapshot.
+- **Regras no servidor:** `estadoDaCategoria` e `origemDaConsulta` (`rules/estados.ts`) e quem registra, revisa e resolve (`rules/registro.ts`). O teste `estado-documental-paridade` confere `estadoDaCategoria` contra o banco nas 40 linhas e em casos com mais de uma consulta.
 
 ### 2.16. Tabelas (para a I3.3)
 

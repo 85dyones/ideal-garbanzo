@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 2 (oferta) concluído em 30/10, com o gate cumprido, o ADR-0003 aceito e a I2.11 fechada. O Inc. 1 foi concluído em 28/10, com o ADR-0002 aceito; a R7 fica para a I6.9.  
 **Próxima subtarefa:**
-- **Inc. 3 (domínio documental):** I3.5, as operações de servidor (`recordCheck` com a evidência, revisão documental, resolução do impedimento), a regra de estado em `rules/estados.ts` com a paridade contra o banco e a lista de linguagem no texto livre (E28), pelo T2. Depois, a I3.4 (testes, T1) e a I3.6 (telas, T1) em paralelo. O piloto com dados reais continua bloqueado pela D5.
+- **Inc. 3 (domínio documental):** a I3.4 (testes de todas as linhas e dos testes 7, 10 e 11, T1) e a I3.6 (telas, T1), em paralelo, por builders em worktree; depois, a I3.7 (revisão independente, T3) e a I3.8 (revisão externa, AG). O piloto com dados reais continua bloqueado pela D5.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -966,3 +966,38 @@
   - **e2e:** `test:e2e` com 25 passando;
   - **código:** tipos, lint, 284 unitários e build passando.
 - **Fica para a I3.5:** as operações de servidor, a regra de estado no servidor com o teste de paridade, a ressalva do impedimento na tela e a lista de linguagem no texto livre.
+
+### 2026-10-30 · Telas públicas no plano (decisão da pessoa responsável)
+
+- **Pergunta da pessoa responsável:** em qual fase entram a página de apresentação completa e a área externa de conteúdo.
+- **Situação levantada:**
+  - a apresentação de `/` é a mínima da I1.6, com a marca, um parágrafo e os botões de entrar e criar conta. O plano não tinha subtarefa para uma página completa;
+  - os guias e checklists da §6.14 estão em "Depois do piloto", como a especificação manda (§2, item 16);
+  - termos de uso e política de privacidade, exigidos na §9, não estavam em nenhuma subtarefa.
+- **Decisão:** a apresentação completa entra no Inc. 6, antes do piloto, com termos e privacidade: nova I6.10, depois da I6.1 (textos da D5). Os guias continuam depois do piloto. Conteúdo externo de divulgação, se for pedido, ainda não tem lugar no plano.
+
+### 2026-10-30 · I3.5 · operações de servidor do domínio documental
+
+- **CI da I3.3:** o push de `9dbfa24` foi aprovado pela pessoa responsável. A execução 41067592198 passou nos três jobs, com as 12 migrações num Supabase efêmero.
+- **Migração `20261030150000_linguagem_no_texto_livre` (E28):**
+  - a cópia da lista fica na chave `forbidden_terms`;
+  - `private.termo_proibido` repete a busca do varredor;
+  - os gatilhos `*_revisar_linguagem` conferem a fonte, o resumo, as limitações e o protocolo da consulta, o motivo da revisão e o da resolução. O nome os põe depois dos gatilhos de proteção, que preenchem o motivo.
+- **Lista (E25):** "sem ocorrências" entrou em `config/linguagem-proibida.json`, só no plural, porque o singular colidiria com "sem ocorrência conhecida".
+- **Servidor:**
+  - `rules/estados.ts`: `estadoDaCategoria`, `origemDaConsulta`, rótulos de resultado e de tipo de fonte;
+  - `rules/registro.ts`: quem registra, revisa e resolve;
+  - `schemas/consultas.ts`: esquemas estritos, com a lista de linguagem nos textos livres e sem `details` no piloto;
+  - `server/consultas.ts`: `registrarConsulta` (com a evidência no bucket `check-evidence`), abrir e fechar revisão, `resolverImpedimento` (só o administrador, com evidência) e `gerarUrlDaEvidencia` (registro `check_evidence` antes da URL);
+  - `server/estados.ts`: consultas vigentes com a origem de cada uma, revisão aberta, impedimentos e a ressalva do impedimento, igual à do snapshot.
+- **Testes:**
+  - `estado-documental-paridade`: as 40 linhas e 8 casos com mais de uma consulta, banco contra servidor;
+  - `documental-operacoes` (8);
+  - unitários das regras e dos esquemas. Os exemplos negativos com termos da §6.6 levam o marcador `linguagem-permitida:`.
+- **Mutações:** 8 em `supabase/tests/mutacoes/inc-3.md`. 7 caíram; a S07 é equivalente, porque a RLS da leitura responde antes da checagem do ator.
+- **Evidência no dev:**
+  - **banco:** `test:db` com 24 arquivos passando;
+  - **integração:** `test:integration` com 12 arquivos e 119 testes passando;
+  - **e2e:** `test:e2e` com 25 passando;
+  - **código:** 291 unitários, tipos, lint e build passando.
+
