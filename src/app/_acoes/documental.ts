@@ -92,24 +92,28 @@ export async function registrarConsultaAcao(
   );
 }
 
-/** URL temporária da evidência; o acesso fica registrado antes de a URL voltar. */
+/**
+ * URL temporária da evidência; o acesso fica registrado antes de a URL voltar.
+ * O instante em que ela deixa de valer vai em `valores.expiraEm`, contado de
+ * antes da chamada, para a tela nunca prometer mais do que a URL vale
+ * (TV-I3.6-09).
+ */
 export async function abrirEvidenciaAcao(
   anterior: EstadoDoFormulario,
   dados: FormData,
 ): Promise<EstadoDoFormulario> {
+  const pedidoEm = Date.now();
   const resultado = await gerarUrlDaEvidencia(await criarDependencias(), {
     evidenciaId: texto(dados, "evidenciaId"),
   });
   if (!resultado.ok) return estadoDoResultado(anterior, resultado, "");
-  const minutos = Math.max(
-    1,
-    Math.floor(resultado.dados.validadeEmSegundos / 60),
-  );
-  return estadoDeSucesso(
-    anterior,
-    `Link temporário gerado; vale por ${String(minutos)} ${minutos === 1 ? "minuto" : "minutos"}.`,
-    { url: resultado.dados.url },
-  );
+  const expiraEm = new Date(
+    pedidoEm + resultado.dados.validadeEmSegundos * 1000,
+  ).toISOString();
+  return estadoDeSucesso(anterior, "Link temporário gerado.", {
+    url: resultado.dados.url,
+    valores: { expiraEm },
+  });
 }
 
 /** A equipe abre a revisão documental de uma categoria, com motivo. */

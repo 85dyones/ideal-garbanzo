@@ -35,17 +35,25 @@ import {
   autoriaDaRevisao,
   consultasSubstituiveis,
   contarConsultasVigentes,
+  horaEmBrasilia,
   impedimentosAtivos,
   montarFicha,
   ressalvaDoImpedimento,
   ressalvasSemImpedimento,
+  resumoTemSemApontamentos,
+  rotuloDoLinkDaEvidencia,
   textoDaRevisaoAberta,
+  textoDaSubstituicao,
   textoDoEstado,
+  textoDoImpedimentoNaCategoria,
 } from "./ficha";
 import {
+  ANCORA_DO_IMPEDIMENTO,
   ConsultasPorCategoria,
   FichaDocumental,
   ImpedimentosDaOferta,
+  PendenciaDoImpedimento,
+  ResumoPorCategoria,
 } from "./ficha-documental";
 
 const PESSOA_DA_EMPRESA = "a0000000-0000-4000-8000-000000000001";
@@ -533,16 +541,127 @@ describe("ficha renderizada", () => {
     expect(html).toContain('data-origem="independent_evidence"');
   });
 
-  it("a consulta sem evidência diz “sem evidência anexada” na linha do resultado", () => {
-    const resultados = htmlDaFicha().match(
-      /<p data-resultado="[^"]+">.*?<\/p>/gu,
+  it("a consulta sem evidência tem a linha “Evidência: sem evidência anexada” no lugar do botão (P2; TV-I3.6-06)", () => {
+    const html = htmlDaFicha();
+    const consultas = html.match(/data-consulta="/gu) ?? [];
+    const semEvidencia =
+      html.match(
+        /<p data-evidencia="sem">Evidência: sem evidência anexada<\/p>/gu,
+      ) ?? [];
+    const botoes = html.match(/>Abrir a evidência</gu) ?? [];
+    // Só a consulta da plataforma tem evidência; cada consulta tem uma das duas.
+    expect(consultas).toHaveLength(5);
+    expect(semEvidencia).toHaveLength(4);
+    expect(botoes).toHaveLength(1);
+    // A linha do resultado não leva mais o aviso.
+    for (const linha of html.match(/<p data-resultado="[^"]+">.*?<\/p>/gu) ??
+      []) {
+      expect(linha).not.toContain(TEXTO_DOCUMENTAL.semEvidencia);
+    }
+  });
+
+  it("a substituída leva a marca no início, em neutro e com o negrito atenuado (TV-I3.6-05)", () => {
+    const html = htmlDaFicha();
+    const marcadas =
+      html.match(
+        /text-neutral-600" data-consulta="[^"]+" data-substituida=""><p><span[^>]*>Substituída<\/span><\/p>/gu,
+      ) ?? [];
+    // Uma substituída no cenário; as vigentes ficam sem a marca.
+    expect(marcadas).toHaveLength(1);
+    expect(html.match(/>Substituída</gu)).toHaveLength(1);
+    const substituida = html.slice(html.indexOf('data-substituida=""'));
+    expect(substituida).toContain('<strong class="font-medium">');
+  });
+
+  it("a substituída diz qual consulta a substituiu, quando foi feita e quando foi registrada (TV-I3.6-14)", () => {
+    const { estados, registros, gravame } = cenario();
+    const anterior = montarFicha(estados, registros, ORDEM).find(
+      (item) => item.categoria === "lien",
+    )?.anteriores[0];
+    if (anterior?.substituidaPor === null || anterior === undefined) {
+      throw new Error("cenário sem a substituída");
+    }
+    const frase = `Substituída pela consulta de DETRAN-SP feita em ${formatarDataHora(gravame.realizadaEm)} (registrada em ${formatarDataHora("2026-10-30T12:05:00.000Z")}).`;
+    expect(textoDaSubstituicao(anterior.substituidaPor)).toBe(frase);
+    expect(textoDe(htmlDaFicha())).toContain(frase);
+  });
+
+  it("o card de “Condições de transferência” diz se gerou impedimento, ou quando foi resolvido (TV-I3.6-15)", () => {
+    const estados = estadosCom([
+      categoria("transfer_conditions", "with_findings"),
+      categoria("lien", "declared_unverified"),
+    ]);
+    const comAtivo = montarFicha(estados, {
+      ...SEM_REGISTROS,
+      impedimentos: [impedimento("i1", true), impedimento("i2", false)],
+    });
+    expect(comAtivo[0]?.impedimento).toEqual({
+      ativo: true,
+      resolvidoEm: null,
+    });
+    expect(comAtivo[1]?.impedimento).toBeNull();
+    const html = renderToStaticMarkup(
+      createElement(FichaDocumental, {
+        ficha: comAtivo,
+        documentos: [],
+        nomeDe: semNome,
+        abrirEvidencia: acaoDeTeste,
+      }),
     );
-    expect(resultados).not.toBeNull();
-    const semEvidencia = (resultados ?? []).filter((linha) =>
-      linha.includes(TEXTO_DOCUMENTAL.semEvidencia),
+    expect(textoDe(html)).toContain(
+      "Gerou impedimento de transferência ( veja Situação )",
     );
-    // Só a consulta da plataforma tem evidência.
-    expect(semEvidencia).toHaveLength((resultados ?? []).length - 1);
+    expect(html).toContain(`href="${ANCORA_DO_IMPEDIMENTO}"`);
+
+    const resolvidos = montarFicha(estados, {
+      ...SEM_REGISTROS,
+      impedimentos: [
+        impedimento("i2", false),
+        {
+          ...impedimento("i3", false),
+          resolvidoEm: "2026-10-30T18:00:00.000Z",
+        },
+      ],
+    });
+    const linha = resolvidos[0]?.impedimento;
+    if (linha === null || linha === undefined) {
+      throw new Error("cenário sem impedimento");
+    }
+    expect(textoDoImpedimentoNaCategoria(linha)).toBe(
+      `Impedimento resolvido em ${formatarDataHora("2026-10-30T18:00:00.000Z")}`,
+    );
+    expect(montarFicha(estados, SEM_REGISTROS)[0]?.impedimento).toBeNull();
+  });
+
+  it("a pendência do impedimento diz o que fazer, com o link para o aviso, no tom de bloqueio (TV-I3.6-04)", () => {
+    const html = renderToStaticMarkup(createElement(PendenciaDoImpedimento));
+    expect(html).toContain(`href="${ANCORA_DO_IMPEDIMENTO}"`);
+    expect(html).toContain("text-red-900");
+    expect(textoDe(html).trim()).toBe(
+      "Resolver o impedimento de transferência (veja Situação)",
+    );
+  });
+
+  it("o resumo leva à ficha quando cita “sem apontamentos nas fontes consultadas” (TV-I3.6-07)", () => {
+    const resumo = (comSemApontamentos: boolean, texto = "1 pendente") =>
+      renderToStaticMarkup(
+        createElement(ResumoPorCategoria, {
+          resumo: texto,
+          comSemApontamentos,
+          hrefDaFicha: "#ficha-documental",
+        }),
+      );
+    expect(resumoTemSemApontamentos(cenario().estados)).toBe(true);
+    expect(
+      resumoTemSemApontamentos(
+        estadosCom([categoria("lien", "declared_unverified")]),
+      ),
+    ).toBe(false);
+    const com = resumo(true, "1 sem apontamentos nas fontes consultadas");
+    expect(com).toContain('href="#ficha-documental"');
+    expect(textoDe(com)).toContain("( fontes e datas na ficha )");
+    expect(resumo(false)).not.toContain("<a ");
+    expect(resumo(false, "")).toBe("");
   });
 
   it("a evidência abre por botão; nenhuma URL vai para o HTML", () => {
@@ -593,6 +712,20 @@ describe("ficha renderizada", () => {
         }),
       ),
     ).toBe("");
+  });
+});
+
+describe("link temporário da evidência (TV-I3.6-09)", () => {
+  it("diz até que horas vale, no horário de Brasília", () => {
+    expect(horaEmBrasilia("2026-10-30T15:34:50.000Z")).toBe("12:34");
+    expect(rotuloDoLinkDaEvidencia("2026-10-30T15:34:50.000Z")).toBe(
+      "Abrir o arquivo (vale até 12:34)",
+    );
+  });
+
+  it("sem a validade, o link fica só com o nome", () => {
+    expect(horaEmBrasilia("não é data")).toBeNull();
+    expect(rotuloDoLinkDaEvidencia(undefined)).toBe("Abrir o arquivo");
   });
 });
 

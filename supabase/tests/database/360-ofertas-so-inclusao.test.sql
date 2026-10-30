@@ -653,7 +653,7 @@ select is(
     where c.contype = 'f' and c.confrelid in ('public.offers'::regclass, 'public.vehicles'::regclass)),
   array['check_evidence_files r', 'documental_reviews r', 'offer_documents r', 'offer_media r',
         'offer_reviews r', 'offer_versions r', 'offers r', 'supplier_declarations r',
-        'transfer_impediments r', 'vehicle_checks r', 'vehicle_checks r'],
+        'transfer_impediments r', 'vehicle_checks r', 'vehicle_checks r', 'vehicle_checks r'],
   'CT11.5: toda chave estrangeira para offers e vehicles é restrict, sem cascata');
 select ok(
   exists (select 1 from public.offers where id = pg_temp.id('P'))

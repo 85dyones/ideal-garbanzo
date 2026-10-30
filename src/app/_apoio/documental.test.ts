@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { esquemaDaConsulta } from "@/modules/documental/schemas/consultas";
+import {
+  esquemaDaConsulta,
+  mensagemDaLinguagem,
+} from "@/modules/documental/schemas/consultas";
 import {
   CAMPOS_DO_ESQUEMA_DA_CONSULTA,
   erroDoArquivo,
@@ -95,16 +98,18 @@ describe("formulário da consulta", () => {
     expect(erros.arquivo).toEqual(["Use um arquivo PDF, JPEG, PNG ou WebP."]);
   });
 
-  it("a recusa por linguagem (§6.6) chega ao campo com a mensagem do esquema", () => {
+  it("a recusa por linguagem (§6.6) chega ao campo com a mensagem do esquema, que nomeia o termo", () => {
+    const resumo = "Nada consta na fonte."; // linguagem-permitida: exemplo negativo do teste
     const conferido = esquemaDaConsulta.safeParse(
-      lerConsulta(
-        formulario({ ...COMPLETO, resumo: "Nada consta na fonte." }), // linguagem-permitida: exemplo negativo do teste
-      ).entrada,
+      lerConsulta(formulario({ ...COMPLETO, resumo })).entrada,
     );
     expect(conferido.success).toBe(false);
     if (conferido.success) return;
     const erros = errosPorCampo(conferido.error, CAMPOS_DO_ESQUEMA_DA_CONSULTA);
-    expect(erros.resumo?.[0]).toContain("Reescreva sem os termos da §6.6");
+    expect(erros.resumo).toEqual([
+      mensagemDaLinguagem([resumo.slice(0, -" na fonte.".length)]),
+    ]);
+    expect(erros.resumo?.[0]).toContain("não pode aparecer sozinho");
   });
 });
 

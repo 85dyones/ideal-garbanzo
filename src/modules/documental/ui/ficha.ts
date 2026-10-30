@@ -46,6 +46,19 @@ export const TEXTO_DOCUMENTAL = {
     "O estado de cada categoria é calculado a partir da declaração, das consultas e das revisões, e ninguém o digita. Abaixo do estado, cada informação aparece com a própria origem.",
   semInformacao: "Nenhuma declaração nem consulta registrada nesta categoria.",
   semEvidencia: "sem evidência anexada",
+  /** Linha própria da consulta sem evidência (P2; TV-I3.6-06). */
+  linhaSemEvidencia: "Evidência: sem evidência anexada",
+  substituida: "Substituída",
+  /** O que falta para enviar, na tela, no lugar da condição (TV-I3.6-04). */
+  pendenciaDoImpedimento:
+    "Resolver o impedimento de transferência (veja Situação)",
+  impedimentoGerado: "Gerou impedimento de transferência",
+  vejaSituacao: "veja Situação",
+  fontesEDatasNaFicha: "fontes e datas na ficha",
+  evidenciasOcultas:
+    "As evidências das consultas ficam ocultas para os compradores.",
+  aberturaDaEvidencia: "Cada abertura de evidência fica registrada.",
+  linkExpirado: "O link temporário expirou. Use o botão para gerar outro.",
   semCategorias: "Nenhuma categoria documental para mostrar.",
   documentosSemCategoria:
     "Os documentos anexados não têm categoria e, por enquanto, não mudam o estado das categorias.",
@@ -158,6 +171,15 @@ export interface CategoriaNaFicha {
   readonly anteriores: readonly ConsultaNaFicha[];
   /** Revisões da categoria, da mais recente para a mais antiga. */
   readonly revisoes: readonly RevisaoNaFicha[];
+  /**
+   * Só na categoria que gera o impedimento (`transfer_conditions`; P3): se há
+   * impedimento ativo, ou a data da resolução mais recente. `null` sem
+   * impedimento (TV-I3.6-15).
+   */
+  readonly impedimento: {
+    readonly ativo: boolean;
+    readonly resolvidoEm: string | null;
+  } | null;
   /** Sem declaração nem consulta: a origem é "Não confirmada" (O5). */
   readonly semInformacao: boolean;
 }
@@ -256,6 +278,36 @@ function paraRevisao(revisao: RevisaoRegistrada): RevisaoNaFicha {
   };
 }
 
+/** A categoria em que a ocorrência gera o impedimento de transferência (P3). */
+export const CATEGORIA_DO_IMPEDIMENTO = "transfer_conditions";
+
+/** Situação do impedimento para o card da categoria que o gera. */
+function impedimentoDaCategoria(
+  categoria: string,
+  impedimentos: readonly ImpedimentoRegistrado[],
+): CategoriaNaFicha["impedimento"] {
+  if (categoria !== CATEGORIA_DO_IMPEDIMENTO || impedimentos.length === 0) {
+    return null;
+  }
+  if (impedimentos.some((impedimento) => impedimento.ativo)) {
+    return { ativo: true, resolvidoEm: null };
+  }
+  const resolucoes = impedimentos
+    .map((impedimento) => impedimento.resolvidoEm)
+    .filter((data): data is string => data !== null)
+    .sort((a, b) => Date.parse(b) - Date.parse(a));
+  return { ativo: false, resolvidoEm: resolucoes[0] ?? null };
+}
+
+/** Linha do card de "Condições de transferência" com o impedimento (TV-I3.6-15). */
+export function textoDoImpedimentoNaCategoria(
+  impedimento: NonNullable<CategoriaNaFicha["impedimento"]>,
+): string {
+  return impedimento.ativo
+    ? TEXTO_DOCUMENTAL.impedimentoGerado
+    : `Impedimento resolvido em ${formatarDataHora(impedimento.resolvidoEm)}`;
+}
+
 /**
  * Monta a ficha. A ordem é a da configuração (`document_categories`); as
  * categorias fora dela vêm depois, na ordem do banco.
@@ -326,8 +378,48 @@ export function montarFicha(
       anteriores,
       revisoes: [...daCategoria].reverse().map(paraRevisao),
       semInformacao: item.declaracao === null && consultas.length === 0,
+      impedimento: impedimentoDaCategoria(
+        item.categoria,
+        registros.impedimentos,
+      ),
     };
   });
+}
+
+/**
+ * "Substituída pela consulta de <fonte> feita em <data e hora> (registrada
+ * em <data e hora>)." (TV-I3.6-14).
+ */
+export function textoDaSubstituicao(substituta: ConsultaRegistrada): string {
+  return `Substituída pela consulta de ${substituta.fonte} feita em ${formatarDataHora(substituta.realizadaEm)} (registrada em ${formatarDataHora(substituta.registradaEm)}).`;
+}
+
+/** O resumo proporcional cita "sem apontamentos nas fontes consultadas" (TV-I3.6-07). */
+export function resumoTemSemApontamentos(estados: EstadosDaOferta): boolean {
+  return estados.categorias.some(
+    (categoria) => categoria.estado === "no_findings_in_sources",
+  );
+}
+
+const HORA_EM_BRASILIA = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/** "HH:MM" no horário de Brasília; `null` se o instante for inválido. */
+export function horaEmBrasilia(instante: string): string | null {
+  const data = new Date(instante);
+  return Number.isNaN(data.getTime()) ? null : HORA_EM_BRASILIA.format(data);
+}
+
+/** Texto do link da evidência, com a validade (TV-I3.6-09): "Abrir o arquivo (vale até 12:34)". */
+export function rotuloDoLinkDaEvidencia(expiraEm: string | undefined): string {
+  const hora = expiraEm === undefined ? null : horaEmBrasilia(expiraEm);
+  return hora === null
+    ? "Abrir o arquivo"
+    : `Abrir o arquivo (vale até ${hora})`;
 }
 
 /** Quantas consultas vigentes a oferta tem, em todas as categorias. */

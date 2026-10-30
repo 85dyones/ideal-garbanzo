@@ -50,10 +50,13 @@ import {
   impedimentosAtivos,
   montarFicha,
   ressalvasSemImpedimento,
+  resumoTemSemApontamentos,
 } from "@/modules/documental/ui/ficha";
 import {
   FichaDocumental,
   ImpedimentosDaOferta,
+  PendenciaDoImpedimento,
+  ResumoPorCategoria,
 } from "@/modules/documental/ui/ficha-documental";
 import {
   MudancaDaRevisao,
@@ -489,11 +492,11 @@ export default async function PaginaDaOfertaNaAdministracao({
               </ul>
             </Aviso>
           )}
-          {estados.resumo === "" ? null : (
-            <p>
-              Resumo por categoria: <strong>{estados.resumo}</strong>.
-            </p>
-          )}
+          <ResumoPorCategoria
+            resumo={estados.resumo}
+            comSemApontamentos={resumoTemSemApontamentos(estados)}
+            hrefDaFicha="#estados"
+          />
           <FichaDocumental
             ficha={ficha}
             documentos={documentos.map((documento) => ({
@@ -666,16 +669,33 @@ export default async function PaginaDaOfertaNaAdministracao({
         <Secao titulo="Pendências de publicação">
           {pendencias.length === 0 ? (
             <p>{TEXTO_DA_PLATAFORMA.semPendencias}</p>
-          ) : (
+          ) : null}
+          {/* O impedimento sai da lista e vai no tom de bloqueio do aviso dele (TV-I3.6-04). */}
+          {pendencias.some(
+            (pendencia) => pendencia.codigo === "transfer_impediment",
+          ) ? (
+            <Aviso tom="bloqueio">
+              <p>
+                Para publicar, falta: <PendenciaDoImpedimento />
+              </p>
+            </Aviso>
+          ) : null}
+          {pendencias.some(
+            (pendencia) => pendencia.codigo !== "transfer_impediment",
+          ) ? (
             <Aviso tom="alerta">
               <p>Para publicar, falta:</p>
               <ul className="mt-1 list-disc pl-5">
-                {pendencias.map((pendencia) => (
-                  <li key={pendencia.codigo}>{pendencia.rotulo}</li>
-                ))}
+                {pendencias
+                  .filter(
+                    (pendencia) => pendencia.codigo !== "transfer_impediment",
+                  )
+                  .map((pendencia) => (
+                    <li key={pendencia.codigo}>{pendencia.rotulo}</li>
+                  ))}
               </ul>
             </Aviso>
-          )}
+          ) : null}
           <p className="text-sm text-neutral-700">
             {TEXTO_DA_PLATAFORMA.pendenciasNaoImpedem}
           </p>

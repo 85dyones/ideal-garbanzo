@@ -946,8 +946,8 @@ select is(
     where c.contype = 'f'
       and c.conrelid in ('public.vehicle_checks'::regclass, 'public.documental_reviews'::regclass,
                          'public.transfer_impediments'::regclass, 'public.check_evidence_files'::regclass)),
-  15,
-  'CT11.12: são as 15 chaves estrangeiras da migração 20261030120000');
+  16,
+  'CT11.12: são as 15 chaves estrangeiras da migração 20261030120000 e a do veículo da oferta (R-I3.7-11)');
 select is(
   array[(select count(*)::int from public.vehicle_checks where offer_id = pg_temp.id('I')),
         (select count(*)::int from public.documental_reviews where offer_id = pg_temp.id('I')),

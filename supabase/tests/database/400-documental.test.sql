@@ -6,7 +6,7 @@
 -- com impedimento ativo fora do catálogo (P4). As 40 linhas da tabela de
 -- decisão ficam na I3.4; aqui estão as que provam os testes 7 e 10.
 begin;
-select plan(70);
+select plan(71);
 set constraints all immediate;
 
 -- Apoio do arquivo (objetos temporários, desfeitos no rollback) -------------------
@@ -558,7 +558,19 @@ select throws_ok(
   'CT10.9: consulta sem limitações conhecidas é recusada');
 
 -- Dado pessoal em details (ADR-0004 §2.10) ---------------------------------------------------
--- asserções a mais: 5 (o primeiro throws_ok roda uma vez por linha da lista)
+-- asserções a mais: 5 (o primeiro throws_ok da lista roda uma vez por linha)
+-- Pela API, details nem é gravável (R-I3.7-02): a trava de chaves vale para
+-- os caminhos de dentro do banco, e os casos da lista rodam como postgres.
+
+select throws_ok(
+  format($$insert into public.vehicle_checks (offer_id, category, source_name, source_type, method, performed_at,
+      result, result_summary, known_limitations, details)
+    values (%L, 'lien', 'DETRAN-SP', 'official', 'manual', now(), 'no_occurrence_in_source', 'Resumo.',
+      'Limitação.', '{}')$$, pg_temp.id('P')),
+  '42501', 'permission denied for table vehicle_checks',
+  'R-I3.7-02: pela API, a consulta não leva details');
+reset role;
+select pg_temp.entrar('O');
 
 select throws_ok(
   format($$insert into public.vehicle_checks (offer_id, category, source_name, source_type, method, performed_at,

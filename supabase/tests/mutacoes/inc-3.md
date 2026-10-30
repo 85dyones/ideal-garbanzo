@@ -473,3 +473,263 @@ Mutações do builder nos testes de tela (`ficha.test.ts` e `documental.test.ts`
 - sem "sem evidência anexada";
 - ressalva do impedimento na lista de pendências;
 - fornecedor podendo substituir consulta da plataforma.
+
+## I3.9: correção das ressalvas da I3.7 (30/10/2026)
+
+Resultado: 18 mutações, todas detectadas, sem derrubar o contraste. A maioria roda no `430-documental-ressalvas`; a E09 roda no `400`.
+
+| ID  | Camada            | Arquivo                    | Mudança                                                                    | Casos que devem cair                                                                                                                                                          | Caíram |
+| --- | ----------------- | -------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| E01 | RLS               | `430-documental-ressalvas` | vehicle_checks_leitura com USING true                                      | R-I3.7-01: outra empresa não lê; R-I3.7-01: o comprador também não lê                                                                                                         | 2      |
+| E02 | RLS               | `430-documental-ressalvas` | check_evidence_files_leitura com USING true                                | R-I3.7-01: outra empresa não lê; R-I3.7-01: o comprador também não lê                                                                                                         | 2      |
+| E03 | RLS               | `430-documental-ressalvas` | documental_reviews_leitura com USING true                                  | R-I3.7-01: outra empresa não lê; R-I3.7-01: o comprador também não lê                                                                                                         | 2      |
+| E04 | RLS               | `430-documental-ressalvas` | transfer_impediments_leitura com USING true                                | R-I3.7-01: outra empresa não lê; R-I3.7-01: o comprador também não lê                                                                                                         | 2      |
+| E05 | Storage           | `430-documental-ressalvas` | política de leitura no bucket check-evidence                               | R-I3.7-01: nem a empresa dona lê o objeto; R-I3.7-01: o bucket das evidências não tem política                                                                                | 2      |
+| E06 | RLS               | `430-documental-ressalvas` | vehicle_checks_inclusao com WITH CHECK true                                | R-I3.7-01 (política): outra empresa não registra consulta                                                                                                                     | 1      |
+| E07 | RLS               | `430-documental-ressalvas` | check_evidence_files_inclusao com WITH CHECK true                          | R-I3.7-01 (política): nem evidência                                                                                                                                           | 1      |
+| E08 | RLS               | `430-documental-ressalvas` | documental_reviews_inclusao com WITH CHECK true                            | R-I3.7-01 (política): o fornecedor não abre revisão pela API                                                                                                                  | 1      |
+| E09 | GRANT             | `400-documental`           | INSERT de details para authenticated                                       | R-I3.7-02: pela API, a consulta não leva details                                                                                                                              | 2      |
+| E10 | função da trava   | `430-documental-ressalvas` | chave_de_dado_pessoal() da I3.3                                            | R-I3.7-02: chave recusada: composta sem separador; R-I3.7-02: chave recusada: no plural; R-I3.7-02: chave recusada: com sufixo numérico; R-I3.7-02: chave recusada: em inglês | 7      |
+| E11 | função do private | `430-documental-ressalvas` | texto_normalizado() da I3.5 (sem NFD)                                      | R-I3.7-03: acento composto; R-I3.7-03: marca invisível                                                                                                                        | 2      |
+| E12 | função do private | `430-documental-ressalvas` | expressao_de_palavra_inteira() da I3.5 (\m e \M)                           | R-I3.7-03: o sublinhado é fronteira                                                                                                                                           | 1      |
+| E13 | função do private | `430-documental-ressalvas` | termo_proibido() sem falhar fechado                                        | R-I3.7-04: sem a lista, o texto não passa em silêncio                                                                                                                         | 1      |
+| E14 | função do private | `430-documental-ressalvas` | estados_documentais_da_oferta() sem as categorias das consultas e revisões | R-I3.7-05: a consulta com ocorrência numa categoria tirada                                                                                                                    | 1      |
+| E15 | GRANT             | `430-documental-ressalvas` | USAGE na sequência de vehicle_checks.seq                                   | R-I3.7-08: as sequências de seq                                                                                                                                               | 1      |
+| E16 | chave estrangeira | `430-documental-ressalvas` | sem vehicle_checks_veiculo_da_oferta_fkey                                  | R-I3.7-11: o veículo de outra oferta é recusado                                                                                                                               | 1      |
+| E17 | gatilho           | `430-documental-ressalvas` | documental_reviews_revisar_linguagem desligado                             | R-I3.7-03: o motivo da revisão passa pela lista                                                                                                                               | 2      |
+| E18 | gatilho           | `430-documental-ressalvas` | transfer_impediments_revisar_linguagem desligado                           | R-I3.7-03: o motivo da resolução do impedimento também                                                                                                                        | 1      |
+
+- **Ajustes ao rodar:**
+  - na primeira rodada, a E11 não derrubou o caso do acento composto. O texto de teste ainda tinha "garantida", que a lista acha sozinha. O caso passou a usar "sem ocorrências" decomposto;
+  - na E12, o espaço não separável já casava com a expressão antiga, porque o locale do banco o trata como espaço. Quem detecta a mutação é o caso do sublinhado;
+  - na E17, a revisão indevida fica aberta, e o contraste da mesma categoria cai em cascata. O contraste passou a ser o da resolução.
+
+### Mudança de cada mutação (I3.9)
+
+**E01**
+
+```sql
+alter policy vehicle_checks_leitura on public.vehicle_checks using (true);
+```
+
+**E02**
+
+```sql
+alter policy check_evidence_files_leitura on public.check_evidence_files using (true);
+```
+
+**E03**
+
+```sql
+alter policy documental_reviews_leitura on public.documental_reviews using (true);
+```
+
+**E04**
+
+```sql
+alter policy transfer_impediments_leitura on public.transfer_impediments using (true);
+```
+
+**E05**
+
+```sql
+create policy zz_leitura_da_evidencia on storage.objects for select to authenticated using (bucket_id = 'check-evidence');
+```
+
+**E06**
+
+```sql
+alter policy vehicle_checks_inclusao on public.vehicle_checks with check (true);
+```
+
+**E07**
+
+```sql
+alter policy check_evidence_files_inclusao on public.check_evidence_files with check (true);
+```
+
+**E08**
+
+```sql
+alter policy documental_reviews_inclusao on public.documental_reviews with check (true);
+```
+
+**E09**
+
+```sql
+grant insert (details) on public.vehicle_checks to authenticated;
+```
+
+**E10**
+
+```sql
+create or replace function private.chave_de_dado_pessoal(chave text)
+returns boolean
+language sql
+immutable
+set search_path = ''
+as $$
+  with normalizada as (
+    select translate(
+             lower(regexp_replace(coalesce(chave, ''), '([a-z0-9])([A-Z])', '\1_\2', 'g')),
+             'áàâãäéèêëíìîïóòôõöúùûüçñ',
+             'aaaaaeeeeiiiiooooouuuucn') as texto
+  )
+  select exists (
+      select 1
+      from normalizada n, regexp_split_to_table(n.texto, '[^a-z0-9]+') as p(palavra)
+      where p.palavra in (
+        'proprietario', 'proprietaria', 'proprietarios', 'dono', 'dona', 'pronome',
+        'cpf', 'cnpj', 'rg', 'cnh', 'documento', 'doc', 'nome', 'razao', 'financiado', 'financiada',
+        'arrendatario', 'arrendataria', 'faturado', 'faturada', 'email', 'celular', 'cellphone',
+        'telefone', 'fone', 'phone', 'endereco', 'logradouro', 'cep', 'nascimento',
+        'placa', 'renavam', 'chassi', 'chassis'))
+    or exists (
+      select 1 from normalizada n
+      where regexp_replace(n.texto, '[^a-z0-9]+', '', 'g') in (
+        'cpfcnpj', 'pronomeanterior', 'documentofinanciado', 'nomerazao',
+        'codigosegurancacrv', 'restricaodocarrendatario', 'numeroidentificacaodofaturado'));
+$$;
+```
+
+**E11**
+
+```sql
+create or replace function private.texto_normalizado(valor text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select translate(lower(coalesce(valor, '')),
+                   'áàâãäéèêëíìîïóòôõöúùûüçñ',
+                   'aaaaaeeeeiiiiooooouuuucn');
+$$;
+```
+
+**E12**
+
+```sql
+create or replace function private.expressao_de_palavra_inteira(termo text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select '\m'
+    || array_to_string(
+         array(select private.literal_de_expressao(p)
+               from regexp_split_to_table(btrim(termo), '\s+') as p),
+         '\s+')
+    || '\M';
+$$;
+```
+
+**E13**
+
+```sql
+create or replace function private.termo_proibido(valor text)
+returns text
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  lista jsonb := private.configuracao('forbidden_terms');
+  linha text;
+  qualificacao text;
+  marcador text;
+  item jsonb;
+  variante text;
+begin
+  if valor is null or lista is null then
+    return null;
+  end if;
+  qualificacao := private.expressao_de_palavra_inteira(private.texto_normalizado(lista ->> 'qualificacao'));
+  marcador := private.literal_de_expressao(btrim(private.texto_normalizado(lista ->> 'marcadorDeExcecao')))
+    || '\s*[[:alnum:]]';
+  for linha in
+    select private.texto_normalizado(l) from regexp_split_to_table(valor, '\r\n|\r|\n') as l
+  loop
+    if linha ~ qualificacao or linha ~ marcador then
+      continue;
+    end if;
+    for item in select jsonb_array_elements(lista -> 'termos') loop
+      for variante in select jsonb_array_elements_text(item -> 'variantes') loop
+        if linha ~ private.expressao_de_palavra_inteira(private.texto_normalizado(variante)) then
+          return item ->> 'termo';
+        end if;
+      end loop;
+    end loop;
+  end loop;
+  return null;
+end;
+$$;
+```
+
+**E14**
+
+```sql
+create or replace function private.estados_documentais_da_oferta(p_oferta uuid)
+returns table (
+  category text,
+  state text,
+  origin text,
+  declared_value text,
+  detail text,
+  declared_at timestamptz)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  perform private.conferir_leitura_da_oferta(p_oferta);
+  return query
+  select c.categoria,
+         private.estado_documental(p_oferta, c.categoria),
+         case when d.declared_value is null then 'unconfirmed' else 'supplier_declaration' end,
+         d.declared_value,
+         d.detail,
+         d.declared_at
+  from (
+    select jsonb_array_elements_text(coalesce(private.configuracao('document_categories'), '[]')) as categoria
+    union
+    select sd.category from public.supplier_declarations sd where sd.offer_id = p_oferta
+  ) c
+  left join lateral (
+    select sd.declared_value, sd.detail, sd.declared_at
+    from public.supplier_declarations sd
+    where sd.offer_id = p_oferta and sd.category = c.categoria
+    order by sd.seq desc
+    limit 1
+  ) d on true
+  order by c.categoria collate "C";
+end;
+$$;
+```
+
+**E15**
+
+```sql
+grant usage on sequence public.vehicle_checks_seq_seq to authenticated;
+```
+
+**E16**
+
+```sql
+alter table public.vehicle_checks drop constraint vehicle_checks_veiculo_da_oferta_fkey;
+```
+
+**E17**
+
+```sql
+alter table public.documental_reviews disable trigger documental_reviews_revisar_linguagem;
+```
+
+**E18**
+
+```sql
+alter table public.transfer_impediments disable trigger transfer_impediments_revisar_linguagem;
+```

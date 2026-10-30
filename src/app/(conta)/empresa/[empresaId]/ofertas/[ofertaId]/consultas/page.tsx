@@ -74,8 +74,10 @@ export default async function PaginaDasConsultas({
   return (
     <PaginaDaOferta carga={carga} atual="consultas">
       <Secao titulo="6. Consultas">
+        <Aviso>{TEXTO_DOCUMENTAL.evidenciasOcultas}</Aviso>
         <p className="text-sm text-neutral-700">
-          {TEXTO_DOCUMENTAL.introducaoDasConsultas}
+          {TEXTO_DOCUMENTAL.introducaoDasConsultas}{" "}
+          {TEXTO_DOCUMENTAL.aberturaDaEvidencia}
         </p>
         <p className="text-sm text-neutral-700">
           {TEXTO_DOCUMENTAL.consultaReal}

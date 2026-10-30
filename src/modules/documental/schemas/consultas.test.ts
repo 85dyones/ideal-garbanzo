@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { esquemaDaConsulta, esquemaDaRevisao } from "./consultas";
+import {
+  esquemaDaConsulta,
+  esquemaDaRevisao,
+  mensagemDaLinguagem,
+  trechosProibidos,
+} from "./consultas";
 
 const OFERTA = "a0000000-0000-4000-8000-000000000001";
 
@@ -55,6 +60,38 @@ describe("esquema da consulta (ADR-0004 §2.9 e §2.12)", () => {
         motivo: EXEMPLO_DE_MOTIVO,
       }).success,
     ).toBe(false);
+  });
+
+  it("a mensagem nomeia o termo achado, como digitado, e diz como reescrever (TV-I3.6-01)", () => {
+    // Os trechos saem dos exemplos acima: nenhum termo fica escrito aqui.
+    const termo = EXEMPLO_DE_CERTIDAO.slice(0, -1);
+    const resultado = esquemaDaConsulta.safeParse(
+      consulta({ resumo: EXEMPLO_DE_CERTIDAO }),
+    );
+    expect(resultado.success).toBe(false);
+    expect(resultado.error?.issues.map((issue) => issue.message)).toEqual([
+      `“${termo}” não pode aparecer sozinho. Descreva o que a fonte mostrou ou acrescente “nas fontes consultadas, em <data>”.`,
+    ]);
+    expect(trechosProibidos(EXEMPLO_DE_CERTIDAO)).toEqual([termo]);
+  });
+
+  it("com mais de um termo, lista todos, uma vez cada", () => {
+    const certidao = EXEMPLO_DE_CERTIDAO.slice(0, -1);
+    const resultado = EXEMPLO_DE_RESULTADO.slice("Resultado ".length, -1);
+    const motivo = EXEMPLO_DE_MOTIVO.slice(0, -1);
+    const texto = `${EXEMPLO_DE_CERTIDAO} ${EXEMPLO_DE_RESULTADO} ${EXEMPLO_DE_CERTIDAO} ${EXEMPLO_DE_MOTIVO}`;
+    expect(trechosProibidos(texto)).toEqual([certidao, resultado, motivo]);
+    expect(mensagemDaLinguagem(trechosProibidos(texto))).toBe(
+      `“${certidao}”, “${resultado}” e “${motivo}” não podem aparecer sozinhos. Descreva o que a fonte mostrou ou acrescente “nas fontes consultadas, em <data>”.`,
+    );
+    const revisao = esquemaDaRevisao.safeParse({
+      ofertaId: OFERTA,
+      categoria: "lien",
+      motivo: `${EXEMPLO_DE_MOTIVO} ${EXEMPLO_DE_RESULTADO}`,
+    });
+    expect(revisao.error?.issues.map((issue) => issue.message)).toEqual([
+      mensagemDaLinguagem([motivo, resultado]),
+    ]);
   });
 
   it("recusa data futura, campo a mais e os campos que o banco grava", () => {

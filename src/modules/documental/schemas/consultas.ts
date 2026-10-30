@@ -18,12 +18,44 @@ import {
 } from "@/modules/offers/storage/arquivos";
 import { RESULTADOS_DA_CONSULTA, TIPOS_DE_FONTE } from "../rules/estados";
 
-const MENSAGEM_DA_LINGUAGEM =
-  "Reescreva sem os termos da §6.6, ou use a qualificação “nas fontes consultadas”, com a data.";
+/** "“a”", "“a” e “b”", "“a”, “b” e “c”". */
+function listaComE(itens: readonly string[]): string {
+  const ultimo = itens.at(-1) ?? "";
+  return itens.length <= 1
+    ? ultimo
+    : `${itens.slice(0, -1).join(", ")} e ${ultimo}`;
+}
+
+/**
+ * Mensagem da recusa por linguagem (§6.6; TV-I3.6-01): nomeia cada termo
+ * achado, como foi digitado, e diz como reescrever. Os termos vêm do
+ * varredor; nenhum fica escrito aqui.
+ */
+export function mensagemDaLinguagem(trechos: readonly string[]): string {
+  const citados = listaComE(trechos.map((trecho) => `“${trecho}”`));
+  const verbo =
+    trechos.length === 1
+      ? "não pode aparecer sozinho"
+      : "não podem aparecer sozinhos";
+  return `${citados} ${verbo}. Descreva o que a fonte mostrou ou acrescente “nas fontes consultadas, em <data>”.`;
+}
+
+/** Os trechos com termo da §6.6 sem a qualificação, como digitados e sem repetir. */
+export function trechosProibidos(valor: string): string[] {
+  return [
+    ...new Set(varrerTexto(valor).map((ocorrencia) => ocorrencia.trecho)),
+  ];
+}
 
 function semLinguagemProibida<T extends z.ZodType<string>>(campo: T) {
-  return campo.refine((valor) => varrerTexto(valor).length === 0, {
-    error: MENSAGEM_DA_LINGUAGEM,
+  return campo.superRefine((valor, contexto) => {
+    const trechos = trechosProibidos(valor);
+    if (trechos.length > 0) {
+      contexto.addIssue({
+        code: "custom",
+        message: mensagemDaLinguagem(trechos),
+      });
+    }
   });
 }
 

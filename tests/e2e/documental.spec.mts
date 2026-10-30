@@ -1,17 +1,20 @@
 /**
  * Telas do domínio documental (I3.6):
  * (a) o fornecedor registra, na etapa "Consultas", uma consulta com evidência
- *     e vê a origem e o estado; a recusa por linguagem (§6.6) cai no campo; a
- *     consulta sem evidência diz "sem evidência anexada", e "Aguardando
- *     resultado" sai por extenso; a substituição deixa a anterior no
- *     histórico; o resumo mostra a ficha, com "sem apontamentos nas fontes
- *     consultadas" ao lado da fonte e da data (E26), e cada informação com a
- *     própria origem;
+ *     e vê a origem e o estado; a recusa por linguagem (§6.6) cai no campo e
+ *     nomeia o termo; a consulta sem evidência diz "Evidência: sem evidência
+ *     anexada", e "Aguardando resultado" sai por extenso; o link da evidência
+ *     diz até quando vale; a substituição deixa a anterior no histórico, com
+ *     a marca "Substituída"; o resumo mostra a ficha, com "sem apontamentos
+ *     nas fontes consultadas" ao lado da fonte e da data (E26), o link para a
+ *     ficha no resumo por categoria e cada informação com a própria origem;
  * (b) a equipe registra consulta no detalhe da administração (com evidência e
  *     fonte oficial, "Confirmada por evidência independente"), abre e fecha a
  *     revisão documental com motivo;
  * (c) o impedimento de transferência aparece separado das pendências
- *     documentais e bloqueia o envio; o fornecedor vê a revisão com o motivo;
+ *     documentais e bloqueia o envio, com a pendência dizendo o que fazer e o
+ *     card da categoria apontando o impedimento; o fornecedor vê a revisão
+ *     com o motivo;
  *     o operador não vê a ação de resolver; o administrador resolve com
  *     motivo e evidência;
  * (d) outra empresa recebe "Sem permissão" na etapa "Consultas", igual ao
@@ -49,6 +52,12 @@ const MOTIVO_DA_ABERTURA = `Resumo da consulta cita processo a avaliar (${SUFIXO
 const MOTIVO_DO_FECHAMENTO = `Processo sem relação com o veículo (${SUFIXO}).`;
 const MOTIVO_DA_RESOLUCAO = `Laudo de regularização apresentado (${SUFIXO}).`;
 const OCORRENCIA_NA_TRANSFERENCIA = `Dano de média monta sem regularização (${SUFIXO}).`;
+const RESUMO_COM_TERMO = "Nada consta para o veículo."; // linguagem-permitida: exemplo negativo do teste
+/** O termo como foi digitado, sem escrevê-lo de novo aqui. */
+const TERMO_DIGITADO = RESUMO_COM_TERMO.slice(0, -" para o veículo.".length);
+const PENDENCIA_DO_IMPEDIMENTO =
+  "Resolver o impedimento de transferência (veja Situação)";
+const LINK_DA_EVIDENCIA = /^Abrir o arquivo \(vale até \d{2}:\d{2}\)$/u;
 
 interface Cenario {
   readonly administrador: UsuarioDeTeste;
@@ -207,6 +216,12 @@ test("(a) fornecedor: consulta com evidência, origem, estado e a ficha no resum
     page.getByRole("heading", { name: "6. Consultas", exact: true }),
   ).toBeVisible();
   await expect(
+    page.getByText(
+      "As evidências das consultas ficam ocultas para os compradores.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
     page.getByText("Nenhuma consulta registrada.", { exact: false }),
   ).toBeVisible();
 
@@ -214,13 +229,16 @@ test("(a) fornecedor: consulta com evidência, origem, estado e a ficha no resum
   const formulario = formularioDaConsulta(page);
   await preencherConsulta(formulario, {
     ...GRAVAME,
-    resumo: "Nada consta para o veículo.", // linguagem-permitida: exemplo negativo do teste
+    resumo: RESUMO_COM_TERMO,
   });
   await formulario
     .getByRole("button", { name: "Registrar consulta", exact: true })
     .click();
   await expect(
-    formulario.getByText("Reescreva sem os termos da §6.6", { exact: false }),
+    formulario.getByText(
+      `“${TERMO_DIGITADO}” não pode aparecer sozinho. Descreva o que a fonte mostrou`,
+      { exact: false },
+    ),
   ).toBeVisible();
   await expect(
     page.getByText("Nenhuma consulta registrada.", { exact: false }),
@@ -246,6 +264,7 @@ test("(a) fornecedor: consulta com evidência, origem, estado e a ficha no resum
   await expect(gravame.locator("[data-resultado]")).toHaveText(
     "Resultado: Sem ocorrência na fonte",
   );
+  await expect(gravame.locator("[data-evidencia]")).toHaveCount(0);
   await expect(
     gravame.getByText("DETRAN-SP · Fonte oficial · consulta em", {
       exact: false,
@@ -253,13 +272,13 @@ test("(a) fornecedor: consulta com evidência, origem, estado e a ficha no resum
   ).toBeVisible();
   // A evidência abre por botão; o link só existe depois do clique.
   await expect(
-    gravame.getByRole("link", { name: "Abrir o arquivo", exact: true }),
+    gravame.getByRole("link", { name: /^Abrir o arquivo/u }),
   ).toHaveCount(0);
   await gravame
     .getByRole("button", { name: "Abrir a evidência", exact: true })
     .click();
   await expect(
-    gravame.getByRole("link", { name: "Abrir o arquivo", exact: true }),
+    gravame.getByRole("link", { name: LINK_DA_EVIDENCIA }),
   ).toBeVisible();
 
   // Sem evidência e aguardando resultado: escrito por extenso, ao lado da consulta.
@@ -277,7 +296,10 @@ test("(a) fornecedor: consulta com evidência, origem, estado e a ficha no resum
     "Estado: Pendente ou incompleto",
   );
   await expect(leilao.locator("[data-resultado]")).toHaveText(
-    "Resultado: Aguardando resultado · sem evidência anexada",
+    "Resultado: Aguardando resultado",
+  );
+  await expect(leilao.locator('[data-evidencia="sem"]')).toHaveText(
+    "Evidência: sem evidência anexada",
   );
   await expect(
     leilao.getByText("o resultado ainda não chegou", { exact: false }),
@@ -300,9 +322,16 @@ test("(a) fornecedor: consulta com evidência, origem, estado e a ficha no resum
     "Sem apontamentos nas fontes consultadas: Leiloeiro E2E (consulta em ",
   );
   await leilao.getByText("Consultas substituídas (1)", { exact: true }).click();
-  await expect(leilao.locator("details [data-resultado]")).toHaveText(
-    "Resultado: Aguardando resultado · sem evidência anexada",
+  const substituida = leilao.locator("details [data-substituida]");
+  await expect(substituida).toHaveCount(1);
+  await expect(substituida.locator("p").first()).toHaveText("Substituída");
+  await expect(substituida.locator("[data-resultado]")).toHaveText(
+    "Resultado: Aguardando resultado",
   );
+  await expect(substituida).toContainText(
+    "Substituída pela consulta de Leiloeiro E2E feita em ",
+  );
+  await expect(leilao.locator(":scope > ul [data-substituida]")).toHaveCount(0);
 
   // Resumo: a etapa conta as consultas, e a ficha mostra cada origem separada.
   await etapas
@@ -311,6 +340,10 @@ test("(a) fornecedor: consulta com evidência, origem, estado e a ficha no resum
   await expect(
     page.getByText("2 consultas vigentes", { exact: true }),
   ).toBeVisible();
+  // O resumo por categoria cita "sem apontamentos nas fontes consultadas" e leva à ficha.
+  await expect(
+    page.getByRole("link", { name: "fontes e datas na ficha", exact: true }),
+  ).toHaveAttribute("href", "#ficha-documental");
   const ficha = page.getByRole("list", {
     name: "Categorias documentais",
     exact: true,
@@ -473,11 +506,16 @@ test("(c) o fornecedor vê o impedimento separado das pendências e a revisão c
   ).not.toContainText("impedimento de transferência", { ignoreCase: true });
   // O impedimento bloqueia o envio, e a pendência leva ao aviso.
   await expect(
-    page.getByRole("link", {
-      name: "Sem impedimento de transferência ativo",
-      exact: true,
-    }),
+    page.getByRole("link", { name: PENDENCIA_DO_IMPEDIMENTO, exact: true }),
   ).toHaveAttribute("href", "#impedimento-de-transferencia");
+  // O card da categoria aponta o impedimento.
+  await expect(
+    page
+      .getByRole("list", { name: "Categorias documentais", exact: true })
+      .locator(
+        '[data-categoria="transfer_conditions"] [data-impedimento-na-categoria="ativo"]',
+      ),
+  ).toHaveText("Gerou impedimento de transferência (veja Situação)");
   await expect(
     page.getByRole("button", { name: "Enviar para revisão", exact: true }),
   ).toBeDisabled();
@@ -522,6 +560,10 @@ test("(c) o operador vê o impedimento, mas não a ação de resolver", async ({
       { exact: true },
     ),
   ).toBeVisible();
+  // Nas pendências, o impedimento diz o que fazer, no tom de bloqueio do aviso.
+  await expect(
+    page.getByRole("link", { name: PENDENCIA_DO_IMPEDIMENTO, exact: true }),
+  ).toHaveAttribute("href", "#impedimento-de-transferencia");
   await expect(
     page.getByRole("button", { name: "Resolver o impedimento", exact: true }),
   ).toHaveCount(0);
@@ -601,6 +643,17 @@ test("(c) o administrador resolve o impedimento com motivo e evidência", async 
       exact: true,
     }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: PENDENCIA_DO_IMPEDIMENTO, exact: true }),
+  ).toHaveCount(0);
+  // O card da categoria passa a dizer quando o impedimento foi resolvido.
+  await expect(
+    page
+      .getByRole("list", { name: "Categorias documentais", exact: true })
+      .locator(
+        '[data-categoria="transfer_conditions"] [data-impedimento-na-categoria="resolvido"]',
+      ),
+  ).toContainText("Impedimento resolvido em ");
 });
 
 test("(d) outra empresa: 'Sem permissão' na etapa Consultas, igual ao painel", async ({

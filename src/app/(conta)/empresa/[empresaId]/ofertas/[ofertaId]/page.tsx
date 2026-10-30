@@ -36,10 +36,13 @@ import {
   contarConsultasVigentes,
   montarFicha,
   ressalvasSemImpedimento,
+  resumoTemSemApontamentos,
 } from "@/modules/documental/ui/ficha";
 import {
   FichaDocumental,
   ImpedimentosDaOferta,
+  PendenciaDoImpedimento,
+  ResumoPorCategoria,
 } from "@/modules/documental/ui/ficha-documental";
 import { dependenciasDaLeitura } from "@/modules/offers/queries/dependencias";
 import {
@@ -85,9 +88,6 @@ export const metadata: Metadata = { title: "Oferta" };
 function contagem(quantidade: number, singular: string, plural: string) {
   return `${String(quantidade)} ${quantidade === 1 ? singular : plural}`;
 }
-
-/** Âncora do aviso do impedimento, para o link da pendência. */
-const ANCORA_DO_IMPEDIMENTO = "#impedimento-de-transferencia";
 
 /**
  * Resumo e envio da oferta (I2.8): situação, o que a pessoa pode fazer, as
@@ -367,9 +367,7 @@ export default async function PaginaDoResumoDaOferta({
                     return (
                       <li key={pendencia.codigo}>
                         {pendencia.codigo === "transfer_impediment" ? (
-                          <a href={ANCORA_DO_IMPEDIMENTO} className={LINK}>
-                            {comoItem(pendencia.rotulo)}
-                          </a>
+                          <PendenciaDoImpedimento />
                         ) : etapa === undefined ? (
                           comoItem(pendencia.rotulo)
                         ) : (
@@ -408,11 +406,11 @@ export default async function PaginaDoResumoDaOferta({
               </ul>
             </Aviso>
           )}
-          {estados.resumo === "" ? null : (
-            <p>
-              Resumo por categoria: <strong>{estados.resumo}</strong>.
-            </p>
-          )}
+          <ResumoPorCategoria
+            resumo={estados.resumo}
+            comSemApontamentos={resumoTemSemApontamentos(estados)}
+            hrefDaFicha="#ficha-documental"
+          />
           {oferta.status === "draft" ? (
             <p className="font-medium">{TEXTO.pendenciaNaoImpede}</p>
           ) : null}

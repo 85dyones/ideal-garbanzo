@@ -285,6 +285,31 @@ Respondidas em 30/10:
 
 ---
 
+## 8. Revisão independente da I3.7: ressalvas
+
+A revisão foi feita em 30/10 por um subagente `reasoning-review` (T3), só em leitura, sobre o diff `89b330d..ec2402c`.
+- **Veredito:** "aprovado com ressalvas". Nenhum achado crítico ou alto; 3 médios, 5 baixos e 5 informativos. O critério do plano (sem crítico aberto) está cumprido.
+- **Rodou:** tipos, lint, 396 unitários e build, todos passando. Banco, integração e e2e ficaram com o T2.
+- **Corrigido na I3.9,** antes do gate e como no Inc. 2: as três médias e as baixas que não pedem decisão. Migração `20261030180000_ressalvas_do_documental`, pgTAP `430` (36) e 18 mutações.
+
+| ID | Severidade | Ressalva | Situação |
+|---|---|---|---|
+| R-I3.7-01 | média | As políticas de leitura e de inclusão das tabelas novas e a falta de leitura no bucket `check-evidence` não tinham negativo próprio. | **Corrigido:** o `430` confere outra empresa, comprador e `anon` nas quatro tabelas, a política de inclusão isolada do gatilho e o bucket sem leitura, alteração nem exclusão. Mutações E01 a E08. |
+| R-I3.7-02 | média | `details` ainda era gravável pela API, e a lista de chaves deixava passar chave composta sem separador, plural, sufixo numérico e inglês. | **Corrigido:** `INSERT (details)` revogado de `authenticated`; a trava passou a pegar esses casos. Mutações E09 e E10. |
+| R-I3.7-03 | média | A busca de linguagem do banco não repetia a normalização do servidor, e uma marca combinante escapava. | **Corrigido:** NFD com remoção das marcas, fronteira por letra ou dígito e espaço não separável; testes nos três gatilhos. Mutações E11, E12, E17 e E18. |
+| R-I3.7-04 | baixa | Lista de linguagem ausente ou inválida deixava todo texto passar. | **Corrigido:** falha fechada. Mutação E13. |
+| R-I3.7-05 | baixa | Consulta ou revisão numa categoria tirada da configuração sumia da ficha. | **Corrigido:** as categorias das consultas e das revisões entram na ficha e no snapshot. Mutação E14. |
+| R-I3.7-06 | baixa | A abertura da revisão lia o pareamento sem trava. | **Corrigido:** a oferta é travada antes. Sem teste de concorrência no pgTAP, que roda numa sessão só. |
+| R-I3.7-07 | baixa | O `detail` da declaração entra no texto do impedimento sem passar pela lista de linguagem. | **Para decisão da pessoa responsável:** se o detalhe da declaração entra na E28. |
+| R-I3.7-08 | baixa | As sequências de `seq` das tabelas novas tinham os privilégios padrão. | **Corrigido.** Mutação E15. |
+| R-I3.7-09 | informativa | O varredor lê só os literais de `raise exception`, e não os textos devolvidos por funções que alimentam a mensagem. | Registrado. Hoje nenhum desses textos tem termo da lista. |
+| R-I3.7-10 | informativa | A tela mostra o estado do banco; `estadoDaCategoria` é referência e só tem paridade com o banco. | Registrado: a regra do servidor é referência, e quem decide é o banco. |
+| R-I3.7-11 | informativa | O veículo da consulta ficava coerente com a oferta só pelo gatilho. | **Corrigido:** chave composta `(vehicle_id, offer_id)`. Mutação E16. |
+| R-I3.7-12 | informativa | O resumo proporcional mostra "sem apontamentos nas fontes consultadas" sem fonte e data. | **Tratado na tela** (revisão visual, TV-I3.6-07): o resumo remete às fontes e datas da ficha, logo ao lado. |
+| R-I3.7-13 | informativa | Algumas chaves compostas da trava vêm dos nomes de campo do provedor de outro projeto, num repositório público. | **Para decisão da pessoa responsável:** manter ou trocar por identificadores genéricos. |
+
+---
+
 ## Anexo A. Regras extraídas da especificação (I3.1)
 
 **Origem:**

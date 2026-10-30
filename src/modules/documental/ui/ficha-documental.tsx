@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import { formatarDataHora } from "@/app/_apoio/datas";
 import type { AcaoDoFormulario } from "@/app/_apoio/formulario";
 import { Aviso, Vazio } from "@/components/estados";
+import { LINK } from "@/components/estilos";
 import type { ImpedimentoRegistrado } from "../queries/registros";
 import { ROTULO_DA_ORIGEM, type Origem } from "../rules/estados";
 import {
@@ -20,6 +21,8 @@ import {
   autoriaDaRevisao,
   ressalvaDoImpedimento,
   textoDaRevisaoAberta,
+  textoDaSubstituicao,
+  textoDoImpedimentoNaCategoria,
   type CategoriaNaFicha,
   type ConsultaNaFicha,
 } from "./ficha";
@@ -30,18 +33,80 @@ type NomeDe = (perfilId: string) => string | undefined;
 const RESUMO_DO_DETALHE =
   "cursor-pointer text-sm text-marinho-600 underline hover:text-marinho-800";
 
+/** Âncora do aviso próprio do impedimento, na seção "Situação". */
+export const ANCORA_DO_IMPEDIMENTO = "#impedimento-de-transferencia";
+
+/** Link no tom de bloqueio do aviso do impedimento. */
+const LINK_DE_BLOQUEIO =
+  "font-medium text-red-900 underline visited:text-red-900 hover:text-red-950";
+
 function comMaiuscula(texto: string): string {
   return `${texto.charAt(0).toUpperCase()}${texto.slice(1)}`;
 }
 
 /** Rótulo da origem de uma informação; um por informação, nunca combinado. */
-function RotuloDaOrigem({ origem }: { readonly origem: Origem }) {
+function RotuloDaOrigem({
+  origem,
+  atenuado = false,
+}: {
+  readonly origem: Origem;
+  /** Na consulta substituída, em neutro (TV-I3.6-05). */
+  readonly atenuado?: boolean;
+}) {
   return (
     <p
-      className="text-xs font-semibold uppercase tracking-wide text-marinho-700"
+      className={`text-xs font-semibold uppercase tracking-wide ${
+        atenuado ? "text-neutral-600" : "text-marinho-700"
+      }`}
       data-origem={origem}
     >
       Origem: {ROTULO_DA_ORIGEM[origem]}
+    </p>
+  );
+}
+
+/**
+ * Pendência do impedimento na lista do que falta, no lugar da condição
+ * "sem impedimento de transferência ativo" (TV-I3.6-04): o que fazer, com o
+ * link para o aviso, no tom de bloqueio dele.
+ */
+export function PendenciaDoImpedimento() {
+  return (
+    <a href={ANCORA_DO_IMPEDIMENTO} className={LINK_DE_BLOQUEIO}>
+      {TEXTO_DOCUMENTAL.pendenciaDoImpedimento}
+    </a>
+  );
+}
+
+/**
+ * Resumo proporcional (§6.4). Quando cita "sem apontamentos nas fontes
+ * consultadas", leva à ficha, onde estão a fonte e a data de cada consulta
+ * (TV-I3.6-07; R-I3.7-12).
+ */
+export function ResumoPorCategoria({
+  resumo,
+  comSemApontamentos,
+  hrefDaFicha,
+}: {
+  readonly resumo: string;
+  readonly comSemApontamentos: boolean;
+  readonly hrefDaFicha: string;
+}) {
+  if (resumo === "") return null;
+  return (
+    <p data-resumo-por-categoria="">
+      Resumo por categoria: <strong>{resumo}</strong>
+      {comSemApontamentos ? (
+        <>
+          {" "}
+          (
+          <a href={hrefDaFicha} className={LINK}>
+            {TEXTO_DOCUMENTAL.fontesEDatasNaFicha}
+          </a>
+          )
+        </>
+      ) : null}
+      .
     </p>
   );
 }
@@ -50,30 +115,44 @@ function CartaoDaConsulta({
   consulta,
   nomeDe,
   abrirEvidencia,
+  substituida = false,
 }: {
   readonly consulta: ConsultaNaFicha;
   readonly nomeDe: NomeDe;
   readonly abrirEvidencia: AcaoDoFormulario;
+  /** A substituída fica com menos peso que a vigente, e com a marca no início (TV-I3.6-05). */
+  readonly substituida?: boolean;
 }) {
+  const secundario = substituida ? "text-neutral-600" : "text-neutral-700";
   return (
-    <div className="flex flex-col gap-1 text-sm" data-consulta={consulta.id}>
-      <RotuloDaOrigem origem={consulta.origem} />
-      <p className="text-base">
-        <span className="font-medium">{consulta.fonte}</span> ·{" "}
-        {consulta.rotuloDoTipoDeFonte} · consulta em{" "}
+    <div
+      className={`flex flex-col gap-1 text-sm ${substituida ? "text-neutral-600" : ""}`}
+      data-consulta={consulta.id}
+      data-substituida={substituida ? "" : undefined}
+    >
+      {substituida ? (
+        <p>
+          <span className="inline-block rounded border border-neutral-400 bg-neutral-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-neutral-600">
+            {TEXTO_DOCUMENTAL.substituida}
+          </span>
+        </p>
+      ) : null}
+      <RotuloDaOrigem origem={consulta.origem} atenuado={substituida} />
+      <p className={substituida ? undefined : "text-base"}>
+        <span className={substituida ? undefined : "font-medium"}>
+          {consulta.fonte}
+        </span>{" "}
+        · {consulta.rotuloDoTipoDeFonte} · consulta em{" "}
         {formatarDataHora(consulta.realizadaEm)}
       </p>
       <p data-resultado={consulta.resultado}>
-        Resultado: <strong>{consulta.rotuloDoResultado}</strong>
-        {consulta.evidenciaId === null ? (
-          <span className="text-neutral-700">
-            {" "}
-            · {TEXTO_DOCUMENTAL.semEvidencia}
-          </span>
-        ) : null}
+        Resultado:{" "}
+        <strong className={substituida ? "font-medium" : undefined}>
+          {consulta.rotuloDoResultado}
+        </strong>
       </p>
       {consulta.explicacaoDoResultado === null ? null : (
-        <p className="text-neutral-700">
+        <p className={secundario}>
           {comMaiuscula(consulta.explicacaoDoResultado)}
         </p>
       )}
@@ -84,13 +163,16 @@ function CartaoDaConsulta({
       {consulta.protocolo === null ? null : (
         <p className="break-words">Protocolo: {consulta.protocolo}</p>
       )}
-      <p className="text-neutral-700">{autoriaDaConsulta(consulta, nomeDe)}</p>
+      <p className={secundario}>{autoriaDaConsulta(consulta, nomeDe)}</p>
       {consulta.substituidaPor === null ? null : (
-        <p className="text-neutral-700">
-          {`Substituída pela consulta em ${consulta.substituidaPor.fonte}, registrada em ${formatarDataHora(consulta.substituidaPor.registradaEm)}.`}
+        <p className={secundario}>
+          {textoDaSubstituicao(consulta.substituidaPor)}
         </p>
       )}
-      {consulta.evidenciaId === null ? null : (
+      {/* Sem evidência, uma linha própria no lugar do botão (P2; TV-I3.6-06). */}
+      {consulta.evidenciaId === null ? (
+        <p data-evidencia="sem">{TEXTO_DOCUMENTAL.linhaSemEvidencia}</p>
+      ) : (
         <AberturaDaEvidencia
           evidenciaId={consulta.evidenciaId}
           rotulo="Abrir a evidência"
@@ -146,6 +228,27 @@ function BlocoDaCategoria({
           {textoDaRevisaoAberta(categoria.revisaoAberta)}
         </p>
       )}
+      {!completo || categoria.impedimento === null ? null : (
+        <p
+          className={`break-words text-sm ${
+            categoria.impedimento.ativo
+              ? "font-medium text-red-900"
+              : "text-neutral-700"
+          }`}
+          data-impedimento-na-categoria={
+            categoria.impedimento.ativo ? "ativo" : "resolvido"
+          }
+        >
+          {textoDoImpedimentoNaCategoria(categoria.impedimento)} (
+          <a
+            href={ANCORA_DO_IMPEDIMENTO}
+            className={categoria.impedimento.ativo ? LINK_DE_BLOQUEIO : LINK}
+          >
+            {TEXTO_DOCUMENTAL.vejaSituacao}
+          </a>
+          )
+        </p>
+      )}
       <ul
         aria-label={`Informações de ${categoria.rotulo}`}
         className="flex flex-col divide-y divide-neutral-200 border-t border-neutral-200"
@@ -189,6 +292,7 @@ function BlocoDaCategoria({
                   consulta={consulta}
                   nomeDe={nomeDe}
                   abrirEvidencia={abrirEvidencia}
+                  substituida
                 />
               </li>
             ))}
@@ -358,7 +462,7 @@ export function ImpedimentosDaOferta({
   const resolvidos = impedimentos.filter((impedimento) => !impedimento.ativo);
   return (
     <div
-      id="impedimento-de-transferencia"
+      id={ANCORA_DO_IMPEDIMENTO.slice(1)}
       className="flex scroll-mt-4 flex-col gap-3"
       data-impedimento={ativos.length > 0 ? "ativo" : "resolvido"}
     >

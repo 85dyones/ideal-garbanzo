@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 2 (oferta) concluído em 30/10, com o gate cumprido, o ADR-0003 aceito e a I2.11 fechada. O Inc. 1 foi concluído em 28/10, com o ADR-0002 aceito; a R7 fica para a I6.9.  
 **Próxima subtarefa:**
-- **Inc. 3 (domínio documental):** a revisão visual das telas da I3.6 (TV), a I3.7 (revisão independente, T3) e a I3.8 (revisão externa, AG). O piloto com dados reais continua bloqueado pela D5.
+- **Inc. 3 (domínio documental):** a I3.8 (revisão externa, AG), pela pessoa responsável, com o roteiro em `docs/workflow/revisao-externa-i3.8.md`. Antes do gate, duas decisões da pessoa responsável (R-I3.7-07 e R-I3.7-13, no ADR-0004 §8). O piloto com dados reais continua bloqueado pela D5.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -1032,4 +1032,43 @@
   - **e2e:** `test:e2e` com 31 passando, os 6 novos incluídos;
   - **código:** 396 unitários, tipos e lint passando.
 - **Revisão visual:** a captura do cenário (c) parou no limite de login do Auth, depois da suíte; as telas restantes são capturadas de novo depois da pausa.
+
+### 2026-10-30 · I3.7 e I3.9 · revisão independente do Inc. 3 e correção das ressalvas
+
+- **I3.7:** subagente `reasoning-review` (T3), só em leitura, sobre `89b330d..ec2402c`.
+  - **Veredito:** "aprovado com ressalvas", sem crítico nem alto. Três médias: faltavam os negativos das políticas de leitura e do bucket; `details` ainda era gravável pela API; a busca de linguagem do banco não repetia a normalização do servidor.
+  - **Também:** 5 baixas e 5 informativas, no ADR-0004 §8.
+- **I3.9 (T2):** as três médias e as baixas sem decisão pendente foram corrigidas antes do gate, como no Inc. 2.
+  - **Migração `20261030180000_ressalvas_do_documental`:**
+    - `INSERT (details)` revogado da API;
+    - a trava de chaves pega composta sem separador, plural, sufixo numérico e inglês;
+    - a busca de linguagem faz NFD com remoção das marcas, usa fronteira por letra ou dígito e reconhece o espaço não separável;
+    - a lista ausente falha fechada;
+    - a categoria fora da configuração continua na ficha;
+    - a abertura da revisão trava a oferta antes de ler o pareamento;
+    - as sequências de `seq` ficam sem privilégio;
+    - o veículo da consulta fica preso à oferta por chave composta.
+  - **Testes:** pgTAP `430-documental-ressalvas` (36). O `400` passou a rodar os casos de dado pessoal como `postgres` e ganhou o negativo de `details` pela API. O `360` e o `420` contam a chave estrangeira nova.
+  - **Mutações:** 18, todas detectadas. Três expectativas foram ajustadas ao rodar: E11, E12 e E17.
+- **Revisão visual (TV) das telas da I3.6:** sem crítico.
+  - **Corrigido pelo builder:**
+    - a mensagem de linguagem nomeia o termo e dá o caminho, sem citar a §6.6;
+    - a pendência diz "Resolver o impedimento de transferência";
+    - a consulta substituída tem marca e peso menor;
+    - a linha "Evidência: sem evidência anexada";
+    - a validade do link da evidência;
+    - o aviso de que as evidências ficam ocultas para os compradores;
+    - "(fontes e datas na ficha)" no resumo, que também responde à R-I3.7-12;
+    - a ligação do card de "Condições de transferência" com o impedimento;
+    - a frase da substituição.
+  - **Ficam registrados:** TV-08, TV-10 a TV-13, TV-16 e TV-18. Os dois achados importantes de captura (TV-02 e TV-03) pedem uma captura nova, com recortes do tamanho da tela e o fornecedor vendo o impedimento ativo.
+- **Para decisão da pessoa responsável:**
+  - **R-I3.7-07:** se o detalhe da declaração passa pela lista de linguagem (E28);
+  - **R-I3.7-13:** as chaves compostas da trava que vêm dos nomes de campo do provedor de outro projeto ficam como estão ou viram identificadores genéricos.
+- **I3.8:** o roteiro da revisão externa está em `docs/workflow/revisao-externa-i3.8.md`. O acesso ao ambiente de homologação e as contas de teste ficam fora do repositório.
+- **Evidência no dev**, depois de `db:reset` com as 14 migrações:
+  - **banco:** `test:db` com 27 arquivos passando;
+  - **integração:** `test:integration` com 12 arquivos e 119 testes passando;
+  - **e2e:** `test:e2e` com 31 passando;
+  - **código:** 405 unitários, tipos, lint, formatação e build passando.
 

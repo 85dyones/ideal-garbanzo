@@ -8,7 +8,11 @@ import {
   ROTULO_DO_ESTADO,
   rotuloDaCategoria,
 } from "@/modules/documental/rules/estados";
-import { textoDoEstadoDaCategoria } from "@/modules/documental/ui/ficha";
+import {
+  resumoTemSemApontamentos,
+  textoDoEstadoDaCategoria,
+} from "@/modules/documental/ui/ficha";
+import { ResumoPorCategoria } from "@/modules/documental/ui/ficha-documental";
 import { dependenciasDaLeitura } from "@/modules/offers/queries/dependencias";
 import {
   lerConfiguracaoDaOferta,
@@ -75,11 +79,11 @@ export default async function PaginaDasDeclaracoes({
   return (
     <PaginaDaOferta carga={carga} atual="declaracoes">
       <Secao titulo="4. Declarações">
-        {estados.resumo === "" ? null : (
-          <p>
-            Resumo por categoria: <strong>{estados.resumo}</strong>.
-          </p>
-        )}
+        <ResumoPorCategoria
+          resumo={estados.resumo}
+          comSemApontamentos={resumoTemSemApontamentos(estados)}
+          hrefDaFicha={`${base}#ficha-documental`}
+        />
         {editavel ? (
           <>
             <p className="text-sm text-neutral-700">{TEXTO.declaracoes}</p>

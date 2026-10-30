@@ -8,7 +8,13 @@
  * A URL da evidência nunca vai para o HTML de antemão: o botão chama a ação,
  * que registra o acesso antes de gerar o link temporário (ADR-0004 §2.8).
  */
-import { useActionState, useId, useState, type ReactNode } from "react";
+import {
+  useActionState,
+  useEffect,
+  useId,
+  useState,
+  type ReactNode,
+} from "react";
 import { localParaIso, paraCampoLocal } from "@/app/_apoio/datas";
 import {
   ESTADO_INICIAL,
@@ -38,6 +44,7 @@ import {
 import {
   EXPLICACAO_DO_RESULTADO,
   TEXTO_DOCUMENTAL,
+  rotuloDoLinkDaEvidencia,
   type OpcaoDeSubstituicao,
 } from "./ficha";
 
@@ -52,6 +59,42 @@ const OPCOES_DO_TIPO_DE_FONTE: readonly (readonly [string, string])[] = [
     (tipo) => [tipo, ROTULO_DO_TIPO_DE_FONTE[tipo]] as const,
   ),
 ];
+
+/**
+ * Link temporário da evidência, com a hora em que deixa de valer
+ * (TV-I3.6-09). Depois dela, o link some e fica o aviso; o botão gera outro.
+ */
+function LinkTemporario({
+  url,
+  expiraEm,
+}: {
+  readonly url: string;
+  readonly expiraEm: string | undefined;
+}) {
+  const [expirado, setExpirado] = useState(false);
+  useEffect(() => {
+    if (expiraEm === undefined) return undefined;
+    const restante = Math.max(0, Date.parse(expiraEm) - Date.now());
+    const relogio = setTimeout(() => {
+      setExpirado(true);
+    }, restante);
+    return () => {
+      clearTimeout(relogio);
+    };
+  }, [expiraEm]);
+  if (expirado) {
+    return (
+      <p role="status" className="text-sm text-neutral-700">
+        {TEXTO_DOCUMENTAL.linkExpirado}
+      </p>
+    );
+  }
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className={LINK}>
+      {rotuloDoLinkDaEvidencia(expiraEm)}
+    </a>
+  );
+}
 
 /** Gera a URL temporária da evidência; o servidor registra o acesso antes. */
 export function AberturaDaEvidencia({
@@ -68,17 +111,16 @@ export function AberturaDaEvidencia({
     <form action={enviar} className="flex flex-col items-start gap-1">
       <input type="hidden" name="evidenciaId" value={evidenciaId} />
       <BotaoDeEnvio classe={BOTAO_SECUNDARIO}>{rotulo}</BotaoDeEnvio>
-      <MensagemDoFormulario estado={estado} />
       {estado.situacao === "sucesso" && estado.url !== undefined ? (
-        <a
-          href={estado.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={LINK}
-        >
-          Abrir o arquivo
-        </a>
-      ) : null}
+        // A chave recomeça o relógio a cada link novo.
+        <LinkTemporario
+          key={String(estado.envios)}
+          url={estado.url}
+          expiraEm={estado.valores?.expiraEm}
+        />
+      ) : (
+        <MensagemDoFormulario estado={estado} />
+      )}
     </form>
   );
 }
