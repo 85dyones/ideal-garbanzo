@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 2 (oferta) concluído em 30/10, com o gate cumprido, o ADR-0003 aceito e a I2.11 fechada. O Inc. 1 foi concluído em 28/10, com o ADR-0002 aceito; a R7 fica para a I6.9.  
 **Próxima subtarefa:**
-- **Inc. 3 (domínio documental):** I3.1, a tabela de decisão da §6.4 a §6.6, pelo `fast-helper` (T0). A D9 já está decidida (impedimento ativo não publica no piloto). O piloto com dados reais continua bloqueado pela D5.
+- **Inc. 3 (domínio documental):** I3.2, as decisões do ADR-0004 a partir do anexo A, pelo T2. Antes, a pessoa responsável responde às ambiguidades que mudam o produto (como a I2.2 fez com Q1 a Q5). O piloto com dados reais continua bloqueado pela D5.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -898,3 +898,23 @@
   - T3 sem crítico aberto;
   - o ADR-0003 passou a aceito.
 - **Fora do Git:** o lint e a formatação ainda acusam o kit da marca e o relatório externo, que não são versionados.
+- **Push e CI:** commit `03abaa9`, enviado com aprovação da pessoa responsável. A execução 41051617701 do CI passou nos três jobs, inclusive as 11 migrações num Supabase efêmero, com pgTAP e integração.
+
+### 2026-10-30 · I3.1 · regras do domínio documental extraídas
+
+- **Despacho:** `fast-helper` (T0), só em leitura, com o modelo padrão da instalação.
+- **Entrega:** anexo A do `docs/adr/0004-documental.md`, em rascunho:
+  - tabela de decisão com as 40 combinações (declaração vigente × resultado da consulta vigente × revisão aberta), com as regras que valem, a divergência, o estado pela precedência, as origens e a citação;
+  - a precedência e as cinco origens da §6.5;
+  - a lista de linguagem proibida comparada com a configuração e o que o teste não cobre;
+  - as chaves de dado pessoal da trava a portar, descritas de forma genérica;
+  - o impedimento de transferência com a D9;
+  - os casos dos testes 7, 10 e 11 (CT7.1 a CT7.11, CT10.1 a CT10.11 e CT11.8 a CT11.15);
+  - 35 ambiguidades (E1 a E35), cada uma com a leitura conservadora.
+- **Conferência do T2:**
+  - as citações da §3.1, §3.3, §5.3, §6.3 a §6.6, §7.2 e dos critérios 6 e 11 da §10 batem com o texto;
+  - as linhas 2, 13, 15, 17, 23, 25, 31 e 35 da tabela, refeitas à mão, dão o mesmo resultado;
+  - as referências ao código do Inc. 2 e a ausência de "sem ocorrências" na lista configurada foram conferidas.
+- **Repositório público:** as referências ao código a portar (arquivos, linhas, nomes de campo do provedor) e um achado de segurança de outro projeto ficaram em `notas-privadas/i3.1-inventario-privado.md`, fora do Git. O anexo traz só a descrição genérica.
+- **Correção de passagem:** o diagnóstico ainda mostrava a D9 como pendente; a linha passou a registrar a decisão de 29/10.
+- **Comparação com o Inc. 2:** 33 das 40 linhas mudam quando as consultas e as revisões entrarem (32, se a E4 disser que ocorrência declarada com consulta sem ocorrência não é divergência).
