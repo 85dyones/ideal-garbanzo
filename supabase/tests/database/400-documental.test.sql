@@ -585,7 +585,7 @@ from (values
   ('dentro de lista, em camelCase', '{"itens": [{"nomeProprietario": "x"}]}'),
   ('com maiúscula e acento', '{"Endereço": "Rua A"}'),
   ('placa (E30)', '{"placa": "ABC1D23"}'),
-  ('composta conhecida', '{"codigo_seguranca_crv": "123"}')) as d(caso, valor);
+  ('código de segurança do CRV', '{"crv_codigo_de_seguranca": "123"}')) as d(caso, valor);
 select is(
   pg_temp.resultado(format($$insert into public.vehicle_checks (offer_id, category, source_name, source_type,
       method, performed_at, result, result_summary, known_limitations, details)

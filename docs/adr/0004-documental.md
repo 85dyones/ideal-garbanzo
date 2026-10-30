@@ -152,7 +152,7 @@ As decisões seguem as leituras conservadoras do anexo A (A.9). A exceção são
 - **Lista (E25):** entra "sem ocorrências", só no plural (ajuste da I3.5): no singular, a expressão colidiria com "sem ocorrência conhecida", o valor legítimo da declaração. "100% liberado" não aparece em tela. Outros termos, se surgirem, vão para a pessoa responsável.
 - **Data (E26):** o varredor continua aceitando a qualificação sem a data. A regra fica na tela: onde aparece `no_findings_in_sources`, a data da consulta e a fonte aparecem ao lado (§6.4, "Exibição"). Um teste da I3.6 confere isso.
 - **Alcance do varredor (E27):** passa a ler também os modelos de `supabase/templates/` e as mensagens de `raise exception` das migrações, que chegam à tela. As notificações do Inc. 5 ficam em pastas varridas.
-- **Texto livre gravado na hora (E28):** `result_summary`, `known_limitations` e os motivos das revisões e dos impedimentos passam pela mesma lista. A conferência é feita no servidor e num gatilho. A lista do banco fica numa chave de `platform_settings`, e um teste confere que ela é igual a `config/linguagem-proibida.json`. Entrou na I3.5: migração `20261030150000_linguagem_no_texto_livre`, com a busca do varredor repetida no banco (sem maiúsculas nem acentos, palavra inteira, linha com a qualificação ou com o marcador não conta) e gatilhos em `vehicle_checks`, `documental_reviews` e na resolução do impedimento.
+- **Texto livre gravado na hora (E28):** `result_summary`, `known_limitations` e os motivos das revisões e dos impedimentos passam pela mesma lista. A conferência é feita no servidor e num gatilho. A lista do banco fica numa chave de `platform_settings`, e um teste confere que ela é igual a `config/linguagem-proibida.json`. Entrou na I3.5: migração `20261030150000_linguagem_no_texto_livre`, com a busca do varredor repetida no banco (sem maiúsculas nem acentos, palavra inteira, linha com a qualificação ou com o marcador não conta) e gatilhos em `vehicle_checks`, `documental_reviews` e na resolução do impedimento. Desde a I3.9, por decisão da pessoa responsável (R-I3.7-07), o `detail` da declaração do fornecedor também passa: gatilho `supplier_declarations_revisar_linguagem` (migração `20261030200000_decisoes_do_documental`) e o esquema do servidor.
 
 ### 2.13. Snapshot e versão (E32, E33)
 
@@ -291,6 +291,7 @@ A revisão foi feita em 30/10 por um subagente `reasoning-review` (T3), só em l
 - **Veredito:** "aprovado com ressalvas". Nenhum achado crítico ou alto; 3 médios, 5 baixos e 5 informativos. O critério do plano (sem crítico aberto) está cumprido.
 - **Rodou:** tipos, lint, 396 unitários e build, todos passando. Banco, integração e e2e ficaram com o T2.
 - **Corrigido na I3.9,** antes do gate e como no Inc. 2: as três médias e as baixas que não pedem decisão. Migração `20261030180000_ressalvas_do_documental`, pgTAP `430` (36) e 18 mutações.
+- **Decisões da pessoa responsável (30/10),** aplicadas na I3.9: a R-I3.7-07 e a R-I3.7-13. Migração `20261030200000_decisoes_do_documental`; o `430` passou a 41 asserções, com as mutações E19 e E20.
 
 | ID | Severidade | Ressalva | Situação |
 |---|---|---|---|
@@ -300,13 +301,13 @@ A revisão foi feita em 30/10 por um subagente `reasoning-review` (T3), só em l
 | R-I3.7-04 | baixa | Lista de linguagem ausente ou inválida deixava todo texto passar. | **Corrigido:** falha fechada. Mutação E13. |
 | R-I3.7-05 | baixa | Consulta ou revisão numa categoria tirada da configuração sumia da ficha. | **Corrigido:** as categorias das consultas e das revisões entram na ficha e no snapshot. Mutação E14. |
 | R-I3.7-06 | baixa | A abertura da revisão lia o pareamento sem trava. | **Corrigido:** a oferta é travada antes. Sem teste de concorrência no pgTAP, que roda numa sessão só. |
-| R-I3.7-07 | baixa | O `detail` da declaração entra no texto do impedimento sem passar pela lista de linguagem. | **Para decisão da pessoa responsável:** se o detalhe da declaração entra na E28. |
+| R-I3.7-07 | baixa | O `detail` da declaração entra no texto do impedimento sem passar pela lista de linguagem. | **Decidido pela pessoa responsável em 30/10 e corrigido na I3.9:** o detalhe passa pela lista, no esquema do servidor e no gatilho `supplier_declarations_revisar_linguagem`. Mutação E19. |
 | R-I3.7-08 | baixa | As sequências de `seq` das tabelas novas tinham os privilégios padrão. | **Corrigido.** Mutação E15. |
 | R-I3.7-09 | informativa | O varredor lê só os literais de `raise exception`, e não os textos devolvidos por funções que alimentam a mensagem. | Registrado. Hoje nenhum desses textos tem termo da lista. |
 | R-I3.7-10 | informativa | A tela mostra o estado do banco; `estadoDaCategoria` é referência e só tem paridade com o banco. | Registrado: a regra do servidor é referência, e quem decide é o banco. |
 | R-I3.7-11 | informativa | O veículo da consulta ficava coerente com a oferta só pelo gatilho. | **Corrigido:** chave composta `(vehicle_id, offer_id)`. Mutação E16. |
 | R-I3.7-12 | informativa | O resumo proporcional mostra "sem apontamentos nas fontes consultadas" sem fonte e data. | **Tratado na tela** (revisão visual, TV-I3.6-07): o resumo remete às fontes e datas da ficha, logo ao lado. |
-| R-I3.7-13 | informativa | Algumas chaves compostas da trava vêm dos nomes de campo do provedor de outro projeto, num repositório público. | **Para decisão da pessoa responsável:** manter ou trocar por identificadores genéricos. |
+| R-I3.7-13 | informativa | Algumas chaves compostas da trava vêm dos nomes de campo do provedor de outro projeto, num repositório público. | **Decidido pela pessoa responsável em 30/10 e corrigido na I3.9:** a trava ficou só com identificadores genéricos (palavras e trechos), e as chaves que as compostas pegavam continuam recusadas. Mutação E20. |
 
 ---
 

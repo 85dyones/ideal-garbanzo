@@ -9,6 +9,9 @@ import {
   esquemaDaSuspensao,
 } from "./ofertas";
 
+// Exemplo negativo: o termo da §6.6 aparece de propósito.
+const EXEMPLO_DE_DETALHE = "Veículo garantido pela loja."; // linguagem-permitida: exemplo negativo do teste
+
 const EMPRESA = "a0000000-0000-4000-8000-000000000001";
 const OFERTA = "c0000000-0000-4000-8000-000000000001";
 
@@ -119,6 +122,30 @@ describe("esquemas da oferta", () => {
         oferta: { validaAte: "13/11/2026" },
       }).success,
     ).toBe(false);
+  });
+
+  it("R-I3.7-07: o detalhe da declaração passa pela lista de linguagem, com mensagem que nomeia o termo", () => {
+    const comTermo = esquemaDaDeclaracao.safeParse({
+      ofertaId: OFERTA,
+      categoria: "casualty",
+      valor: "has_occurrence",
+      detalhe: EXEMPLO_DE_DETALHE,
+    });
+    expect(comTermo.success).toBe(false);
+    if (!comTermo.success) {
+      expect(comTermo.error.issues[0]?.path).toEqual(["detalhe"]);
+      expect(comTermo.error.issues[0]?.message).toContain(
+        "Descreva a ocorrência com o que você sabe dela",
+      );
+    }
+    expect(
+      esquemaDaDeclaracao.safeParse({
+        ofertaId: OFERTA,
+        categoria: "casualty",
+        valor: "has_occurrence",
+        detalhe: "Dano leve no para-choque, já reparado.",
+      }).success,
+    ).toBe(true);
   });
 
   it("B28: ocorrência declarada exige detalhe; desconhece é escolha explícita", () => {

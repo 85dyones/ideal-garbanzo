@@ -7,7 +7,7 @@
 -- fechada (R-I3.7-04); a categoria que sai da configuração (R-I3.7-05); as
 -- sequências (R-I3.7-08); e o veículo da oferta por chave (R-I3.7-11).
 begin;
-select plan(36);
+select plan(41);
 set constraints all immediate;
 
 -- Apoio do arquivo (objetos temporários, desfeitos no rollback) -------------------
@@ -457,7 +457,7 @@ alter table public.check_evidence_files enable trigger check_evidence_files_prot
 alter table public.documental_reviews enable trigger documental_reviews_proteger;
 
 -- R-I3.7-02: details pela trava de chaves, nos caminhos de dentro do banco ------------------
--- asserções a mais: 6 (o throws_ok da lista roda uma vez por linha)
+-- asserções a mais: 9 (o throws_ok da lista roda uma vez por linha)
 
 select pg_temp.entrar('O');
 select throws_ok(
@@ -474,7 +474,10 @@ from (values
   ('no plural', '{"telefones": ["x"]}'),
   ('placa no plural', '{"placas": "x"}'),
   ('com sufixo numérico', '{"cpf1": "x"}'),
-  ('em inglês, aninhada', '{"dados": {"owner": {"x": 1}}}')) as d(caso, valor);
+  ('em inglês, aninhada', '{"dados": {"owner": {"x": 1}}}'),
+  ('razão social do dono, genérica (R-I3.7-13)', '{"razaoSocialDoDono": "x"}'),
+  ('razão social, genérica (R-I3.7-13)', '{"razaoSocial": "x"}'),
+  ('nome completo, genérica (R-I3.7-13)', '{"nome_completo": "x"}')) as d(caso, valor);
 select is(
   pg_temp.resultado(format($$insert into public.vehicle_checks (offer_id, category, source_name, source_type,
       method, performed_at, result, result_summary, known_limitations, details)
@@ -539,6 +542,23 @@ select is(
   'linhas: 1',
   'contraste R-I3.7-03: a resolução com motivo sem termo da lista entra');
 select pg_temp.api(null);
+select pg_temp.entrar(null);
+reset role;
+
+-- R-I3.7-07 (decisão de 30/10): o detalhe da declaração passa pela lista -----------------
+
+set local role authenticated;
+select pg_temp.entrar('F1');
+select throws_matching(
+  $$insert into public.supplier_declarations (offer_id, category, declared_value, detail)
+    values (pg_temp.id('R'), 'casualty', 'has_occurrence', 'Veículo garantido pela loja.')$$, -- linguagem-permitida: exemplo negativo do teste
+  'sem a qualificação exigida',
+  'R-I3.7-07: o detalhe da declaração com termo da lista é recusado');
+select is(
+  pg_temp.resultado($$insert into public.supplier_declarations (offer_id, category, declared_value, detail)
+    values (pg_temp.id('R'), 'casualty', 'has_occurrence', 'Dano leve no para-choque, já reparado.')$$),
+  'linhas: 1',
+  'contraste R-I3.7-07: o detalhe sem termo da lista entra');
 select pg_temp.entrar(null);
 reset role;
 

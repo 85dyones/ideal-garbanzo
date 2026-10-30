@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 2 (oferta) concluído em 30/10, com o gate cumprido, o ADR-0003 aceito e a I2.11 fechada. O Inc. 1 foi concluído em 28/10, com o ADR-0002 aceito; a R7 fica para a I6.9.  
 **Próxima subtarefa:**
-- **Inc. 3 (domínio documental):** a I3.8 (revisão externa, AG), pela pessoa responsável, com o roteiro em `docs/workflow/revisao-externa-i3.8.md`. Antes do gate, duas decisões da pessoa responsável (R-I3.7-07 e R-I3.7-13, no ADR-0004 §8). O piloto com dados reais continua bloqueado pela D5.
+- **Inc. 3 (domínio documental):** a I3.8 (revisão externa, AG), pela pessoa responsável, com o roteiro em `docs/workflow/revisao-externa-i3.8.md`. Depois dela, o gate e o aceite do ADR-0004. O piloto com dados reais continua bloqueado pela D5.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -1089,3 +1089,24 @@
 - **Teste de linguagem com limite próprio:** com as migrações e os modelos de e-mail, a varredura passou dos 5 s padrão do Vitest com a suíte inteira, e uma rodada falhou por tempo. O teste ganhou 30 s.
 - **Evidência:** 405 unitários, build, e os e2e `documental` e `ofertas-admin` (16) passando depois dos ajustes.
 
+### 2026-10-30 · I3.9 · decisões R-I3.7-07 e R-I3.7-13
+
+- **Decisões da pessoa responsável (30/10):**
+  - **R-I3.7-07:** o detalhe da declaração do fornecedor passa pela lista de linguagem, como o resumo e as limitações da consulta;
+  - **R-I3.7-13:** a trava de chaves de dado pessoal fica só com identificadores genéricos.
+- **Migração `20261030200000_decisoes_do_documental`:**
+  - gatilho `supplier_declarations_revisar_linguagem` sobre `detail`;
+  - `chave_de_dado_pessoal` sem os nomes de campo do provedor, só com palavras e trechos genéricos.
+- **Servidor:** os esquemas das duas declarações passam o detalhe por `semLinguagemProibida`, com a orientação "Descreva a ocorrência com o que você sabe dela". A mensagem da lista ficou numa função do módulo documental, usada pelos dois módulos.
+- **Testes:**
+  - o `430` (41) ganhou o detalhe recusado, o contraste e três chaves genéricas (razão social, razão social do dono e nome completo);
+  - o `400` troca a chave composta do caso do código de segurança por uma genérica;
+  - um unitário novo em `ofertas.test.ts`.
+- **Mutações:** E19 (gatilho desligado) e E20 (sem "nome" e "razao" nas três listas da trava), detectadas. Na primeira rodada, a E20 tirava só os trechos e era equivalente, porque as palavras continuavam nas outras listas. Ganhou o caso "razão social", que só a palavra pega.
+
+- **Evidência no dev**, depois de `db:reset` com as 15 migrações:
+  - **banco:** `test:db` com 27 arquivos passando;
+  - **integração:** `test:integration` com 12 arquivos e 119 testes passando;
+  - **e2e:** `test:e2e` com 31 passando;
+  - **código:** 406 unitários, tipos, lint, formatação e build passando;
+  - **mutações:** as 20 da I3.9, rodadas de novo depois da migração, todas detectadas e sem derrubar o contraste.

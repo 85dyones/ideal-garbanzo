@@ -476,7 +476,7 @@ Mutações do builder nos testes de tela (`ficha.test.ts` e `documental.test.ts`
 
 ## I3.9: correção das ressalvas da I3.7 (30/10/2026)
 
-Resultado: 18 mutações, todas detectadas, sem derrubar o contraste. A maioria roda no `430-documental-ressalvas`; a E09 roda no `400`.
+Resultado: 20 mutações, todas detectadas, sem derrubar o contraste. A E19 e a E20 vêm das decisões da pessoa responsável sobre a R-I3.7-07 e a R-I3.7-13. A maioria roda no `430-documental-ressalvas`; a E09 roda no `400`.
 
 | ID  | Camada            | Arquivo                    | Mudança                                                                    | Casos que devem cair                                                                                                                                                          | Caíram |
 | --- | ----------------- | -------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
@@ -498,11 +498,14 @@ Resultado: 18 mutações, todas detectadas, sem derrubar o contraste. A maioria 
 | E16 | chave estrangeira | `430-documental-ressalvas` | sem vehicle_checks_veiculo_da_oferta_fkey                                  | R-I3.7-11: o veículo de outra oferta é recusado                                                                                                                               | 1      |
 | E17 | gatilho           | `430-documental-ressalvas` | documental_reviews_revisar_linguagem desligado                             | R-I3.7-03: o motivo da revisão passa pela lista                                                                                                                               | 2      |
 | E18 | gatilho           | `430-documental-ressalvas` | transfer_impediments_revisar_linguagem desligado                           | R-I3.7-03: o motivo da resolução do impedimento também                                                                                                                        | 1      |
+| E19 | gatilho           | `430-documental-ressalvas` | supplier_declarations_revisar_linguagem desligado (R-I3.7-07)              | R-I3.7-07: o detalhe da declaração com termo da lista é recusado                                                                                                              | 1      |
+| E20 | função da trava   | `430-documental-ressalvas` | chave_de_dado_pessoal() sem nome e razao nas três listas (R-I3.7-13)       | R-I3.7-02: chave recusada: razão social; R-I3.7-02: chave recusada: nome completo                                                                                             | 2      |
 
 - **Ajustes ao rodar:**
   - na primeira rodada, a E11 não derrubou o caso do acento composto. O texto de teste ainda tinha "garantida", que a lista acha sozinha. O caso passou a usar "sem ocorrências" decomposto;
   - na E12, o espaço não separável já casava com a expressão antiga, porque o locale do banco o trata como espaço. Quem detecta a mutação é o caso do sublinhado;
-  - na E17, a revisão indevida fica aberta, e o contraste da mesma categoria cai em cascata. O contraste passou a ser o da resolução.
+  - na E17, a revisão indevida fica aberta, e o contraste da mesma categoria cai em cascata. O contraste passou a ser o da resolução;
+  - a primeira E20 tirava só os trechos `nome` e `razao` e era equivalente: as palavras continuavam nas outras duas listas. Passou a tirar das três, e o `430` ganhou a chave `razaoSocial`, que só a palavra pega. A chave `razaoSocialDoDono` não cai, porque `dono` também é recusada.
 
 ### Mudança de cada mutação (I3.9)
 
@@ -562,35 +565,7 @@ grant insert (details) on public.vehicle_checks to authenticated;
 
 **E10**
 
-```sql
-create or replace function private.chave_de_dado_pessoal(chave text)
-returns boolean
-language sql
-immutable
-set search_path = ''
-as $$
-  with normalizada as (
-    select translate(
-             lower(regexp_replace(coalesce(chave, ''), '([a-z0-9])([A-Z])', '\1_\2', 'g')),
-             'áàâãäéèêëíìîïóòôõöúùûüçñ',
-             'aaaaaeeeeiiiiooooouuuucn') as texto
-  )
-  select exists (
-      select 1
-      from normalizada n, regexp_split_to_table(n.texto, '[^a-z0-9]+') as p(palavra)
-      where p.palavra in (
-        'proprietario', 'proprietaria', 'proprietarios', 'dono', 'dona', 'pronome',
-        'cpf', 'cnpj', 'rg', 'cnh', 'documento', 'doc', 'nome', 'razao', 'financiado', 'financiada',
-        'arrendatario', 'arrendataria', 'faturado', 'faturada', 'email', 'celular', 'cellphone',
-        'telefone', 'fone', 'phone', 'endereco', 'logradouro', 'cep', 'nascimento',
-        'placa', 'renavam', 'chassi', 'chassis'))
-    or exists (
-      select 1 from normalizada n
-      where regexp_replace(n.texto, '[^a-z0-9]+', '', 'g') in (
-        'cpfcnpj', 'pronomeanterior', 'documentofinanciado', 'nomerazao',
-        'codigosegurancacrv', 'restricaodocarrendatario', 'numeroidentificacaodofaturado'));
-$$;
-```
+Volta `private.chave_de_dado_pessoal(text)` à definição da I3.3, a de `20261030120000_dominio_documental.sql`, sem cópia aqui (R-I3.7-13).
 
 **E11**
 
@@ -732,4 +707,18 @@ alter table public.documental_reviews disable trigger documental_reviews_revisar
 
 ```sql
 alter table public.transfer_impediments disable trigger transfer_impediments_revisar_linguagem;
+```
+
+**E19**
+
+```sql
+alter table public.supplier_declarations disable trigger supplier_declarations_revisar_linguagem;
+```
+
+**E20**
+
+Troca em `pg_get_functiondef('private.chave_de_dado_pessoal(text)'::regprocedure)`, com a flag `g`:
+
+```sql
+regexp_replace(d, '''(nome|razao)'', |nome[|]razao[|]', '', 'g')
 ```

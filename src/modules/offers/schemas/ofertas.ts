@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { id, textoDeLinha, textoLivre } from "@/lib/operacao/campos";
 import { VALORES_DECLARADOS } from "@/modules/documental/rules/estados";
+import { semLinguagemProibida } from "@/modules/documental/schemas/consultas";
 import {
   CATEGORIAS_DA_SUSPENSAO,
   FORMATO_DO_PRECO,
@@ -120,6 +121,16 @@ export const esquemaDaAlteracao = z
     error: "Informe ao menos um campo.",
   });
 
+/**
+ * Detalhe da declaração: o comprador o vê, e o aviso do impedimento o copia.
+ * Passa pela lista de linguagem, como o gatilho do banco (decisão da pessoa
+ * responsável sobre a R-I3.7-07, em 30/10).
+ */
+const detalheDaDeclaracao = semLinguagemProibida(
+  textoLivre(2000),
+  "Descreva a ocorrência com o que você sabe dela",
+);
+
 export const esquemaDaDeclaracao = z
   .strictObject({
     ofertaId: id,
@@ -128,7 +139,7 @@ export const esquemaDaDeclaracao = z
       .regex(/^[a-z][a-z0-9_]{0,63}$/, { error: "Categoria inválida." }),
     /** "Desconhece" é escolha explícita, nunca valor padrão (§5.3). */
     valor: z.enum(VALORES_DECLARADOS),
-    detalhe: textoLivre(2000).optional(),
+    detalhe: detalheDaDeclaracao.optional(),
   })
   .refine((dados) => dados.valor !== "has_occurrence" || dados.detalhe, {
     error: "Descreva a ocorrência.",
@@ -141,7 +152,7 @@ const declaracaoDaLista = z
       .string()
       .regex(/^[a-z][a-z0-9_]{0,63}$/, { error: "Categoria inválida." }),
     valor: z.enum(VALORES_DECLARADOS),
-    detalhe: textoLivre(2000).optional(),
+    detalhe: detalheDaDeclaracao.optional(),
   })
   .refine((dados) => dados.valor !== "has_occurrence" || dados.detalhe, {
     error: "Descreva a ocorrência.",

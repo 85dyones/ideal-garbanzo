@@ -31,13 +31,16 @@ function listaComE(itens: readonly string[]): string {
  * achado, como foi digitado, e diz como reescrever. Os termos vêm do
  * varredor; nenhum fica escrito aqui.
  */
-export function mensagemDaLinguagem(trechos: readonly string[]): string {
+export function mensagemDaLinguagem(
+  trechos: readonly string[],
+  orientacao = "Descreva o que a fonte mostrou",
+): string {
   const citados = listaComE(trechos.map((trecho) => `“${trecho}”`));
   const verbo =
     trechos.length === 1
       ? "não pode aparecer sozinho"
       : "não podem aparecer sozinhos";
-  return `${citados} ${verbo}. Descreva o que a fonte mostrou ou acrescente “nas fontes consultadas, em [data da consulta]”.`;
+  return `${citados} ${verbo}. ${orientacao} ou acrescente “nas fontes consultadas, em [data da consulta]”.`;
 }
 
 /** Os trechos com termo da §6.6 sem a qualificação, como digitados e sem repetir. */
@@ -47,13 +50,17 @@ export function trechosProibidos(valor: string): string[] {
   ];
 }
 
-function semLinguagemProibida<T extends z.ZodType<string>>(campo: T) {
+/** O campo de texto recusa termo da §6.6 sem a qualificação, como o gatilho do banco (E28). */
+export function semLinguagemProibida<T extends z.ZodType<string>>(
+  campo: T,
+  orientacao?: string,
+) {
   return campo.superRefine((valor, contexto) => {
     const trechos = trechosProibidos(valor);
     if (trechos.length > 0) {
       contexto.addIssue({
         code: "custom",
-        message: mensagemDaLinguagem(trechos),
+        message: mensagemDaLinguagem(trechos, orientacao),
       });
     }
   });
