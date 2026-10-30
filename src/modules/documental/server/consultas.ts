@@ -257,7 +257,8 @@ export function resolverImpedimento(
       const lida = await lerOferta(dependencias, impedimento.offer_id);
       if (!lida.ok) return lida;
       const oferta = lida.dados;
-      if (!podeResolverImpedimento(atorDaOferta(contexto, oferta.empresaId))) {
+      const ator = atorDaOferta(contexto, oferta.empresaId);
+      if (!podeResolverImpedimento(ator)) {
         return falha(
           "sem_permissao",
           "Só o administrador da plataforma resolve impedimento.",
@@ -265,6 +266,20 @@ export function resolverImpedimento(
       }
       if (impedimento.status !== "identified") {
         return falha("regra_violada", "O impedimento já foi resolvido.");
+      }
+      // A evidência da resolução entra pelo mesmo bucket das consultas, que só
+      // aceita envio nos estados da E17 (ADR-0004 §2.9).
+      if (
+        !podeRegistrarConsulta(
+          oferta.status,
+          ator,
+          validadeVencida(oferta.validaAte),
+        )
+      ) {
+        return estadoRecusado(
+          oferta,
+          "recebe a evidência da resolução; reabra a oferta antes",
+        );
       }
 
       const enviada = await enviarEvidencia(

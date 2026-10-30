@@ -37,7 +37,7 @@ O projeto de desenvolvimento é um só para todos os agentes. Reset, testes de b
 - **Atuar como usuário:** o papel `postgres` ignora a RLS. Asserção de acesso roda com `set local role authenticated` e `request.jwt.claims` com o `sub`; a fixture de administrador está no `100-identidade-estrutura.test.sql` (ADR-0002 §3).
 - **Gatilho de proteção desligado dentro do teste (exceção):** sempre com `alter table ... disable trigger`, só dentro da transação do arquivo e desfeito no rollback. O `ALTER TABLE` trava a tabela até o fim da transação, por isso esses testes rodam um de cada vez, como os demais (ACH-I2.10-10). Há dois usos, e só eles:
   - **chegar a um estado que só existe pelo banco** (validade vencida antes da rodada da expiração, `sold` no Inc. 2): o `310`, o `380` e o teste de integração `ofertas-transicoes` desligam `offers_proteger`, gravam o estado como `postgres` e religam o gatilho **antes** das asserções;
-  - **isolar uma camada**, para que a política ou o CHECK tenha negativo próprio, sem o gatilho recusar antes: o `120`, o `130`, o `140`, o `320` e o `380` fazem as asserções com o gatilho desligado e o religam logo depois. O caso de contraste continua com a camada ligada.
+  - **isolar uma camada**, para que a política ou o CHECK tenha negativo próprio, sem o gatilho recusar antes: o `120`, o `130`, o `140`, o `320`, o `380`, o `400`, o `410` e o `420` fazem as asserções com o gatilho desligado e o religam logo depois. O caso de contraste continua com a camada ligada.
 
   Fora desses usos, nenhum teste desliga gatilho de proteção, e uma mutação que desliga gatilho é afrouxamento, não preparação.
 

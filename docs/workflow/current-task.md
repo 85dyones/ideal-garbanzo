@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 2 (oferta) concluído em 30/10, com o gate cumprido, o ADR-0003 aceito e a I2.11 fechada. O Inc. 1 foi concluído em 28/10, com o ADR-0002 aceito; a R7 fica para a I6.9.  
 **Próxima subtarefa:**
-- **Inc. 3 (domínio documental):** a I3.4 (testes de todas as linhas e dos testes 7, 10 e 11, T1) e a I3.6 (telas, T1), em paralelo, por builders em worktree; depois, a I3.7 (revisão independente, T3) e a I3.8 (revisão externa, AG). O piloto com dados reais continua bloqueado pela D5.
+- **Inc. 3 (domínio documental):** a revisão visual das telas da I3.6 (TV), a I3.7 (revisão independente, T3) e a I3.8 (revisão externa, AG). O piloto com dados reais continua bloqueado pela D5.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -1000,4 +1000,36 @@
   - **integração:** `test:integration` com 12 arquivos e 119 testes passando;
   - **e2e:** `test:e2e` com 25 passando;
   - **código:** 291 unitários, tipos, lint e build passando.
+
+### 2026-10-30 · I3.4 e I3.6 · testes e telas do domínio documental (builders em paralelo)
+
+- **Despacho:** dois builders (T1), cada um num worktree, a partir de `5c4d42f`, com arquivos separados.
+- **I3.4 (testes):**
+  - pgTAP `410-documental-tabela` (75): as 40 linhas gravadas de verdade e 23 casos com mais de uma consulta, substituição e revisão;
+  - pgTAP `420-documental-testes-7-10-11` (123): o que o `400` não cobria;
+  - `rules/estados.decisao.test.ts` (68): a tabela escrita a partir do ADR, contra `estadoDaCategoria`;
+  - o varredor de linguagem passa a ler os modelos `.html` do Auth e só as mensagens de `raise exception` das migrações (E27), com `mensagensDoBanco` em `src/lib/linguagem-proibida.ts`.
+
+  O builder conferiu o SQL num Postgres local, o que não vale como evidência. O T2 rodou os dois arquivos no dev: os 26 arquivos pgTAP passaram.
+- **I3.6 (telas):**
+  - etapa "6. Consultas" do fornecedor, com registro, evidência opcional e substituição;
+  - ficha documental no resumo e no detalhe da administração: estado por categoria e cada informação na própria origem; "Sem apontamentos nas fontes consultadas" sempre com fonte e data; "sem evidência anexada"; revisão como fato, com o motivo;
+  - "Ações documentais" da equipe: registrar consulta, abrir e fechar revisão, resolver impedimento (só o administrador);
+  - aviso de impedimento separado das pendências;
+  - leitura nova pela sessão em `src/modules/documental/queries/registros.ts`;
+  - e2e `documental.spec.mts` (6).
+- **Correções do T2 a partir do relatório da I3.6:**
+  - `resolverImpedimento` recusa antes, com mensagem própria, quando o estado da oferta não aceita a evidência;
+  - o texto do impedimento automático usa o rótulo "Condições de transferência", e não o código. A mudança entrou em `20261030150000`, que ainda não estava no `origin`.
+- **Ficam registrados:**
+  - `consultarEstadosDocumentais` ainda não traz tudo o que a ficha mostra (motivo e autor da revisão, consultas substituídas, resolução), e a tela cruza com a leitura nova;
+  - nenhuma restrição liga `vehicle_checks.vehicle_id` ao veículo da oferta além do gatilho;
+  - o botão "Agora" pode ser recusado se o relógio do servidor estiver adiantado em relação ao banco.
+- **Mutações:** 23 de pgTAP no dev (todas caíram; três com contraste em cascata), 5 de código da I3.4 e 5 de tela da I3.6, em `supabase/tests/mutacoes/inc-3.md`.
+- **Evidência no dev:**
+  - **banco:** `test:db` com 26 arquivos passando;
+  - **integração:** `test:integration` com 12 arquivos e 119 testes passando;
+  - **e2e:** `test:e2e` com 31 passando, os 6 novos incluídos;
+  - **código:** 396 unitários, tipos e lint passando.
+- **Revisão visual:** a captura do cenário (c) parou no limite de login do Auth, depois da suíte; as telas restantes são capturadas de novo depois da pausa.
 

@@ -5,10 +5,10 @@ import { PaginaDaOferta, carregarOferta } from "@/app/_apoio/oferta-da-pagina";
 import { Vazio } from "@/components/estados";
 import { Secao } from "@/components/pagina";
 import {
-  ROTULO_DA_ORIGEM,
   ROTULO_DO_ESTADO,
   rotuloDaCategoria,
 } from "@/modules/documental/rules/estados";
+import { textoDoEstadoDaCategoria } from "@/modules/documental/ui/ficha";
 import { dependenciasDaLeitura } from "@/modules/offers/queries/dependencias";
 import {
   lerConfiguracaoDaOferta,
@@ -26,8 +26,8 @@ export const metadata: Metadata = { title: "Declarações da oferta" };
 
 /**
  * Etapa 4: declarações do fornecedor, uma por categoria da configuração
- * (§5.3; ADR-0003 §2.12), com o estado documental e a origem de cada uma
- * (§6.4 e §6.5).
+ * (§5.3; ADR-0003 §2.12), com o estado documental de cada categoria e a
+ * origem ao lado da declaração, nunca do estado (§6.4 e §6.5).
  */
 export default async function PaginaDasDeclaracoes({
   params,
@@ -53,8 +53,10 @@ export default async function PaginaDasDeclaracoes({
       return {
         categoria,
         rotulo: rotuloDaCategoria(categoria),
-        estado: atual?.rotuloDoEstado ?? ROTULO_DO_ESTADO.not_checked,
-        origem: atual?.rotuloDaOrigem ?? ROTULO_DA_ORIGEM.unconfirmed,
+        estado:
+          atual === undefined
+            ? ROTULO_DO_ESTADO.not_checked
+            : textoDoEstadoDaCategoria(atual),
         vigente:
           atual?.declaracao === null || atual?.declaracao === undefined
             ? null

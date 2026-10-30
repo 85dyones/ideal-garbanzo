@@ -132,6 +132,7 @@ export const ETAPAS_DA_OFERTA = [
   { chave: "condicoes", rotulo: "3. Condições", caminho: "/condicoes" },
   { chave: "declaracoes", rotulo: "4. Declarações", caminho: "/declaracoes" },
   { chave: "documentos", rotulo: "5. Documentos", caminho: "/documentos" },
+  { chave: "consultas", rotulo: "6. Consultas", caminho: "/consultas" },
   { chave: "historico", rotulo: "Histórico", caminho: "/historico" },
 ] as const;
 export type EtapaDaOferta = (typeof ETAPAS_DA_OFERTA)[number]["chave"];

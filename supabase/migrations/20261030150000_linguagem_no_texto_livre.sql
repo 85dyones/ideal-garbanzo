@@ -135,3 +135,36 @@ revoke all on function
   private.termo_proibido(text),
   private.revisar_linguagem()
   from public, anon, authenticated, service_role;
+
+-- Base do impedimento automático com o rótulo da categoria, e não o código
+-- técnico (I3.6): o texto vai para a tela e para o snapshot.
+create or replace function private.registrar_impedimento()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  -- As duas tabelas têm colunas diferentes: a leitura passa pelo jsonb.
+  registro jsonb := to_jsonb(new);
+begin
+  if registro ->> 'category' <> 'transfer_conditions' then
+    return null;
+  end if;
+  if tg_table_name = 'supplier_declarations' and registro ->> 'declared_value' = 'has_occurrence' then
+    insert into public.transfer_impediments (offer_id, basis, source_declaration_id)
+    values ((registro ->> 'offer_id')::uuid,
+            'Declaração do fornecedor em Condições de transferência: ' || left(registro ->> 'detail', 900),
+            (registro ->> 'id')::uuid)
+    on conflict do nothing;
+  elsif tg_table_name = 'vehicle_checks' and registro ->> 'result' = 'has_occurrence' then
+    insert into public.transfer_impediments (offer_id, basis, source_check_id)
+    values ((registro ->> 'offer_id')::uuid,
+            'Consulta em Condições de transferência (' || (registro ->> 'source_name') || '): '
+              || left(registro ->> 'result_summary', 700),
+            (registro ->> 'id')::uuid)
+    on conflict do nothing;
+  end if;
+  return null;
+end;
+$$;

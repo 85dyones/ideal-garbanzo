@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { abrirEvidenciaAcao } from "@/app/_acoes/documental";
 import {
   alterarValidadeAcao,
   cancelarEnvioAcao,
@@ -26,13 +27,27 @@ import {
 import { Aviso } from "@/components/estados";
 import { LINK } from "@/components/estilos";
 import { Dados, Secao } from "@/components/pagina";
+import { listarPerfisPorId } from "@/modules/auth/queries/perfis";
+import {
+  lerRegistrosDocumentais,
+  pessoasDosRegistros,
+} from "@/modules/documental/queries/registros";
+import {
+  contarConsultasVigentes,
+  montarFicha,
+  ressalvasSemImpedimento,
+} from "@/modules/documental/ui/ficha";
+import {
+  FichaDocumental,
+  ImpedimentosDaOferta,
+} from "@/modules/documental/ui/ficha-documental";
 import { dependenciasDaLeitura } from "@/modules/offers/queries/dependencias";
 import {
-  contarDocumentos,
   contarFotos,
   lerConfiguracaoDaOferta,
   lerEstadosDocumentais,
   lerPendencias,
+  listarDocumentos,
   listarRevisoes,
   outrasOfertasComAPlaca,
 } from "@/modules/offers/queries/ofertas";
@@ -60,6 +75,7 @@ import {
 } from "@/modules/offers/ui/etapas";
 import {
   ETAPAS_DA_OFERTA,
+  ROTULO_DO_TIPO_DE_DOCUMENTO,
   TEXTO,
   orientacaoDoStatus,
 } from "@/modules/offers/ui/rotulos";
@@ -70,10 +86,17 @@ function contagem(quantidade: number, singular: string, plural: string) {
   return `${String(quantidade)} ${quantidade === 1 ? singular : plural}`;
 }
 
+/** Âncora do aviso do impedimento, para o link da pendência. */
+const ANCORA_DO_IMPEDIMENTO = "#impedimento-de-transferencia";
+
 /**
  * Resumo e envio da oferta (I2.8): situação, o que a pessoa pode fazer, as
  * etapas do cadastro, o que falta para enviar e o aviso documental. Pendência
  * documental nunca bloqueia o envio; falta de dado obrigatório, sim (§6.2).
+ *
+ * I3.6: a ficha documental (o estado de cada categoria e, abaixo, cada
+ * informação com a própria origem) e o aviso próprio do impedimento de
+ * transferência, na situação, separado das pendências documentais (§6.11).
  */
 export default async function PaginaDoResumoDaOferta({
   params,
@@ -93,15 +116,30 @@ export default async function PaginaDoResumoDaOferta({
     documentos,
     revisoes,
     mesmaPlaca,
+    registros,
   ] = await Promise.all([
     lerConfiguracaoDaOferta(sessao),
     lerEstadosDocumentais(dependencias, oferta.id),
     lerPendencias(dependencias, oferta.id),
     contarFotos(sessao, oferta.id),
-    contarDocumentos(sessao, oferta.id),
+    listarDocumentos(sessao, oferta.id),
     listarRevisoes(sessao, oferta.id),
     outrasOfertasComAPlaca(sessao, oferta),
+    lerRegistrosDocumentais(sessao, oferta.id),
   ]);
+  const pessoas = await listarPerfisPorId(
+    sessao,
+    pessoasDosRegistros(registros),
+  );
+  // A sessão do fornecedor lê os colegas de empresa; a equipe da plataforma aparece sem nome.
+  const nomeDe = (perfilId: string): string | undefined => {
+    const perfil = pessoas.get(perfilId);
+    if (perfil === undefined) return undefined;
+    return perfil.nome === "" ? (perfil.email ?? undefined) : perfil.nome;
+  };
+  const ficha = montarFicha(estados, registros, configuracao.categorias);
+  const consultasVigentes = contarConsultasVigentes(estados);
+  const ressalvas = ressalvasSemImpedimento(estados.avisos);
 
   const vencida = validadeVencida(oferta.validaAte);
   const pode = (para: StatusDaOferta, ids: readonly IdDaTransicao[]) => {
@@ -142,9 +180,13 @@ export default async function PaginaDoResumoDaOferta({
         : `Falta: ${porEtapa.condicoes.join(", ")}.`,
     declaracoes: `${String(declaradas)} de ${String(configuracao.categorias.length)} categorias declaradas`,
     documentos:
-      documentos === 0
+      documentos.length === 0
         ? "Nenhum documento (opcional)"
-        : contagem(documentos, "documento", "documentos"),
+        : contagem(documentos.length, "documento", "documentos"),
+    consultas:
+      consultasVigentes === 0
+        ? "Nenhuma consulta (opcional)"
+        : contagem(consultasVigentes, "consulta vigente", "consultas vigentes"),
   };
 
   return (
@@ -188,6 +230,11 @@ export default async function PaginaDoResumoDaOferta({
         {publicadaOuReservada && vencida ? (
           <Aviso tom="alerta">{TEXTO.validadeVencida}</Aviso>
         ) : null}
+        <ImpedimentosDaOferta
+          impedimentos={registros.impedimentos}
+          nomeDe={nomeDe}
+          abrirEvidencia={abrirEvidenciaAcao}
+        />
         {mesmaPlaca.length > 0 ? (
           <Aviso tom="alerta">
             <p>{TEXTO.placaRepetida}</p>
@@ -319,7 +366,11 @@ export default async function PaginaDoResumoDaOferta({
                     );
                     return (
                       <li key={pendencia.codigo}>
-                        {etapa === undefined ? (
+                        {pendencia.codigo === "transfer_impediment" ? (
+                          <a href={ANCORA_DO_IMPEDIMENTO} className={LINK}>
+                            {comoItem(pendencia.rotulo)}
+                          </a>
+                        ) : etapa === undefined ? (
                           comoItem(pendencia.rotulo)
                         ) : (
                           <Link
@@ -345,13 +396,13 @@ export default async function PaginaDoResumoDaOferta({
           <h3 id="titulo-aviso-documental" className="font-semibold">
             Aviso documental
           </h3>
-          {estados.avisos.length === 0 ? (
-            <p>Nenhuma ressalva documental nas declarações atuais.</p>
+          {ressalvas.length === 0 ? (
+            <p>Nenhuma ressalva documental nos registros atuais.</p>
           ) : (
             <Aviso tom="alerta">
               <p>Estas ressalvas acompanham a versão da oferta:</p>
               <ul className="mt-1 list-disc pl-5">
-                {estados.avisos.map((aviso) => (
+                {ressalvas.map((aviso) => (
                   <li key={aviso.codigo}>{aviso.texto}</li>
                 ))}
               </ul>
@@ -366,9 +417,9 @@ export default async function PaginaDoResumoDaOferta({
             <p className="font-medium">{TEXTO.pendenciaNaoImpede}</p>
           ) : null}
           <p>
-            <Link href={`${base}/declaracoes`} className={LINK}>
-              Ver o estado de cada categoria
-            </Link>
+            <a href="#ficha-documental" className={LINK}>
+              Ver o estado de cada categoria na ficha documental
+            </a>
           </p>
         </section>
 
@@ -411,6 +462,32 @@ export default async function PaginaDoResumoDaOferta({
           )
         ) : null}
       </Secao>
+
+      <div id="ficha-documental" className="scroll-mt-4">
+        <Secao titulo="Ficha documental">
+          <FichaDocumental
+            ficha={ficha}
+            documentos={documentos.map((documento) => ({
+              id: documento.id,
+              tipo: ROTULO_DO_TIPO_DE_DOCUMENTO[documento.tipo],
+              descricao: documento.descricao,
+              enviadoEm: documento.enviadoEm,
+            }))}
+            nomeDe={nomeDe}
+            abrirEvidencia={abrirEvidenciaAcao}
+            ondeAbrirOsDocumentos={
+              <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                <Link href={`${base}/documentos`} className={LINK}>
+                  Abrir os documentos na etapa 5
+                </Link>
+                <Link href={`${base}/consultas`} className={LINK}>
+                  Ver as consultas na etapa 6
+                </Link>
+              </p>
+            }
+          />
+        </Secao>
+      </div>
 
       {pode("withdrawn", ["T11"]) ? (
         <Secao titulo="Outras ações">

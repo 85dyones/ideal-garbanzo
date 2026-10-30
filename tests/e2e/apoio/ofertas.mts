@@ -1,8 +1,9 @@
 /**
- * Ofertas dos E2E da administração (I2.9), preparadas pela API com a sessão
- * de quem age, como faria a tela: o `org_admin` cria a oferta completa
- * (`criar_oferta`), declara as dez categorias e envia à revisão; a plataforma
- * publica com a própria sessão. O banco decide cada passo, pelos mesmos
+ * Ofertas dos E2E da administração (I2.9) e do domínio documental (I3.6),
+ * preparadas pela API com a sessão de quem age, como faria a tela: o
+ * `org_admin` cria a oferta completa (`criar_oferta`), declara as dez
+ * categorias e, se for o caso, envia à revisão; a plataforma publica com a
+ * própria sessão. O banco decide cada passo, pelos mesmos
  * gatilhos das operações (ADR-0003 §2.15). Os passos repetem
  * `tests/integration/operacoes/ofertas.ts`, que não pode ser importado daqui
  * (ver `dados.mts`).
@@ -10,10 +11,11 @@
  * Pré-requisito: `offer_review_required` = true e as dez categorias iniciais
  * em `document_categories` no banco de desenvolvimento.
  */
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { SUFIXO, sessaoSemTipos, type UsuarioDeTeste } from "./dados.mjs";
 
 /** As dez categorias iniciais da §5.3 (`document_categories`). */
-const CATEGORIAS = [
+export const CATEGORIAS = [
   "debts_ipva",
   "debts_licensing",
   "debts_fines",
@@ -25,6 +27,7 @@ const CATEGORIAS = [
   "auction",
   "transfer_conditions",
 ] as const;
+export type CategoriaDeTeste = (typeof CATEGORIAS)[number];
 
 export interface OfertaDeTeste {
   readonly id: string;
@@ -47,15 +50,33 @@ function exigirSemErro(
 }
 
 /**
- * Oferta completa enviada à revisão pelo `org_admin` da empresa. O rótulo
- * entra na versão do veículo, para o título ser único na lista.
+ * Oferta completa em rascunho, do `org_admin` da empresa, com as dez
+ * categorias declaradas: "sem ocorrência conhecida" em todas, menos as de
+ * `ocorrencias`, declaradas com ocorrência e o detalhe dado. O rótulo entra na
+ * versão do veículo, para o título ser único na lista. Ocorrência em
+ * `transfer_conditions` gera o impedimento de transferência (P3).
  */
-export async function ofertaEmRevisao(
+export async function ofertaEmRascunho(
   fornecedor: UsuarioDeTeste,
   empresaId: string,
   rotulo: string,
+  ocorrencias: Partial<Record<CategoriaDeTeste, string>> = {},
 ): Promise<OfertaDeTeste> {
-  const sessao = await sessaoSemTipos(fornecedor);
+  return criarRascunho(
+    await sessaoSemTipos(fornecedor),
+    empresaId,
+    rotulo,
+    ocorrencias,
+  );
+}
+
+/** O rascunho completo, com a sessão já aberta de quem cria. */
+async function criarRascunho(
+  sessao: SupabaseClient,
+  empresaId: string,
+  rotulo: string,
+  ocorrencias: Partial<Record<CategoriaDeTeste, string>>,
+): Promise<OfertaDeTeste> {
   const versao = `E2E ${rotulo} ${SUFIXO}`;
   const criada = await sessao.rpc("criar_oferta", {
     p_empresa: empresaId,
@@ -89,14 +110,35 @@ export async function ofertaEmRevisao(
   }
 
   const declaradas = await sessao.from("supplier_declarations").insert(
-    CATEGORIAS.map((categoria) => ({
-      offer_id: ofertaId,
-      category: categoria,
-      declared_value: "no_known_occurrence",
-    })),
+    CATEGORIAS.map((categoria) => {
+      const detalhe = ocorrencias[categoria];
+      return detalhe === undefined
+        ? {
+            offer_id: ofertaId,
+            category: categoria,
+            declared_value: "no_known_occurrence",
+          }
+        : {
+            offer_id: ofertaId,
+            category: categoria,
+            declared_value: "has_occurrence",
+            detail: detalhe,
+          };
+    }),
   );
   exigirSemErro(declaradas.error, `declarar as categorias de ${rotulo}`);
+  return { id: ofertaId, titulo: `Fiat Argo ${versao} 2021/2022` };
+}
 
+/** Oferta completa enviada à revisão pelo `org_admin` da empresa. */
+export async function ofertaEmRevisao(
+  fornecedor: UsuarioDeTeste,
+  empresaId: string,
+  rotulo: string,
+): Promise<OfertaDeTeste> {
+  const sessao = await sessaoSemTipos(fornecedor);
+  const oferta = await criarRascunho(sessao, empresaId, rotulo, {});
+  const ofertaId = oferta.id;
   const enviada = await sessao
     .from("offers")
     .update({
@@ -113,7 +155,7 @@ export async function ofertaEmRevisao(
       `enviar ${rotulo} à revisão: a oferta não mudou (o dev precisa de offer_review_required = true)`,
     );
   }
-  return { id: ofertaId, titulo: `Fiat Argo ${versao} 2021/2022` };
+  return oferta;
 }
 
 /** A plataforma publica a oferta em revisão (T04), com a sessão de quem revisa. */

@@ -419,3 +419,57 @@ Resultado: 8 mutações. 7 derrubaram os casos esperados sem derrubar o contrast
 
 - **S07:** para outra empresa, a leitura da oferta pela sessão já responde "sem permissão" antes da checagem do ator. A checagem pesa só no caso da equipe com vínculo pendente ou suspenso com a empresa dona (B25), que lê a oferta pela política da equipe e que o banco recusa em `private.lado_na_oferta`.
 - **Contraste:** nas mutações do teste de paridade (S01 e S02), o contraste é o próprio teste dos casos com mais de uma consulta, que só cai quando a mutação toca a regra que ele exercita.
+
+## I3.4: testes do domínio documental (30/10/2026)
+
+Resultado: 23 mutações de pgTAP sugeridas pelo builder, conferidas por ele num Postgres local e rodadas pelo T2 no projeto de desenvolvimento. Todas derrubaram casos do arquivo indicado. Três derrubam também um contraste, em cascata, como o builder descreveu. A troca da própria `private.revisao_aberta` ficou de fora: ela derruba o arquivo inteiro, porque o gatilho da revisão usa a mesma função.
+
+| ID                             | Arquivo                         | Caíram | Contrastes em cascata | Resultado |
+| ------------------------------ | ------------------------------- | ------ | --------------------- | --------- |
+| `e-divergencia-p1`             | `410-documental-tabela`         | 4      | 0                     | caiu      |
+| `e-nko-confirmada-sempre`      | `410-documental-tabela`         | 3      | 0                     | caiu      |
+| `e-revisao-qualquer-no-estado` | `410-documental-tabela`         | 2      | 1                     | caiu      |
+| `e-sem-divergencia`            | `410-documental-tabela`         | 4      | 0                     | caiu      |
+| `e-sem-revisao`                | `410-documental-tabela`         | 23     | 0                     | caiu      |
+| `e-sem-substituicao`           | `410-documental-tabela`         | 6      | 0                     | caiu      |
+| `e-substituicao-repetida`      | `410-documental-tabela`         | 1      | 0                     | caiu      |
+| `e-substituicao-sem-categoria` | `410-documental-tabela`         | 3      | 2                     | caiu      |
+| `t10-calculo-exposto`          | `420-documental-testes-7-10-11` | 1      | 0                     | caiu      |
+| `t10-documento-conta`          | `420-documental-testes-7-10-11` | 2      | 0                     | caiu      |
+| `t10-estado-gravavel`          | `420-documental-testes-7-10-11` | 2      | 0                     | caiu      |
+| `t10-sem-fonte`                | `420-documental-testes-7-10-11` | 3      | 0                     | caiu      |
+| `t10-sem-limitacoes`           | `420-documental-testes-7-10-11` | 2      | 0                     | caiu      |
+| `t11-auditoria`                | `420-documental-testes-7-10-11` | 3      | 0                     | caiu      |
+| `t11-cascata`                  | `420-documental-testes-7-10-11` | 1      | 0                     | caiu      |
+| `t11-grant-api`                | `420-documental-testes-7-10-11` | 14     | 0                     | caiu      |
+| `t11-impedimento-colunas`      | `420-documental-testes-7-10-11` | 4      | 0                     | caiu      |
+| `t11-impedimento-gatilho`      | `420-documental-testes-7-10-11` | 5      | 0                     | caiu      |
+| `t11-so-inclusao-desligado`    | `420-documental-testes-7-10-11` | 13     | 0                     | caiu      |
+| `t7-is-test-da-oferta-livre`   | `420-documental-testes-7-10-11` | 1      | 0                     | caiu      |
+| `t7-is-test-no-payload`        | `420-documental-testes-7-10-11` | 6      | 0                     | caiu      |
+| `t7-mesma-oferta`              | `420-documental-testes-7-10-11` | 8      | 1                     | caiu      |
+| `t7-sem-chave-de-teste`        | `420-documental-testes-7-10-11` | 4      | 0                     | caiu      |
+
+- **`e-revisao-qualquer-no-estado`:** o contraste E3 da mesma categoria cai em cascata, porque a revisão aberta muda o estado de partida.
+- **`e-substituicao-sem-categoria`:** a substituição indevida é aceita, e os dois contrastes seguintes, da mesma cadeia, caem em cascata.
+- **`t7-mesma-oferta`:** o contraste do CT11.14 cai em cascata, porque o impedimento de PT passa a aceitar a evidência de outra oferta.
+
+**Código (builder, conferido com `cmp`):**
+
+- `estadoDaCategoria` sem a divergência: caem 4 testes da tabela de decisão no servidor;
+- sem a revisão como candidata: caem 23;
+- com a divergência da P1: caem 4;
+- o teste de linguagem sem a pasta das migrações: cai "lê toda migração";
+- `mensagensDoBanco` sem ler as mensagens: caem 5.
+
+O SQL de cada mutação fica no scratchpad da sessão (`i34/mut/`), montado por `montar-mutacoes.mjs` a partir da definição vigente.
+
+## I3.6: telas do domínio documental (30/10/2026)
+
+Mutações do builder nos testes de tela (`ficha.test.ts` e `documental.test.ts`), conferidas com `cmp`. As 5 derrubaram testes:
+
+- estado sem a fonte e a data;
+- origem colada ao estado;
+- sem "sem evidência anexada";
+- ressalva do impedimento na lista de pendências;
+- fornecedor podendo substituir consulta da plataforma.

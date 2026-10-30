@@ -210,6 +210,49 @@ export function criarVarredor(
   };
 }
 
+/** `raise exception '...'`, com a mensagem como literal SQL (aspas dobradas dentro). */
+const RAISE_EXCEPTION = /\braise\s+exception\s+'((?:[^']|'')*)'/gi;
+
+/**
+ * Texto do banco que chega à tela (ADR-0004 §2.12, E27): só as mensagens de
+ * `raise exception '...'` de um SQL. O resto do SQL (comentários, nomes,
+ * dados de configuração gravados pela migração) não é texto de tela e vira
+ * espaço. As quebras de linha e as posições ficam onde estavam, para que linha
+ * e coluna de uma ocorrência sejam as do arquivo. O marcador de exceção num
+ * comentário de linha do SQL continua valendo para a mensagem da mesma linha.
+ */
+export function mensagensDoBanco(
+  sql: string,
+  marcadorDeExcecao: string = carregarListaPadrao().marcadorDeExcecao,
+): string {
+  // Cada unidade de UTF-16 vira um espaço, e as posições não mudam.
+  const saida = sql.replace(/[^\r\n]/g, " ").split("");
+  for (const resultado of sql.matchAll(RAISE_EXCEPTION)) {
+    const mensagem = resultado[1] ?? "";
+    const inicio = resultado.index + resultado[0].length - mensagem.length - 1;
+    for (let i = inicio; i < inicio + mensagem.length; i += 1) {
+      saida[i] = sql[i] ?? " ";
+    }
+  }
+  // O marcador só vale num comentário de linha ("-- <marcador> <motivo>"):
+  // dentro de um dado gravado pela migração, ele não é exceção.
+  const marcador = new RegExp(
+    `--\\s*${escaparParaExpressao(marcadorDeExcecao.trim())}`,
+    "i",
+  );
+  let inicioDaLinha = 0;
+  for (const linha of sql.split("\n")) {
+    const posicao = linha.search(marcador);
+    if (posicao >= 0) {
+      for (let i = posicao; i < linha.length; i += 1) {
+        saida[inicioDaLinha + i] = linha[i] ?? " ";
+      }
+    }
+    inicioDaLinha += linha.length + 1;
+  }
+  return saida.join("");
+}
+
 /** Varre um texto e devolve as ocorrências, com linha e coluna. */
 export function varrerTexto(
   texto: string,

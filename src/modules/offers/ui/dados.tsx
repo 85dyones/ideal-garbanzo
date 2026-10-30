@@ -1,7 +1,7 @@
 /**
  * Blocos de leitura da oferta (I2.8): veículo, condições e estado por
- * categoria, para quando a etapa não pode ser alterada. Estado e origem
- * aparecem separados, como manda a §6.5.
+ * categoria, para quando a etapa não pode ser alterada. O estado aparece sem
+ * origem; a origem acompanha a declaração, como manda a §6.5 (I3.6).
  */
 import { formatarDataHora } from "@/app/_apoio/datas";
 import {
@@ -11,7 +11,9 @@ import {
 } from "@/app/_apoio/oferta";
 import { Vazio } from "@/components/estados";
 import { Dados } from "@/components/pagina";
+import { ROTULO_DA_ORIGEM } from "@/modules/documental/rules/estados";
 import type { EstadoDaCategoria } from "@/modules/documental/server/estados";
+import { textoDoEstadoDaCategoria } from "@/modules/documental/ui/ficha";
 import type { Oferta, Veiculo } from "../queries/ofertas";
 
 function ou(valor: string | number | null): string {
@@ -67,13 +69,13 @@ export function EstadosPorCategoria({
       {categorias.map((item) => (
         <li key={item.categoria} className="flex flex-col gap-1 py-2">
           <p className="font-medium">{item.rotuloDaCategoria}</p>
-          <p className="text-sm text-neutral-700">
-            Estado: {item.rotuloDoEstado} · Origem: {item.rotuloDaOrigem}
+          <p className="break-words text-sm text-neutral-700">
+            Estado: {textoDoEstadoDaCategoria(item)}
           </p>
           <p className="text-sm text-neutral-700">
             {item.declaracao === null
               ? "Sem declaração."
-              : `Declaração vigente: ${item.declaracao.rotulo}, em ${formatarDataHora(item.declaracao.declaradaEm)}.`}
+              : `Declaração vigente: ${item.declaracao.rotulo}, em ${formatarDataHora(item.declaracao.declaradaEm)}. Origem: ${ROTULO_DA_ORIGEM.supplier_declaration}.`}
           </p>
           {item.declaracao?.detalhe === null ||
           item.declaracao?.detalhe === undefined ? null : (

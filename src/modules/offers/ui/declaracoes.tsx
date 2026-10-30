@@ -16,6 +16,7 @@ import {
   MensagemDoFormulario,
 } from "@/components/formulario";
 import {
+  ROTULO_DA_ORIGEM,
   ROTULO_DO_VALOR_DECLARADO,
   VALORES_DECLARADOS,
 } from "@/modules/documental/rules/estados";
@@ -23,10 +24,12 @@ import {
 export interface CategoriaParaDeclarar {
   readonly categoria: string;
   readonly rotulo: string;
-  /** Rótulo do estado documental (§6.4). */
+  /**
+   * Estado documental (§6.4), já com as fontes e as datas quando for "sem
+   * apontamentos nas fontes consultadas" (E26). O estado não é origem: a
+   * origem acompanha a declaração (§6.5).
+   */
   readonly estado: string;
-  /** Rótulo da origem da informação (§6.5). */
-  readonly origem: string;
   /** Declaração vigente já em texto de leitura; `null` sem declaração. */
   readonly vigente: {
     readonly resposta: string;
@@ -72,7 +75,8 @@ function LinhaDaCategoria({
             </span>
             <span className="text-sm text-neutral-700">
               {" "}
-              (em {item.vigente.em})
+              (em {item.vigente.em}) · Origem:{" "}
+              {ROTULO_DA_ORIGEM.supplier_declaration}
             </span>
           </p>
         )}
@@ -80,10 +84,8 @@ function LinhaDaCategoria({
         item.vigente?.detalhe === undefined ? null : (
           <p className="break-words">Detalhe: {item.vigente.detalhe}</p>
         )}
-        <p className="text-sm text-neutral-700">
-          <span className="block sm:inline">Estado: {item.estado}</span>
-          <span className="hidden sm:inline"> · </span>
-          <span className="block sm:inline">Origem: {item.origem}</span>
+        <p className="break-words text-sm text-neutral-700">
+          Estado: {item.estado}
         </p>
         {item.vigente === null ? null : (
           <p className="text-sm text-neutral-700">

@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import {
+  abrirEvidenciaAcao,
+  abrirRevisaoDocumentalAcao,
+  fecharRevisaoDocumentalAcao,
+  registrarConsultaAcao,
+  resolverImpedimentoAcao,
+} from "@/app/_acoes/documental";
 import { abrirDocumentoAcao } from "@/app/_acoes/ofertas";
 import {
   liberarReservaPelaPlataformaAcao,
@@ -26,6 +33,33 @@ import { id as campoId } from "@/lib/operacao/campos";
 import { verificarAcesso } from "@/modules/auth/queries/acesso";
 import { listarPerfisPorId } from "@/modules/auth/queries/perfis";
 import { ehDaEquipeDaPlataforma } from "@/modules/auth/rules/permissoes";
+import {
+  lerRegistrosDocumentais,
+  pessoasDosRegistros,
+} from "@/modules/documental/queries/registros";
+import { rotuloDaCategoria } from "@/modules/documental/rules/estados";
+import {
+  ehDaEquipeSemVinculo,
+  podeRegistrarConsulta,
+  podeResolverImpedimento,
+  podeRevisarDocumentacao,
+} from "@/modules/documental/rules/registro";
+import {
+  TEXTO_DOCUMENTAL,
+  consultasSubstituiveis,
+  impedimentosAtivos,
+  montarFicha,
+  ressalvasSemImpedimento,
+} from "@/modules/documental/ui/ficha";
+import {
+  FichaDocumental,
+  ImpedimentosDaOferta,
+} from "@/modules/documental/ui/ficha-documental";
+import {
+  MudancaDaRevisao,
+  RegistroDeConsulta,
+  ResolucaoDoImpedimento,
+} from "@/modules/documental/ui/formularios";
 import { dependenciasDaLeitura } from "@/modules/offers/queries/dependencias";
 import {
   lerConfiguracaoDaOferta,
@@ -48,11 +82,7 @@ import {
   SuspensaoPelaPlataforma,
 } from "@/modules/offers/ui/acoes-da-plataforma";
 import { AberturaDeDocumento } from "@/modules/offers/ui/arquivos";
-import {
-  DadosDasCondicoes,
-  DadosDoVeiculo,
-  EstadosPorCategoria,
-} from "@/modules/offers/ui/dados";
+import { DadosDasCondicoes, DadosDoVeiculo } from "@/modules/offers/ui/dados";
 import {
   SEM_NOME,
   SISTEMA,
@@ -103,6 +133,11 @@ function Ancora({
  * recebe "Sem permissão" para qualquer id; id inválido ou inexistente dá
  * "Registro inexistente". A tela mostra cada ação só quando a tabela de
  * transições permite a quem vê; a operação e o banco decidem de novo.
+ *
+ * I3.6: a ficha documental (a mesma do fornecedor), o aviso próprio do
+ * impedimento de transferência e as ações documentais da equipe: registrar
+ * consulta, abrir e fechar a revisão documental e, só para o administrador,
+ * resolver o impedimento (ADR-0004 §2.5, §2.9 e §2.11).
  */
 export default async function PaginaDaOfertaNaAdministracao({
   params,
@@ -141,6 +176,7 @@ export default async function PaginaDaOfertaNaAdministracao({
     versoes,
     revisoes,
     mudancas,
+    registros,
   ] = await Promise.all([
     obterEmpresa(sessao, oferta.empresaId),
     lerConfiguracaoDaOferta(sessao),
@@ -153,6 +189,7 @@ export default async function PaginaDaOfertaNaAdministracao({
     comHistorico
       ? listarHistorico(sessao, oferta)
       : Promise.resolve<MudancaDeCampo[]>([]),
+    lerRegistrosDocumentais(sessao, ofertaId),
   ]);
   const pessoas = await listarPerfisPorId(sessao, [
     oferta.criadaPor,
@@ -162,6 +199,7 @@ export default async function PaginaDaOfertaNaAdministracao({
     ...revisoes.map((revisao) => revisao.revisadaPor),
     ...documentos.map((documento) => documento.enviadoPor),
     ...pessoasDoHistorico(mudancas),
+    ...pessoasDosRegistros(registros),
   ]);
   const nomeDe = (perfilId: string): string | undefined => {
     const perfil = pessoas.get(perfilId);
@@ -181,6 +219,36 @@ export default async function PaginaDaOfertaNaAdministracao({
     },
   );
   const { acoes } = situacao;
+
+  // Ações documentais: a equipe sem vínculo com a empresa dona (B25), nos estados da E17.
+  const ficha = montarFicha(estados, registros, configuracao.categorias);
+  const daEquipe = ehDaEquipeSemVinculo(situacao.ator);
+  const podeRegistrar = podeRegistrarConsulta(
+    oferta.status,
+    situacao.ator,
+    vencida,
+  );
+  const podeRevisar = podeRevisarDocumentacao(
+    oferta.status,
+    situacao.ator,
+    vencida,
+  );
+  const ativos = impedimentosAtivos(registros.impedimentos);
+  const podeResolver = podeResolverImpedimento(situacao.ator);
+  // A evidência da resolução segue a regra de envio da evidência da consulta.
+  const resolucaoNoEstado = podeResolver && podeRegistrar;
+  const abertas = new Set(
+    estados.categorias
+      .filter((categoria) => categoria.revisaoAberta)
+      .map((categoria) => categoria.categoria),
+  );
+  const paraAbrir = ficha
+    .filter((categoria) => !abertas.has(categoria.categoria))
+    .map((categoria) => [categoria.categoria, categoria.rotulo] as const);
+  const paraFechar = ficha
+    .filter((categoria) => abertas.has(categoria.categoria))
+    .map((categoria) => [categoria.categoria, categoria.rotulo] as const);
+  const ressalvas = ressalvasSemImpedimento(estados.avisos);
   const outrasAcoes = acoes.retirar || acoes.reservar || acoes.liberar;
   const algumaAcao =
     acoes.revisar ||
@@ -214,7 +282,10 @@ export default async function PaginaDaOfertaNaAdministracao({
     ["situacao", "Situação"],
     ["veiculo", "Veículo"],
     ["condicoes", "Condições"],
-    ["estados", "Estados documentais"],
+    ["estados", "Ficha documental"],
+    ...(daEquipe
+      ? ([["acoes-documentais", "Ações documentais"]] as const)
+      : []),
     ["pendencias", "Pendências"],
     ["fotos", "Fotos"],
     ["documentos", "Documentos"],
@@ -328,6 +399,11 @@ export default async function PaginaDaOfertaNaAdministracao({
           vencida ? (
             <Aviso tom="alerta">{TEXTO.validadeVencida}</Aviso>
           ) : null}
+          <ImpedimentosDaOferta
+            impedimentos={registros.impedimentos}
+            nomeDe={nomeDe}
+            abrirEvidencia={abrirEvidenciaAcao}
+          />
           {empresa !== null && empresa.status !== "active" ? (
             <Aviso tom="alerta">
               A empresa dona está{" "}
@@ -400,14 +476,14 @@ export default async function PaginaDaOfertaNaAdministracao({
       </Ancora>
 
       <Ancora id="estados">
-        <Secao titulo="Estados documentais">
-          {estados.avisos.length === 0 ? (
-            <p>Nenhuma ressalva documental nas declarações atuais.</p>
+        <Secao titulo="Ficha documental">
+          {ressalvas.length === 0 ? (
+            <p>Nenhuma ressalva documental nos registros atuais.</p>
           ) : (
             <Aviso tom="alerta">
               <p>Estas ressalvas acompanham a versão da oferta:</p>
               <ul className="mt-1 list-disc pl-5">
-                {estados.avisos.map((aviso) => (
+                {ressalvas.map((aviso) => (
                   <li key={aviso.codigo}>{aviso.texto}</li>
                 ))}
               </ul>
@@ -418,9 +494,173 @@ export default async function PaginaDaOfertaNaAdministracao({
               Resumo por categoria: <strong>{estados.resumo}</strong>.
             </p>
           )}
-          <EstadosPorCategoria categorias={estados.categorias} />
+          <FichaDocumental
+            ficha={ficha}
+            documentos={documentos.map((documento) => ({
+              id: documento.id,
+              tipo: ROTULO_DO_TIPO_DE_DOCUMENTO[documento.tipo],
+              descricao: documento.descricao,
+              enviadoEm: documento.enviadoEm,
+            }))}
+            nomeDe={nomeDe}
+            abrirEvidencia={abrirEvidenciaAcao}
+            ondeAbrirOsDocumentos={
+              <p className="text-sm">
+                <a href="#documentos" className={LINK}>
+                  Abrir os documentos na seção Documentos
+                </a>
+              </p>
+            }
+          />
         </Secao>
       </Ancora>
+
+      {daEquipe ? (
+        <Ancora id="acoes-documentais">
+          <Secao titulo="Ações documentais">
+            {registros.impedimentos.length === 0 ? null : (
+              <section
+                aria-labelledby="titulo-resolucao-do-impedimento"
+                className="flex flex-col gap-2"
+              >
+                <h3
+                  id="titulo-resolucao-do-impedimento"
+                  className="font-semibold"
+                >
+                  Resolução do impedimento de transferência
+                </h3>
+                {!podeResolver ? (
+                  ativos.length === 0 ? (
+                    <p className="text-sm text-neutral-700">
+                      Nenhum impedimento de transferência ativo.
+                    </p>
+                  ) : (
+                    <Aviso>{TEXTO_DOCUMENTAL.resolucaoComAdministrador}</Aviso>
+                  )
+                ) : resolucaoNoEstado ? (
+                  <>
+                    <p className="text-sm text-neutral-700">
+                      {TEXTO_DOCUMENTAL.introducaoDaResolucao}
+                    </p>
+                    <ResolucaoDoImpedimento
+                      impedimentos={ativos.map(
+                        (impedimento) =>
+                          [
+                            impedimento.id,
+                            `${impedimento.base} (identificado em ${formatarDataHora(impedimento.identificadoEm)})`,
+                          ] as const,
+                      )}
+                      semImpedimento="Nenhum impedimento de transferência ativo."
+                      acao={resolverImpedimentoAcao}
+                    />
+                  </>
+                ) : ativos.length === 0 ? (
+                  <p className="text-sm text-neutral-700">
+                    Nenhum impedimento de transferência ativo.
+                  </p>
+                ) : (
+                  <p className="text-sm text-neutral-700">
+                    {TEXTO_DOCUMENTAL.resolucaoForaDoEstado}
+                  </p>
+                )}
+              </section>
+            )}
+
+            <section
+              aria-labelledby="titulo-registro-de-consulta"
+              className="flex flex-col gap-2"
+            >
+              <h3 id="titulo-registro-de-consulta" className="font-semibold">
+                Registro de consulta
+              </h3>
+              {podeRegistrar ? (
+                <>
+                  <p className="text-sm text-neutral-700">
+                    {TEXTO_DOCUMENTAL.introducaoDasConsultas}{" "}
+                    {TEXTO_DOCUMENTAL.consultaReal}
+                  </p>
+                  <Aviso tom="alerta">
+                    {TEXTO_DOCUMENTAL.dadosDoProprietario}
+                  </Aviso>
+                  {oferta.status === "published" ||
+                  oferta.status === "reserved" ? (
+                    <p className="text-sm text-neutral-700">
+                      {TEXTO_DOCUMENTAL.consultaGeraVersao}
+                    </p>
+                  ) : null}
+                  {configuracao.categorias.length === 0 ? (
+                    <Vazio>Nenhuma categoria documental configurada.</Vazio>
+                  ) : (
+                    <RegistroDeConsulta
+                      ofertaId={oferta.id}
+                      categorias={configuracao.categorias.map(
+                        (categoria) =>
+                          [categoria, rotuloDaCategoria(categoria)] as const,
+                      )}
+                      substituiveis={consultasSubstituiveis(
+                        ficha,
+                        "plataforma",
+                      )}
+                      dicaDaSubstituicao={
+                        TEXTO_DOCUMENTAL.dicaDaSubstituicaoDaPlataforma
+                      }
+                      acao={registrarConsultaAcao}
+                    />
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-neutral-700">
+                  {TEXTO_DOCUMENTAL.consultaForaDoEstado}
+                </p>
+              )}
+            </section>
+
+            <section
+              aria-labelledby="titulo-revisao-documental"
+              className="flex flex-col gap-2"
+            >
+              <h3 id="titulo-revisao-documental" className="font-semibold">
+                Revisão documental
+              </h3>
+              {podeRevisar ? (
+                <>
+                  <p className="text-sm text-neutral-700">
+                    {TEXTO_DOCUMENTAL.introducaoDaRevisao}
+                  </p>
+                  <Aviso>{TEXTO_DOCUMENTAL.revisaoNaoPorPendencia}</Aviso>
+                  <MudancaDaRevisao
+                    ofertaId={oferta.id}
+                    titulo="Abrir revisão documental"
+                    rotuloDaCategoria="Categoria para abrir a revisão"
+                    opcoes={paraAbrir}
+                    semOpcoes="Todas as categorias estão com revisão aberta."
+                    rotuloDoMotivo="Motivo da abertura"
+                    dica="O motivo aparece para a empresa fornecedora."
+                    rotuloDoBotao="Abrir a revisão"
+                    acao={abrirRevisaoDocumentalAcao}
+                  />
+                  <MudancaDaRevisao
+                    ofertaId={oferta.id}
+                    titulo="Fechar revisão documental"
+                    rotuloDaCategoria="Categoria para fechar a revisão"
+                    opcoes={paraFechar}
+                    semOpcoes={TEXTO_DOCUMENTAL.semRevisaoAberta}
+                    rotuloDoMotivo="Motivo do fechamento"
+                    dica="O motivo aparece para a empresa fornecedora."
+                    rotuloDoBotao="Fechar a revisão"
+                    acao={fecharRevisaoDocumentalAcao}
+                  />
+                </>
+              ) : (
+                <p className="text-sm text-neutral-700">
+                  {TEXTO_DOCUMENTAL.revisaoForaDoEstado}
+                </p>
+              )}
+            </section>
+            {voltarAoTopo}
+          </Secao>
+        </Ancora>
+      ) : null}
 
       <Ancora id="pendencias">
         <Secao titulo="Pendências de publicação">
