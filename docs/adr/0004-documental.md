@@ -1,8 +1,8 @@
 # ADR-0004: Domínio documental
 
-**Status:** rascunho em 30/10/2026. Por enquanto só tem o anexo A (I3.1), com as regras extraídas da especificação. As decisões entram na I3.2, e o aceite vem no gate do Inc. 3.  
+**Status:** proposto em 30/10/2026. O anexo A (I3.1) traz as regras extraídas da especificação; as decisões (I3.2) seguem as leituras conservadoras dele, menos as quatro perguntas respondidas pela pessoa responsável em 30/10 (seção 6, P1 a P4). O aceite vem no gate do Inc. 3, depois da revisão independente (I3.7) e da revisão externa (I3.8).  
 **Data:** 2026-10-30  
-**Subtarefa:** I3.1 (anexo A) do plano orquestrado v2; I3.2 (decisões) a seguir  
+**Subtarefa:** I3.1 (anexo A) e I3.2 (decisões) do plano orquestrado v2  
 **Base:** especificação v1.1 (§3.1 a §3.3, §5.2, §5.3, §6.3 a §6.7, §6.11, §7.2 a §7.4, §8, §10, §13), ADR-0003, anexo A
 
 ---
@@ -13,7 +13,273 @@ O Inc. 3 completa o estado documental que o Inc. 2 calcula só pela declaração
 
 ## 2. Decisões
 
-A escrever na I3.2, a partir do anexo A e das ambiguidades E1 a E35.
+As decisões seguem as leituras conservadoras do anexo A (A.9). A exceção são as quatro perguntas respondidas pela pessoa responsável em 30/10 (seção 6, P1 a P4), que estão marcadas.
+
+### 2.1. Estado da categoria
+
+- **Cálculo, nunca digitado (§6.4):** uma função do banco, `private.estado_documental(oferta, categoria)`, calcula o estado a partir dos registros. O servidor tem a mesma regra em `src/modules/documental/rules/estados.ts`, e um teste de integração confere os dois lados em todas as combinações (seção 3). Nenhuma tabela guarda o estado.
+- **Candidatos:** a função junta os estados candidatos e devolve o de maior precedência (seção 2.2). Se não houver candidato, o resultado é `not_checked` (F0 do anexo A.2).
+
+| Candidato | Vem de | Estado |
+|---|---|---|
+| declaração vigente `no_known_occurrence` | `supplier_declarations` | `declared_unverified` |
+| declaração vigente `has_occurrence` | `supplier_declarations` | `with_findings` |
+| declaração vigente `unknown` | `supplier_declarations` | nenhum (B29) |
+| consulta vigente `awaiting_result` ou `inconclusive` | `vehicle_checks` | `pending` |
+| consulta vigente `has_occurrence` | `vehicle_checks` | `with_findings` |
+| consulta vigente `no_occurrence_in_source` | `vehicle_checks` | `no_findings_in_sources`, só sem revisão aberta |
+| revisão aberta | `documental_reviews` | `under_review` |
+| divergência (seção 2.4) | declaração e consulta vigentes | `under_review` |
+
+- **A R2 ("sem consulta nem documento que a confirme"):** a declaração `no_known_occurrence` só fica como candidata enquanto nenhuma consulta vigente a confirma. Na prática, a precedência já resolve todas as linhas do anexo A.2: onde há consulta, sempre vale uma regra maior.
+- **Documento anexado não muda o estado** (seção 2.6).
+- **Tabela vigente:** as 40 linhas do anexo A.2 valem como estão, com uma exceção, a P1 da seção 6: na linha 25 (declaração `has_occurrence` com consulta `no_occurrence_in_source`, sem revisão), não há divergência, e o estado é `with_findings`. A linha 26, com revisão aberta, continua `under_review`. Em relação ao Inc. 2, mudam 32 linhas.
+- **Teste 10:** `no_findings_in_sources` só sai do candidato de consulta vigente `no_occurrence_in_source`. Sem consulta registrada, ele não existe (linhas 5, 15 e 35 são as únicas).
+
+### 2.2. Precedência
+
+- **Ordem (§6.4):** `under_review` > `with_findings` > `pending` > `no_findings_in_sources` > `declared_unverified` > `not_checked`. Já está em `private.precedencia_documental` e em `PRECEDENCIA` desde a I2.5.
+- **Mais de uma consulta vigente na mesma categoria** (seção 2.3): cada uma é um candidato. `no_findings_in_sources` só vence quando todas as vigentes são `no_occurrence_in_source`.
+- **Provisória:** a §6.4 chama a tabela e a precedência de regra proposta, a validar no piloto. Mudar a ordem é mudar uma função e a tabela do servidor, com o teste de paridade.
+
+### 2.3. Consulta vigente e substituição (E1 a E3)
+
+- **Vigente:** toda consulta da categoria que nenhuma outra substituiu (`supersedes_check_id`). Fontes diferentes na mesma categoria convivem, cada uma vigente (E1). A tela as ordena pela data da consulta, da mais recente para a mais antiga.
+- **`pending` só pela vigente (E2):** a consulta `awaiting_result` substituída pelo resultado deixa de contar.
+- **Substituição (E3):**
+  - a consulta nova aponta para uma consulta da mesma oferta, da mesma categoria e do mesmo lado de `is_test`, que ainda esteja vigente. Uma consulta é substituída uma vez só (índice único em `supersedes_check_id`);
+  - o fornecedor só substitui consulta registrada pela própria empresa; a equipe da plataforma substitui qualquer uma;
+  - a anterior continua legível e intacta (§6.3; CT11.13).
+- **Resultado que chega depois:** a consulta `awaiting_result` é substituída por uma linha nova com o resultado. A tabela é só de inclusão.
+
+### 2.4. Divergência (E4 a E7)
+
+- **Automática só pelo valor (E6):** há divergência quando a declaração vigente é `no_known_occurrence` e uma consulta vigente da mesma categoria tem `has_occurrence` (linhas 17 e 18).
+- **Não é divergência:**
+  - **P1 (E4):** declaração `has_occurrence` com consulta `no_occurrence_in_source`. Vale o apontamento declarado, porque a fonte pode não cobrir a ocorrência (`known_limitations`, §6.3);
+  - **E5:** `unknown` com qualquer resultado, porque "desconhece" não afirma nada;
+  - consulta `awaiting_result` ou `inconclusive`, porque não há resultado a comparar.
+- **Diferença no detalhe ou com documento (E6):** não é automática. A equipe abre uma revisão (seção 2.5), com o motivo.
+- **Fim da divergência (E7):** fechar a revisão não a desfaz. Ela acaba quando chega declaração ou consulta nova que concorde, porque a regra olha só os registros vigentes.
+
+### 2.5. Revisão documental (E8, E19)
+
+- **Quem:** operador ou administrador sem vínculo não removido com a empresa dona (B25 do ADR-0003). O fornecedor vê a revisão, o motivo e quem a fechou.
+- **Aberta:** a última ação da (oferta, categoria) é `open_review`.
+- **Regras:** o banco recusa fechar sem revisão aberta e abrir de novo com uma aberta. O motivo é obrigatório nas duas ações, pelo cabeçalho `x-audit-reason`, como no ADR-0002 §2.11.
+- **Só inclusão:** fechar é linha nova (CT11.11).
+
+### 2.6. Documento anexado (E9, E11)
+
+- **Não muda o estado (E9):** `offer_documents` não tem categoria, e a especificação não diz como um documento confirma uma categoria. A linha 11 do anexo A.2 continua `declared_unverified` com documento anexado.
+- **Aparece à parte:** o documento é mostrado com a origem 2 ("Documento anexado"), nunca fundido com a declaração.
+- **Nunca leva a `no_findings_in_sources`** (teste 10; CT10.4).
+- **Origem 4 por documento (E11):** nenhum documento chega lá no Inc. 3. Conferência de documento oficial pela plataforma fica para depois do piloto.
+
+### 2.7. Origens (E10, E12, E13)
+
+- **Cada informação mostra a própria origem (§6.5):** a declaração (O1), cada documento (O2) e cada consulta vigente (O3 ou O4). O estado da categoria não é origem e não leva rótulo de origem. Categoria sem nenhuma informação mostra "Não confirmada" (O5).
+- **O4 por consulta (E10):** "Confirmada por evidência independente" exige as três condições:
+  - `source_type = official`;
+  - evidência anexada;
+  - consulta registrada pela equipe da plataforma, sem vínculo com a empresa dona.
+
+  A consulta registrada pelo próprio fornecedor fica sempre O3, porque não é independente.
+- **Revisão aberta (E12):** aparece como fato da categoria ("Em análise", com o motivo), sem rótulo de origem.
+- **Consulta sem resultado (E13):** `awaiting_result` e `inconclusive` aparecem como O3, com o resultado por extenso, nunca como O4.
+
+### 2.8. Evidência e "sem apontamentos nas fontes consultadas" (E14, E18)
+
+- **P2 (E14):** a evidência não é exigida para `no_findings_in_sources`. A consulta precisa de fonte, data e `known_limitations`. Sem evidência, a tela mostra "sem evidência anexada" ao lado do resultado. O critério 11 da §10 fica atendido, porque toda consulta é registro real, com fonte e data, e nenhuma é simulada.
+- **Arquivo da evidência (E18):**
+  - fica num bucket privado próprio, `check-evidence`, com uma tabela só de inclusão, `check_evidence_files` (oferta, caminho, sha256, tipo, tamanho, quem enviou). `vehicle_checks.evidence_document_id` aponta para ela;
+  - quem registra a consulta envia a evidência, com a própria sessão. A chave secreta não envia arquivo sem ator;
+  - a equipe da plataforma pode enviar evidência de consulta. A Q3 do ADR-0003 continua valendo para o conteúdo da oferta: o staff não envia foto nem documento da oferta;
+  - a leitura é só pelo servidor, com registro em `restricted_access_logs`, como o documento da oferta (ADR-0003 §2.13). Para o comprador, fica oculta até a D5 (§7.3).
+
+### 2.9. Registro da consulta (E15 a E17, E34)
+
+- **Quem registra (E16; §3.3):**
+  - **equipe da plataforma:** operador ou administrador sem vínculo com a empresa dona;
+  - **fornecedor:** só nas próprias ofertas, conforme a tabela de edição do ADR-0003 §2.5: o `member` no rascunho, o `org_admin` também na publicada ou reservada dentro da validade;
+  - **comprador:** nunca.
+- **Autoria:** `recorded_by` vem da sessão, pelo gatilho. No piloto, `performed_by` é a mesma pessoa: quem registra declara que fez a consulta. Consulta feita por terceiro fica para depois, e a limitação vai em `known_limitations`.
+- **Estados da oferta (E17):**
+  - **fornecedor:** os da tabela de edição;
+  - **equipe:** `draft`, `under_review`, `published`, `reserved` e `suspended`. A suspensão entra porque a apuração costuma precisar de consulta;
+  - **ninguém:** `sold`, `withdrawn` e `expired`, nem a publicada ou reservada vencida (seção 2.9 do ADR-0003).
+- **`is_test` (E15):** o gatilho copia o valor da oferta, e o payload não o leva. O banco exige igualdade nos dois sentidos: consulta de teste só em oferta de teste, e consulta real só em oferta real (teste 7; CT7.4 é negativo).
+- **Integridade (E34):**
+  - `offer_id` obrigatório; `vehicle_id` é o veículo da oferta, gravado pelo gatilho;
+  - a categoria precisa estar em `document_categories`;
+  - `method = manual` até a C7;
+  - `performed_at` não pode estar no futuro;
+  - `source_name`, `performed_at` e `known_limitations` obrigatórios, com o filtro de texto de linha ou livre do Inc. 2.
+
+### 2.10. Dado pessoal (E29 a E31)
+
+- **CHECK no banco (E29):** a lista de chaves fica numa função imutável da migração, porque um CHECK não lê tabela. A comparação:
+  - ignora maiúsculas e acentos;
+  - vale em qualquer nível do jsonb, dentro de objetos e de listas;
+  - recusa também a chave composta que contenha um identificador da lista, por exemplo `cpf_proprietario`.
+- **Lista:** a do código a portar (descrita no anexo A.6), mais identificadores genéricos do proprietário e de contato. O nome do provedor daquele projeto não entra.
+- **Placa, RENAVAM e chassi em `details` (E30):** recusados. Esses dados ficam só em `vehicles`.
+- **Servidor (E31):** monta `details` por lista positiva de chaves, com esquema estrito, e nunca grava a resposta crua de uma fonte. A tela orienta a não pôr dado do proprietário nos textos livres. Evidência que traga dado do proprietário depende da D5 e fica oculta ao comprador.
+- **Vale para todo papel:** o CHECK recusa também pela `service_role` e pelo `postgres`.
+
+### 2.11. Impedimento de transferência (E20 a E24)
+
+- **P3: registro automático (E20):** o banco cria o impedimento quando uma ocorrência aparece na categoria `transfer_conditions`. A ocorrência pode vir de duas fontes:
+  - de uma declaração `has_occurrence`, e o impedimento aponta para ela (`source_declaration_id`);
+  - de uma consulta vigente `has_occurrence`, e o impedimento aponta para ela (`source_check_id`).
+
+  Há no máximo um impedimento por registro de origem. O `basis` traz a categoria e o detalhe do registro de origem.
+- **Outras categorias:** o dano de média ou grande monta da §6.11 (Res. CONTRAN 810/2020, art. 14) só gera impedimento se aparecer também em `transfer_conditions`. A tela de declarações orienta o fornecedor a fazer isso, e a revisão da plataforma confere.
+- **Resolução (E21):**
+  - só o administrador resolve, com motivo e evidência da regularização, um arquivo de `check_evidence_files` da mesma oferta;
+  - a resolução não é automática: declaração ou consulta nova que não aponte mais a ocorrência não resolve o impedimento sozinha;
+  - uma ocorrência nova depois da resolução gera um impedimento novo.
+- **Imutável (E22):** a linha só muda de `identified` para `resolved`, uma vez, com `resolved_by`, `resolved_at`, motivo e evidência. Não há DELETE nem volta (CT11.14).
+- **Efeito (D9; P4, E23):**
+  - **no rascunho ou em revisão:** a oferta não é enviada nem publicada; o motivo entra nas pendências como `transfer_impediment` (ADR-0003 §2.4, B27);
+  - **na publicada ou reservada:** a oferta sai do catálogo enquanto houver impedimento ativo, porque `private.oferta_aberta` passa a exigir que não haja nenhum. O status não muda. O fornecedor vê o motivo, e a oferta volta quando o impedimento for resolvido;
+  - **reserva:** a T08 é recusada com impedimento ativo; a liberação (T09) continua;
+  - **versão:** registrar ou resolver um impedimento gera versão nova, porque `transfer_impediments` é campo material (§6.7). A ciência do comprador fica desatualizada (Inc. 5).
+- **Fora do estado (E24):** o impedimento não entra no cálculo da seção 2.1. Ele tem aviso próprio, separado das pendências documentais (§6.11). O comentário da migração da I2.5 que o previa como candidato será corrigido.
+
+### 2.12. Linguagem proibida (E25 a E28)
+
+- **Lista (E25):** entra "sem ocorrências", com as flexões. "100% liberado" não aparece em tela. Outros termos, se surgirem, vão para a pessoa responsável.
+- **Data (E26):** o varredor continua aceitando a qualificação sem a data. A regra fica na tela: onde aparece `no_findings_in_sources`, a data da consulta e a fonte aparecem ao lado (§6.4, "Exibição"). Um teste da I3.6 confere isso.
+- **Alcance do varredor (E27):** passa a ler também os modelos de `supabase/templates/` e as mensagens de `raise exception` das migrações, que chegam à tela. As notificações do Inc. 5 ficam em pastas varridas.
+- **Texto livre gravado na hora (E28):** `result_summary`, `known_limitations` e os motivos das revisões e dos impedimentos passam pela mesma lista. A conferência é feita no servidor e num gatilho. A lista do banco fica numa chave de `platform_settings`, e um teste confere que ela é igual a `config/linguagem-proibida.json`.
+
+### 2.13. Snapshot e versão (E32, E33)
+
+- **Tabelas novas no versionamento:** `vehicle_checks`, `documental_reviews` e `transfer_impediments` ganham o gatilho de versão adiado do ADR-0003 §2.6.
+- **O que entra (E32):** tudo o que o comprador vê da consulta (§7.3).
+  - Para cada consulta vigente da categoria: fonte, tipo de fonte, data da consulta (texto no formato `AAAA-MM-DDTHH:MM:SSZ`, em UTC), resultado, resumo, limitações e se há evidência anexada. Isso fica sob o campo material `findings`.
+  - A revisão aberta entra como fato da categoria.
+  - A seção `transfer_impediments` passa a listar cada impedimento, com base, situação e data.
+- **`schema_version` 2:** as versões criadas depois da migração do Inc. 3 usam o formato novo. As anteriores continuam com o snapshot e o hash gravados.
+- **Ressalvas novas (E33):** códigos `.v1` para `pending`, `under_review` e o impedimento, e um para `no_findings_in_sources`, que lembra que o resultado vale só para as fontes consultadas. Os textos são provisórios até a D5 e passam pelo teste de linguagem.
+- **Conferência de quem chama (R-I2.11-07 do ADR-0003):** no Inc. 3, todos os escritores leem a oferta (fornecedor, equipe, ou o gatilho do impedimento dentro da sessão de um deles). A variante interna sem conferência fica para antes do Inc. 4 ou 5, como registrado.
+
+### 2.14. O que o comprador vê (E35)
+
+- **Até a D5 (§7.3):** o estado de cada categoria, a fonte, a data, as limitações e o resumo de quem registrou.
+- **Fica oculto:** `details`, `protocol`, os autores e os arquivos de evidência. O catálogo chega no Inc. 4.
+
+### 2.15. Operações de servidor
+
+- **`recordCheck`:** consulta e evidência numa operação. O arquivo vai antes, pela sessão, e a linha da consulta depois, como o envio de documento da I2.4.
+- **`openDocumentalReview` e `closeDocumentalReview`:** com motivo.
+- **`resolveTransferImpediment` (nova):** só o administrador, com motivo e evidência.
+- **Regras gerais:** o mesmo padrão das operações da I2.6, isto é, esquema estrito, ator da sessão, resposta igual para oferta alheia e inexistente, e o banco como quem decide.
+
+### 2.16. Tabelas (para a I3.3)
+
+- **`vehicle_checks`:**
+  - colunas da §5.3, mais `recorded_at`;
+  - só inclusão, com o gatilho do I0.6, que barra também `service_role` e `postgres`;
+  - CHECKs com nome próprio: resultado, tipo de fonte, método, data e dado pessoal;
+  - chaves estrangeiras compostas que garantem a mesma oferta e o mesmo `is_test` em `supersedes_check_id` e `evidence_document_id`.
+- **`documental_reviews`:** colunas da §5.3, mais `created_at`; só inclusão.
+- **`transfer_impediments`:**
+  - colunas da §5.3, mais `identified_at`, `resolved_by`, `resolved_at` e `resolution_reason`;
+  - exatamente uma origem (`source_check_id` ou `source_declaration_id`), da mesma oferta;
+  - gatilho que só aceita a passagem para `resolved`.
+- **`check_evidence_files`:** como `offer_documents` da I2.4, no bucket `check-evidence`.
+- **Leitura:** a empresa dona e a equipe da plataforma, pela RLS. A evidência sai só pelo servidor.
+
+## 3. Testes do Inc. 3
+
+- **Tabela de decisão:**
+  - **unitário:** as 40 linhas do anexo A.2, com a exceção da P1, escritas como dados no próprio teste, como na I2.7;
+  - **integração:** a paridade entre `private.estado_documental` e `rules/estados.ts`, em todas as linhas e nos casos com mais de uma consulta vigente.
+- **Testes 7, 10 e 11:** os casos do anexo A.8, com contraste e mutação. Mudanças pelas respostas da seção 6:
+  - o CT7.4 é negativo (E15);
+  - o CT10.8 espera `with_findings` (P1);
+  - CT10.12, novo: `no_findings_in_sources` sem evidência aparece com "sem evidência anexada" (P2).
+- **Dado pessoal:** os casos do anexo A.6, inclusive pela `service_role`.
+- **Impedimento:**
+  - criação automática por declaração e por consulta em `transfer_conditions`, sem impedimento em outras categorias;
+  - a oferta não é enviada nem publicada com impedimento ativo;
+  - a publicada sai de `private.oferta_aberta`, e a T08 é recusada;
+  - a resolução só pelo administrador, com evidência;
+  - a imutabilidade.
+- **Linguagem:** os modelos de e-mail e as mensagens do banco no varredor; o texto livre recusado no servidor e no gatilho; a paridade da lista entre a configuração e o banco.
+- **Revisão independente (I3.7) e revisão externa (I3.8):** as do plano.
+
+## 4. Alternativas descartadas
+
+- **Guardar o estado numa coluna:** a §6.4 proíbe digitar o estado. Um cache deixaria duas verdades.
+- **Divergência também entre ocorrência declarada e consulta sem ocorrência:** descartada pela P1.
+- **Exigir evidência para "sem apontamentos nas fontes consultadas":** descartada pela P2.
+- **Impedimento registrado à mão pela equipe:** descartado pela P3. A equipe continua podendo abrir revisão documental.
+- **Oferta com impedimento ativo publicada só com aviso:** descartada pela P4 e pela D9.
+- **Evidência de consulta em `offer_documents`:** misturaria arquivo da plataforma com conteúdo do fornecedor e furaria a Q3 do ADR-0003.
+- **Lista de chaves de dado pessoal em configuração:** um CHECK não lê tabela, e um gatilho no lugar do CHECK não vale para todo caminho do mesmo jeito.
+
+## 5. Consequências
+
+- **O estado da I2.5 muda em 32 das 40 linhas** quando as consultas e as revisões entrarem. Ofertas já publicadas no `dev` ganham versão nova só quando algum registro novo mudar o snapshot.
+- **Formato 2 do snapshot:** as telas e a ciência (Inc. 5) leem as duas versões.
+- **Catálogo (Inc. 4):** usa `private.oferta_aberta`, que já sabe do impedimento ativo.
+- **Mais um bucket privado** (`check-evidence`) no reset e na trava de destino (ADR-0002 §2.14).
+- **O varredor de linguagem fica maior:** lê modelos HTML e migrações.
+- **Declaração por engano em `transfer_conditions`:** o impedimento nasce na hora e só sai com o administrador, mesmo que o fornecedor corrija a declaração. É o custo de não haver resolução automática (seção 2.11).
+
+## 6. Perguntas à pessoa responsável
+
+Respondidas em 30/10:
+
+| # | Pergunta | Resposta | Seção |
+|---|---|---|---|
+| P1 | O fornecedor declara ocorrência, e a consulta não encontra nada: "Em análise" ou "Com apontamentos"? | **Com apontamentos:** vale a declaração; não é divergência | 2.4 |
+| P2 | "Sem apontamentos nas fontes consultadas" exige evidência anexada? | **Não exige:** basta a consulta com fonte, data e limitações; a tela mostra "sem evidência anexada" | 2.8 |
+| P3 | Quem registra e quem resolve o impedimento? | **Automático por categoria:** ocorrência em `transfer_conditions` gera o impedimento; só o administrador resolve, com evidência | 2.11 |
+| P4 | Impedimento numa oferta já publicada ou reservada? | **Sai do catálogo** enquanto o impedimento estiver ativo; o fornecedor vê o motivo; volta quando resolvido | 2.11 |
+
+## 7. Respostas às ambiguidades da I3.1
+
+| ID | Decisão | Seção |
+|---|---|---|
+| E1 | todas as não substituídas são vigentes; `no_findings_in_sources` só com todas `nos` | 2.3 |
+| E2 | `pending` só pela vigente | 2.3 |
+| E3 | mesma oferta, categoria e `is_test`; anterior vigente; uma substituição só; o fornecedor só substitui consulta da própria empresa | 2.3 |
+| E4 | não é divergência (P1) | 2.4 |
+| E5 | `unknown` não diverge | 2.4 |
+| E6 | automática só pelo valor; o resto por revisão | 2.4 |
+| E7 | fechar a revisão não desfaz a divergência | 2.4 |
+| E8 | aberta = última ação `open_review`; sem fechar sem abrir nem abrir duas vezes; motivo nas duas | 2.5 |
+| E9 | documento não muda o estado | 2.6 |
+| E10 | O4 só com fonte oficial, evidência e registro pela equipe sem vínculo | 2.7 |
+| E11 | nenhum documento chega à O4 no Inc. 3 | 2.6 |
+| E12 | a revisão é fato, sem rótulo de origem; sem informação, O5 | 2.7 |
+| E13 | `awaiting_result` e `inconclusive` como O3, por extenso | 2.7 |
+| E14 | evidência não exigida (P2) | 2.8 |
+| E15 | copiado da oferta; igualdade nos dois sentidos | 2.9 |
+| E16 | equipe sem vínculo, ou fornecedor pela tabela de edição; `performed_by` = quem registra no piloto | 2.9 |
+| E17 | equipe em `draft`, `under_review`, `published`, `reserved` e `suspended`; fornecedor pela tabela de edição | 2.9 |
+| E18 | bucket e tabela próprios para a evidência; a equipe envia com a própria sessão | 2.8 |
+| E19 | operador ou administrador sem vínculo | 2.5 |
+| E20 | automático por `transfer_conditions` (P3) | 2.11 |
+| E21 | só o administrador, com motivo e evidência; sem resolução automática | 2.11 |
+| E22 | só a passagem para `resolved`, uma vez; sem DELETE | 2.11 |
+| E23 | sai do catálogo; T08 recusada; versão nova (P4) | 2.11 |
+| E24 | fora do estado, com aviso próprio | 2.11 |
+| E25 | "sem ocorrências" na lista; "100% liberado" fora da tela | 2.12 |
+| E26 | data e fonte sempre ao lado de `no_findings_in_sources`; o varredor não muda | 2.12 |
+| E27 | varredor também em `supabase/templates/` e nas mensagens das migrações | 2.12 |
+| E28 | texto livre conferido no servidor e num gatilho, com a lista em `platform_settings` | 2.12 |
+| E29 | lista numa função imutável; sem maiúsculas nem acentos; qualquer nível; chave composta | 2.10 |
+| E30 | placa, RENAVAM e chassi recusados em `details` | 2.10 |
+| E31 | lista positiva no servidor; orientação na tela; evidência com a D5 | 2.10 |
+| E32 | tudo o que o comprador vê da consulta entra no snapshot | 2.13 |
+| E33 | códigos `.v1` novos, provisórios até a D5 | 2.13 |
+| E34 | oferta obrigatória; veículo pelo gatilho; categoria configurada; só `manual`; data não futura | 2.9 |
+| E35 | o que a §7.3 lista; o resto oculto até a D5 | 2.14 |
 
 ---
 

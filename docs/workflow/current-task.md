@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 2 (oferta) concluído em 30/10, com o gate cumprido, o ADR-0003 aceito e a I2.11 fechada. O Inc. 1 foi concluído em 28/10, com o ADR-0002 aceito; a R7 fica para a I6.9.  
 **Próxima subtarefa:**
-- **Inc. 3 (domínio documental):** I3.2, as decisões do ADR-0004 a partir do anexo A, pelo T2. Antes, a pessoa responsável responde às ambiguidades que mudam o produto (como a I2.2 fez com Q1 a Q5). O piloto com dados reais continua bloqueado pela D5.
+- **Inc. 3 (domínio documental):** I3.3, as migrações de `vehicle_checks`, `documental_reviews`, `transfer_impediments` e `check_evidence_files`, com a função de estado completa, pelo T2 (ADR-0004 §2.16). O piloto com dados reais continua bloqueado pela D5.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -918,3 +918,20 @@
 - **Repositório público:** as referências ao código a portar (arquivos, linhas, nomes de campo do provedor) e um achado de segurança de outro projeto ficaram em `notas-privadas/i3.1-inventario-privado.md`, fora do Git. O anexo traz só a descrição genérica.
 - **Correção de passagem:** o diagnóstico ainda mostrava a D9 como pendente; a linha passou a registrar a decisão de 29/10.
 - **Comparação com o Inc. 2:** 33 das 40 linhas mudam quando as consultas e as revisões entrarem (32, se a E4 disser que ocorrência declarada com consulta sem ocorrência não é divergência).
+
+### 2026-10-30 · I3.2 · decisões do domínio documental (ADR-0004 proposto)
+
+- **Respostas da pessoa responsável** (ADR-0004 §6):
+  - **P1:** ocorrência declarada com consulta sem ocorrência não é divergência; vale "Com apontamentos";
+  - **P2:** "Sem apontamentos nas fontes consultadas" não exige evidência; a tela mostra "sem evidência anexada";
+  - **P3:** o impedimento nasce automaticamente de ocorrência em `transfer_conditions`, por declaração ou consulta; só o administrador resolve, com evidência;
+  - **P4:** a oferta publicada ou reservada com impedimento ativo sai do catálogo e volta quando ele for resolvido.
+- **Decisões do T2:** as demais ambiguidades seguem a leitura conservadora do anexo A, uma a uma na §7 do ADR-0004. As que mais pesam na I3.3:
+  - toda consulta não substituída é vigente;
+  - a evidência fica num bucket e numa tabela próprios (`check-evidence`, `check_evidence_files`), enviada pela sessão de quem registra, inclusive a equipe da plataforma;
+  - a O4 exige fonte oficial, evidência e registro pela equipe sem vínculo;
+  - a trava de dado pessoal recusa também placa, RENAVAM e chassi em `details`, sem maiúsculas nem acentos e em qualquer nível;
+  - o texto livre passa pela lista de linguagem proibida no servidor e num gatilho;
+  - o snapshot passa ao formato 2.
+- **Conferência:** um script implementou as regras da §2.1 e comparou com as 40 linhas do anexo A.2. Só a linha 25 difere, que é a mudança da P1. Em relação ao Inc. 2, mudam 32 linhas.
+- **Consequência registrada:** uma declaração por engano em `transfer_conditions` só sai com o administrador, porque não há resolução automática.
