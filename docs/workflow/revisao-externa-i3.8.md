@@ -12,19 +12,20 @@ O Inc. 3 completa o estado documental da oferta: consultas registradas à mão (
 2. **Apontamento:** consulta com ocorrência e ocorrência declarada aparecem como "Com apontamentos", com a origem de cada informação separada (§6.5).
 3. **Divergência:** "sem ocorrência conhecida" declarada com consulta que tem ocorrência fica "Em análise". Ocorrência declarada com consulta sem ocorrência fica "Com apontamentos", pela decisão P1 da pessoa responsável.
 4. **Alteração posterior:** consulta nova, revisão e impedimento geram versão nova da oferta, e o registro anterior continua legível e intacto (só inclusão).
-5. **Falso estado de verificação:** "Sem apontamentos nas fontes consultadas" só existe com consulta registrada, sempre com a fonte e a data ao lado. Nenhum texto afirma verificação ou garantia (§6.6). Consulta de teste nunca se liga a oferta real.
+5. **Falso estado de verificação:** "Sem apontamentos nas fontes consultadas" só existe com consulta registrada, sempre com a fonte e a data ao lado. Nenhum texto afirma verificação ou garantia (§6.6). Isso inclui o texto livre: o resumo e as limitações da consulta, os motivos da revisão e do impedimento e o detalhe da declaração do fornecedor passam pela lista, no servidor e no banco. Consulta de teste nunca se liga a oferta real.
 6. **Rastreabilidade:** quem consultou, quem registrou, quando, a fonte, as limitações e a evidência. A evidência só abre pelo servidor, com registro de acesso.
 
 ## Onde olhar
 
-- **Código:** o diff `89b330d..HEAD` da branch `main` do repositório `85dyones/ideal-garbanzo`. As migrações são `20261030120000`, `20261030150000` e `20261030180000`; o servidor fica em `src/modules/documental/`; as telas, em `src/app/(conta)/empresa/[empresaId]/ofertas/[ofertaId]/` e `src/app/(admin)/admin/ofertas/[ofertaId]/`.
-- **Decisões e ressalvas:** ADR-0004 §2, §6, §7 e §8. A §8 traz a revisão do T3 e o que já foi corrigido.
+- **Código:** o diff `89b330d..cd83dc4` da branch `main` do repositório `85dyones/ideal-garbanzo`. As migrações são `20261030120000`, `20261030150000`, `20261030180000` e `20261030200000`; o servidor fica em `src/modules/documental/`; as telas, em `src/app/(conta)/empresa/[empresaId]/ofertas/[ofertaId]/` e `src/app/(admin)/admin/ofertas/[ofertaId]/`.
+- **Decisões e ressalvas:** ADR-0004 §2, §6, §7 e §8. A §8 traz a revisão do T3, o que a I3.9 corrigiu e as decisões da pessoa responsável sobre a R-I3.7-07 e a R-I3.7-13. Todas as ressalvas da §8 estão corrigidas, tratadas ou registradas.
+- **Já registrados, sem precisar voltar:** os achados visuais TV-08, TV-11, TV-13, TV-16, TV-18, TV-20 e TV-24, no `current-task.md` (entradas da revisão visual da I3.6).
 - **Evidência de testes:**
   - `supabase/tests/database/400` a `430` (pgTAP);
   - `tests/integration/documental-operacoes.test.ts` e `estado-documental-paridade.test.ts`;
   - `tests/e2e/documental.spec.mts`;
   - mutações em `supabase/tests/mutacoes/inc-3.md`.
-- **Ambiente de homologação:** o preview da Vercel da `main`, atrás da autenticação da Vercel, ligado ao projeto Supabase de desenvolvimento, que só tem dados de teste. O acesso e as contas de teste não ficam neste arquivo. A pessoa responsável os entrega ao revisor por fora, a partir de `notas-privadas/`.
+- **Ambiente de homologação:** o preview da Vercel da `main` (o do `cd83dc4` foi publicado em 30/10), atrás da autenticação da Vercel, ligado ao projeto Supabase de desenvolvimento, que só tem dados de teste. O acesso e as contas de teste não ficam neste arquivo. A pessoa responsável os entrega ao revisor por fora, a partir de `notas-privadas/`.
 
 ## Fora do escopo
 

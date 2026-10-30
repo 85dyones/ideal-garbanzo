@@ -1110,3 +1110,7 @@
   - **e2e:** `test:e2e` com 31 passando;
   - **código:** 406 unitários, tipos, lint, formatação e build passando;
   - **mutações:** as 20 da I3.9, rodadas de novo depois da migração, todas detectadas e sem derrubar o contraste.
+- **Push (aprovado pela pessoa responsável em 30/10):** `9dbfa24..cd83dc4`, com a I3.5, a I3.4, a I3.6, a I3.7, a I3.9, as duas rodadas da revisão visual e estas decisões. CI da run `41096513539` verde nos três jobs (banco com Supabase efêmero, pgTAP e integração; lint, tipos, testes e formatação; build).
+- **Histórico público:** os nomes de campo que a R-I3.7-13 tirou da trava continuam nas migrações `20261030120000` (enviada no `9dbfa24`) e `20261030180000`, que não se editam depois de aplicadas. O registro das mutações deixou de copiá-los.
+- **Roteiro da I3.8 atualizado:** o diff vai até o `cd83dc4`, com a migração `20261030200000`, as decisões da §8 e os achados visuais já registrados. O preview da Vercel do `cd83dc4` foi publicado.
+- **Worktrees dos builders:** os 10 de `.claude/worktrees/` foram removidos. Os seis que tinham alterações sem commit ficaram com elas guardadas num commit na própria branch local (`worktree-agent-*`), sem envio. Os arquivos estavam na `main` ou eram rascunhos que o T2 ajustou ao integrar.
