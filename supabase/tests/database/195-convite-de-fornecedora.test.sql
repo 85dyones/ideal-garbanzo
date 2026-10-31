@@ -6,7 +6,7 @@
 -- exercitadas sozinhas, com o gatilho desligado só dentro desta transação. A
 -- data de vencimento muda do mesmo jeito, só para montar o convite vencido.
 begin;
-select plan(58);
+select plan(75);
 
 -- Apoio do arquivo (objetos temporários, desfeitos no rollback) -------------------
 
@@ -207,6 +207,9 @@ select pg_temp.usuario('N4', '19500000-0000-4000-8000-00000000000b');
 select pg_temp.usuario('N5', '19500000-0000-4000-8000-00000000000c');
 select pg_temp.usuario('NU', '19500000-0000-4000-8000-00000000000d', false);
 select pg_temp.usuario('XA', '19500000-0000-4000-8000-00000000000e');
+select pg_temp.usuario('D1', '19500000-0000-4000-8000-00000000000f');
+select pg_temp.usuario('D2', '19500000-0000-4000-8000-000000000010');
+select pg_temp.usuario('E1', '19500000-0000-4000-8000-000000000011');
 select pg_temp.admin('X');
 select pg_temp.conceder('O', 'operator', 'X');
 select pg_temp.conceder('XA', 'admin', 'X');
@@ -216,6 +219,9 @@ select pg_temp.vincular('C', 'AM', 'member', 'A1');
 select pg_temp.vincular('C', 'XA', 'org_admin', 'A1');
 select pg_temp.empresa('S', 'S1', 'X', '19500000000260', 'supplier');
 select pg_temp.empresa('B', 'B1', 'X', '19500000000340', 'buyer');
+select pg_temp.empresa('D', 'D1', 'X', '19500000000936', 'buyer');
+select pg_temp.vincular('D', 'D2', 'org_admin', 'D1');
+select pg_temp.empresa('E', 'E1', 'X', '19500000001070', 'buyer');
 
 -- Guarda o id do convite pendente do e-mail (e da empresa, se houver) na fixture.
 create function pg_temp.guardar_convite(nome text, perfil text, empresa text default null) returns void
@@ -247,11 +253,13 @@ select is(
   pg_temp.resultado($$insert into public.supplier_invitations (email) values ('  N1-195@Repasse-Teste.invalid ')$$),
   'linhas: 1',
   'CV03: o administrador da plataforma convida (contraste de CV01 e CV02)');
+reset role;
 select ok(
   (select c.invited_by = pg_temp.id('X') and c.status = 'pending' and c.organization_id is null
           and c.expires_at = now() + interval '14 days'
    from public.supplier_invitations c where c.email = 'n1-195@repasse-teste.invalid'),
   'CV03: o e-mail fica normalizado, com quem convidou, pendente e a validade da configuração (14 dias)');
+set local role authenticated;
 select throws_ok(
   $$insert into public.supplier_invitations (email) values ('n1-195@repasse-teste.invalid')$$,
   'P0001', 'já existe convite pendente para este e-mail',
@@ -274,11 +282,27 @@ select is(
   'linhas: 2',
   'CV08: o convite para a compradora vai aos administradores dela (contraste de CV06 e CV07)');
 select is(
+  pg_temp.resultado($$insert into public.supplier_invitations (email, organization_id)
+    values ('xa-195@repasse-teste.invalid', pg_temp.id('C')), ('d1-195@repasse-teste.invalid', pg_temp.id('D')),
+           ('e1-195@repasse-teste.invalid', pg_temp.id('E'))$$),
+  'linhas: 3',
+  'CV08b: convites de XA para C, de D1 para D e de E1 para E');
+select is(
   pg_temp.resultado($$insert into public.supplier_invitations (email)
     values ('n3-195@repasse-teste.invalid'), ('n4-195@repasse-teste.invalid'),
            ('n5-195@repasse-teste.invalid'), ('nu-195@repasse-teste.invalid')$$),
   'linhas: 4',
   'CV09: convites de N3, N4, N5 e NU');
+select pg_temp.entrar('XA');
+select throws_ok(
+  $$insert into public.supplier_invitations (email, organization_id) values ('xa-195@repasse-teste.invalid', pg_temp.id('B'))$$,
+  '42501', 'ninguém convida o próprio e-mail para fornecer',
+  'CV11: ninguém convida o próprio e-mail, nem quem administra a plataforma (R-I1.11-03)');
+select pg_temp.entrar('X');
+select throws_ok(
+  $$insert into public.supplier_invitations (email) values ('x-195@repasse-teste.invalid')$$,
+  '42501', 'ninguém convida o próprio e-mail para fornecer',
+  'CV11: nem para empresa nova');
 
 reset role;
 select pg_temp.entrar(null);
@@ -288,6 +312,9 @@ select pg_temp.guardar_convite('convite N4', 'N4');
 select pg_temp.guardar_convite('convite NU', 'NU');
 select pg_temp.guardar_convite('convite A1', 'A1', 'C');
 select pg_temp.guardar_convite('convite A2', 'A2', 'C');
+select pg_temp.guardar_convite('convite XA', 'XA', 'C');
+select pg_temp.guardar_convite('convite D1', 'D1', 'D');
+select pg_temp.guardar_convite('convite E1', 'E1', 'E');
 
 -- A política de inclusão sozinha, com o gatilho desligado só nesta transação.
 alter table public.supplier_invitations disable trigger supplier_invitations_proteger;
@@ -319,6 +346,16 @@ select is(
   (select count(*)::int from public.supplier_invitations),
   0,
   'LE03: com o e-mail sem confirmação, nem o próprio convite');
+select pg_temp.entrar('N1');
+select throws_ok(
+  $$select invited_by from public.supplier_invitations$$,
+  '42501', 'permission denied for table supplier_invitations',
+  'LE07: o convidado não lê quem convidou, usou ou revogou (R-I1.11-11)');
+select is(
+  pg_temp.resultado($$select id, email, organization_id, status, expires_at, used_at, revoked_at, created_at, updated_at
+    from public.supplier_invitations$$),
+  'linhas: 1',
+  'LE07: lê as colunas das telas (contraste)');
 select pg_temp.entrar('O');
 select ok(
   exists (select 1 from public.supplier_invitations where id = pg_temp.id('convite N1')),
@@ -415,6 +452,15 @@ select is(
     values ('Loja N5', 'Loja N5 Ltda', '19500000000774', 'both')$$),
   'linhas: 1',
   'PD09: com convite, o pedido como fornecedora e compradora entra');
+-- O gatilho sozinho: como postgres, com as claims do administrador.
+reset role;
+select pg_temp.entrar('X');
+select throws_ok(
+  $$update public.membership_applications set supplier_invitation_id = null
+    where applicant_profile_id = pg_temp.id('N5')$$,
+  '42501', 'os dados enviados no pedido não mudam',
+  'PD13 (gatilho): o convite do pedido não muda (R-I1.11-12)');
+set local role authenticated;
 
 select pg_temp.entrar('X');
 select is(
@@ -447,6 +493,21 @@ select throws_ok(
 reset role;
 select pg_temp.entrar(null);
 alter table public.membership_applications enable trigger membership_applications_vincular_convite;
+
+-- PD12: o convite para a compradora não serve ao pedido de empresa nova (R-I1.11-01).
+set local role authenticated;
+select pg_temp.entrar('A1');
+select throws_ok(
+  $$insert into public.membership_applications (organization_name, legal_name, cnpj, requested_kind)
+    values ('Loja A1 nova', 'Loja A1 nova Ltda', '19500000000855', 'supplier')$$,
+  'P0001', 'o pedido como fornecedora exige convite da plataforma para o seu e-mail',
+  'PD12: o convite para a compradora não libera o pedido de uma empresa nova (R-I1.11-01)');
+reset role;
+select is(
+  (select status from public.supplier_invitations where id = pg_temp.id('convite A1')),
+  'pending',
+  'PD12: o convite da compradora continua pendente');
+select pg_temp.entrar(null);
 
 -- AC: a compradora passa a fornecer pelo aceite -----------------------------------------
 
@@ -521,6 +582,33 @@ select throws_ok(
   $$update public.supplier_invitations set status = 'revoked' where id = pg_temp.id('convite A1')$$,
   'P0001', 'convite usado ou revogado não muda',
   'AC07: convite aceito não muda');
+select pg_temp.entrar('XA');
+select throws_ok(
+  $$update public.supplier_invitations set status = 'used' where id = pg_temp.id('convite XA')$$,
+  'P0001', 'o convite vale só para compradora ativa',
+  'AC12: a compradora que já passou a fornecer não aceita outro convite');
+select pg_temp.entrar('D2');
+select is(
+  pg_temp.resultado($$update public.organization_members set status = 'suspended' where id = pg_temp.id('D/D1')$$),
+  'linhas: 1',
+  'AC10: D2 suspende o vínculo de D1');
+select pg_temp.entrar('D1');
+select throws_ok(
+  $$update public.supplier_invitations set status = 'used' where id = pg_temp.id('convite D1')$$,
+  '42501', 'só o administrador da empresa convidado aceita o convite',
+  'AC10: com o vínculo suspenso, o administrador da empresa não aceita (R-I1.11-05)');
+select pg_temp.entrar('X');
+select pg_temp.api('{"x-audit-reason": "suspensao de teste"}');
+select is(
+  pg_temp.resultado($$update public.organizations set status = 'suspended' where id = pg_temp.id('E')$$),
+  'linhas: 1',
+  'AC11: o administrador suspende a compradora E');
+select pg_temp.api(null);
+select pg_temp.entrar('E1');
+select throws_ok(
+  $$update public.supplier_invitations set status = 'used' where id = pg_temp.id('convite E1')$$,
+  '42501', 'só o administrador da empresa convidado aceita o convite',
+  'AC11: com a empresa suspensa, o administrador dela não aceita (R-I1.11-05)');
 
 select pg_temp.entrar('X');
 select is(
@@ -558,10 +646,17 @@ select is(
 
 -- RV: revogação ------------------------------------------------------------------------
 
+reset role;
 select ok(
   (select revoked_by = pg_temp.id('X') and revoked_at is not null and used_at is null
    from public.supplier_invitations where id = pg_temp.id('convite N4')),
   'RV01: a revogação grava quem revogou e quando');
+-- O gatilho sozinho: como postgres, com as claims do administrador.
+select throws_ok(
+  $$update public.supplier_invitations set email = 'outro-195@repasse-teste.invalid' where id = pg_temp.id('convite NU')$$,
+  '42501', 'os dados do convite não mudam',
+  'RV06 (gatilho): os dados do convite não mudam (R-I1.11-05)');
+set local role authenticated;
 select pg_temp.entrar('O');
 select is(
   pg_temp.resultado($$update public.supplier_invitations set status = 'revoked' where id = pg_temp.id('convite NU')$$),
@@ -608,6 +703,25 @@ select ok(
           where l.action = 'supplier_invitations.update' and l.entity_id = pg_temp.id('convite N4')
             and l.metadata -> 'status' ->> 'para' = 'revoked'),
   'AU02: a revogação também');
+
+set local role authenticated;
+select pg_temp.entrar('N4');
+select is(
+  (select count(*)::int from public.supplier_invitations),
+  1,
+  'LE06: N4 lê o próprio convite revogado (contraste)');
+select pg_temp.entrar('X');
+select pg_temp.api('{"x-audit-reason": "suspensao de teste"}');
+select is(
+  pg_temp.resultado($$update public.profiles set status = 'suspended' where id = pg_temp.id('N4')$$),
+  'linhas: 1',
+  'LE06: o administrador suspende N4');
+select pg_temp.api(null);
+select pg_temp.entrar('N4');
+select is(
+  (select count(*)::int from public.supplier_invitations),
+  0,
+  'LE06: com o perfil suspenso, nem o próprio convite (R-I1.11-05)');
 
 reset role;
 select pg_temp.entrar(null);

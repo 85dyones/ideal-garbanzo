@@ -36,6 +36,7 @@
 | Data | Tema | Decisão | Seções |
 |---|---|---|---|
 | 30/10/2026 | Entrada das empresas | O cadastro público cria só empresa compradora. A fornecedora entra por convite do administrador da plataforma, que libera o pedido de adesão; a aprovação continua a mesma. A empresa que compra e fornece também depende de convite. | §1.3, §3.1, §5.1, §6.1, §9 |
+| 31/10/2026 | Compradora que passa a fornecer | O aceite do convite por um administrador ativo da compradora basta, sem nova aprovação: a adesão como compradora já registrou a conferência de CNPJ. Se a C5 exigir documento próprio de fornecedora, a regra volta a ser decidida. | §6.1 |
 
 ---
 
@@ -381,7 +382,7 @@ O efeito sobre a publicação depende da decisão D9.
   - a empresa fornecedora entra por convite de um administrador da plataforma;
   - o convite vai para um e-mail e libera, a quem confirmar esse e-mail, o pedido de adesão como fornecedora ou como fornecedora e compradora;
   - a aprovação segue a regra acima;
-  - a empresa compradora ativa passa a fornecer também só por convite, com a mesma aprovação.
+  - a empresa compradora ativa passa a fornecer também só por convite: o aceite de um administrador ativo dela basta, porque a aprovação da adesão como compradora já registrou a conferência de CNPJ (decisão da pessoa responsável em 31/10/2026).
 - Os documentos exigidos para aprovação dependem de decisão (seção 13). Até lá, o registro guarda o que foi conferido, sem lista fixa no código.
 - Empresa suspensa perde o acesso na operação seguinte. A revalidação acontece no servidor e nas políticas do banco, não só no vencimento do token.
 

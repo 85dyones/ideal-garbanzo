@@ -63,7 +63,9 @@ export function convidarFornecedora(
       }
       if (empresaId !== undefined) return sucesso({ conviteId: data.id });
 
-      const perfis = await administrativo
+      // A sessão do administrador lê todos os perfis (`profiles_leitura`);
+      // a chave secreta fica para o limite e o convite do Auth (§2.12).
+      const perfis = await dependencias.sessao
         .from("profiles")
         .select("id")
         .eq("email", email)

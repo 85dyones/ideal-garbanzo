@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 2 (oferta) concluído em 30/10, com o gate cumprido, o ADR-0003 aceito e a I2.11 fechada. O Inc. 1 foi concluído em 28/10, com o ADR-0002 aceito; a R7 fica para a I6.9.  
 **Próxima subtarefa:**
-- **Mudança de escopo de 30/10 (fornecedora só por convite):** I1.9 e I1.10 entregues. Falta a I1.11 (revisão independente, T3). O texto do `convite.html` no painel do Auth fica com a pessoa responsável.
+- **Mudança de escopo de 30/10 (fornecedora só por convite):** concluída em 31/10, com I1.9 a I1.12 e a revisão independente sem crítico nem alto (ADR-0002 §9 e §10). Fica com a pessoa responsável o texto do `convite.html` no painel do Auth.
 - **Inc. 4 (catálogo privado):** I4.0 em andamento, com o ADR-0005 em preparação. Faltam as respostas P5 a P7.
 - **Inc. 3 (domínio documental):** a I3.8 (revisão externa, AG), pela pessoa responsável, com o roteiro em `docs/workflow/revisao-externa-i3.8.md`. Depois dela, o gate e o aceite do ADR-0004. O piloto com dados reais continua bloqueado pela D5.
 
@@ -1168,4 +1168,35 @@
   - a lista de compradoras usa a leitura de empresas que já existia, limitada a 200.
 - **E2E:** `convite-de-fornecedora.spec.mts` (4 cenários) e o `adesao.spec.mts` ajustado.
 - **Evidência:** e2e com 35 passando; 417 unitários, tipos, lint, formatação e build passando.
+
+### 2026-10-31 · I1.11 e I1.12 · revisão independente da mudança de escopo e correção das ressalvas
+
+- **I1.11:** subagente `reasoning-review` (T3), só em leitura, sobre `96b4253..39912a1`.
+  - **Veredito:** "aprovado com ressalvas", sem crítico nem alto, e sem caminho para entrar fornecedora sem convite válido.
+  - **Achados:** 2 médios, 6 baixos e 6 informativos, no ADR-0002 §10.
+- **Decisão da pessoa responsável (R-I1.11-02, 31/10):** a compradora que aceita o convite não passa por nova aprovação; o aceite de um `org_admin` ativo basta. A especificação (§0 e §6.1) e o ADR-0002 §9 foram atualizados.
+- **I1.12 (T2):**
+  - **Migração `20261031090000_ressalvas_do_convite`:**
+    - ninguém convida o próprio e-mail;
+    - o convidado lê só as colunas das telas;
+    - o convite do pedido entrou no que não muda.
+  - **Servidor e telas:**
+    - a leitura do perfil no convite usa a sessão do administrador;
+    - a consulta dos convites do usuário filtra pelo e-mail confirmado;
+    - o botão de aceitar aparece só ao `org_admin` ativo de compradora ativa.
+  - **Testes:**
+    - o `195` passou a 75 asserções: convite da compradora no pedido de empresa nova, autoconvite, leitura por coluna, convite do pedido, suspensões, compradora que já fornece e o gatilho do convite sozinho;
+    - a integração ganhou a `falha_parcial` e a leitura por e-mail.
+  - **Mutações:** 28 de banco (C01 a C28) e 2 de código, todas detectadas, em `supabase/tests/mutacoes/inc-1.md`.
+  - **Também:**
+    - remissões à §9 no ADR-0002;
+    - a confirmação de e-mail no `repasse-prod` entrou na I6.9;
+    - nome neutro num teste;
+    - `entrepatios-brand/**` fora do ESLint.
+- **E2E perto do limite de login:** numa rodada, o `ofertas.spec` bateu no limite de 30 entradas por IP em 15 minutos, e o teste de login falhou na tela de entrar. Depois da janela, os 4 testes do arquivo passaram. Com os cenários do convite, a suíte inteira chega perto do limite numa rodada só.
+- **Evidência no dev**, depois de `db:reset` com as 17 migrações:
+  - **banco:** `test:db` com 28 arquivos passando;
+  - **integração:** `test:integration` com 13 arquivos e 133 testes passando;
+  - **e2e:** 35 passando (32 numa rodada e o `ofertas.spec` de novo depois da janela do limite);
+  - **código:** 417 unitários, tipos, lint, formatação e build passando.
 

@@ -11,6 +11,7 @@ import { obterPerfil } from "@/modules/auth/queries/perfis";
 import {
   ehDaEquipeDaPlataforma,
   podeVerCatalogo,
+  vinculoAtivo,
 } from "@/modules/auth/rules/permissoes";
 import { ROTULO_DO_PAPEL_NA_PLATAFORMA } from "@/modules/auth/ui/rotulos";
 import { convitesDeFornecedoraDoUsuario } from "@/modules/membership/queries/convites";
@@ -47,26 +48,41 @@ export default async function PaginaDeInicio() {
   const ativos = contexto.vinculos.filter((v) => v.status === "active");
   const suspensos = contexto.vinculos.filter((v) => v.status === "suspended");
 
-  const [perfil, pedidos, empresas, convitesDeFornecedora] = await Promise.all([
-    obterPerfil(sessao, contexto.perfilId),
-    listarMeusPedidos(sessao, contexto.perfilId),
-    listarResumosDasEmpresas(
-      sessao,
-      [...pendentes, ...ativos].map((v) => v.organizationId),
-    ),
-    convitesDeFornecedoraDoUsuario(sessao),
-  ]);
-  // A equipe da plataforma lê todos os convites pela RLS; aqui, só os do
-  // próprio e-mail confirmado, como o banco exige para usar o convite.
-  const paraFornecer = convitesDoEmail(
-    convitesDeFornecedora,
-    contexto.emailConfirmado ? (perfil?.email ?? null) : null,
-  ).map((convite) => ({
-    id: convite.id,
-    empresaId: convite.empresaId,
-    nomeDaEmpresa: empresaDoConvite(convite),
-    venceEm: formatarDataHora(convite.venceEm),
-  }));
+  const perfilLido = obterPerfil(sessao, contexto.perfilId);
+  const emailDoPerfil = perfilLido.then((lido) =>
+    contexto.emailConfirmado ? (lido?.email ?? null) : null,
+  );
+  const [perfil, pedidos, empresas, convitesDeFornecedora, email] =
+    await Promise.all([
+      perfilLido,
+      listarMeusPedidos(sessao, contexto.perfilId),
+      listarResumosDasEmpresas(
+        sessao,
+        [...pendentes, ...ativos].map((v) => v.organizationId),
+      ),
+      emailDoPerfil.then((lido) =>
+        convitesDeFornecedoraDoUsuario(sessao, lido),
+      ),
+      emailDoPerfil,
+    ]);
+  // A equipe da plataforma lê todos os convites pela RLS; a consulta já
+  // filtra pelo e-mail confirmado, e o filtro da tela fica como defesa. O
+  // convite de compradora só aparece a quem ainda pode aceitá-lo: `org_admin`
+  // ativo de compradora ativa (o banco decide de novo no aceite).
+  const paraFornecer = convitesDoEmail(convitesDeFornecedora, email)
+    .filter((convite) => {
+      if (convite.empresaId === null) return true;
+      const vinculo = vinculoAtivo(contexto, convite.empresaId);
+      return (
+        vinculo?.papel === "org_admin" && vinculo.empresa?.kind === "buyer"
+      );
+    })
+    .map((convite) => ({
+      id: convite.id,
+      empresaId: convite.empresaId,
+      nomeDaEmpresa: empresaDoConvite(convite),
+      venceEm: formatarDataHora(convite.venceEm),
+    }));
   const nomeDa = (empresaId: string) =>
     empresas.find((empresa) => empresa.id === empresaId)?.nome ??
     "Empresa sem nome disponível";

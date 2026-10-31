@@ -93,7 +93,7 @@ describe("opções de compradora", () => {
       },
       {
         id: "2",
-        nome: "Alfa Motors",
+        nome: "Pátio Alfa",
         cnpj: "22",
         tipo: "buyer",
         status: "active",
@@ -121,7 +121,7 @@ describe("opções de compradora", () => {
       },
     ] as const;
     expect(opcoesDeCompradora(empresas)).toEqual([
-      ["2", "Alfa Motors · CNPJ 22"],
+      ["2", "Pátio Alfa · CNPJ 22"],
       ["1", "Zeta Veículos · CNPJ 11"],
     ]);
   });

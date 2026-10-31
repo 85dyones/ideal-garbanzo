@@ -77,14 +77,22 @@ export async function listarConvitesDeFornecedora(
   return data.map((linha) => paraConvite(linha, agora));
 }
 
-/** Convites do próprio e-mail que ainda servem: pendentes e dentro da validade. */
+/**
+ * Convites do próprio e-mail que ainda servem: pendentes e dentro da
+ * validade. A equipe lê todos os convites pela RLS, por isso a consulta já
+ * filtra pelo e-mail confirmado de quem vê a tela; sem ele, nenhum.
+ */
 export async function convitesDeFornecedoraDoUsuario(
   sessao: SupabaseClient,
+  emailConfirmado: string | null,
   agora: Date = new Date(),
 ): Promise<ConviteDeFornecedora[]> {
+  const email = emailConfirmado?.trim().toLowerCase() ?? "";
+  if (email === "") return [];
   const { data, error } = await sessao
     .from("supplier_invitations")
     .select(COLUNAS)
+    .eq("email", email)
     .eq("status", "pending")
     .gt("expires_at", agora.toISOString())
     .order("created_at", { ascending: true })

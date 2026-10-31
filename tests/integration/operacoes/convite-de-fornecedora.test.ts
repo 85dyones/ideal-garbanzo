@@ -195,11 +195,33 @@ describe("pedido de adesão como fornecedora", () => {
   });
 
   it("LE01: a convidada vê o próprio convite pendente; quem não foi convidado, nenhum", async () => {
-    const daConvidada = await convitesDeFornecedoraDoUsuario(convidada.sessao);
+    const daConvidada = await convitesDeFornecedoraDoUsuario(
+      convidada.sessao,
+      convidada.usuario.email,
+    );
     expect(daConvidada.map((c) => [c.id, c.situacao, c.empresaId])).toEqual([
       [conviteDaConvidada, "pendente", null],
     ]);
-    expect(await convitesDeFornecedoraDoUsuario(semConvite.sessao)).toEqual([]);
+    expect(
+      await convitesDeFornecedoraDoUsuario(
+        semConvite.sessao,
+        semConvite.usuario.email,
+      ),
+    ).toEqual([]);
+    // Pedir pelo e-mail de outra pessoa não adianta: a RLS só mostra o próprio.
+    expect(
+      await convitesDeFornecedoraDoUsuario(
+        semConvite.sessao,
+        convidada.usuario.email,
+      ),
+    ).toEqual([]);
+    // A equipe lê todos pela RLS, mas a consulta filtra pelo e-mail dela (R-I1.11-08).
+    expect(
+      await convitesDeFornecedoraDoUsuario(admin.sessao, admin.usuario.email),
+    ).toEqual([]);
+    expect(
+      await convitesDeFornecedoraDoUsuario(convidada.sessao, null),
+    ).toEqual([]);
   });
 
   it("PD05 (contraste): com convite, o pedido como fornecedora entra, e o convite fica usado", async () => {
@@ -212,7 +234,12 @@ describe("pedido de adesão como fornecedora", () => {
       (c) => c.id === conviteDaConvidada,
     )?.situacao;
     expect(situacao).toBe("usado");
-    expect(await convitesDeFornecedoraDoUsuario(convidada.sessao)).toEqual([]);
+    expect(
+      await convitesDeFornecedoraDoUsuario(
+        convidada.sessao,
+        convidada.usuario.email,
+      ),
+    ).toEqual([]);
   });
 
   it("PD03 (contraste): o pedido de compradora não pede convite", async () => {
@@ -252,6 +279,33 @@ describe("revogação", () => {
       erro: "regra_violada",
       mensagem: "O convite não está pendente.",
     });
+  });
+});
+
+describe("falha do Auth depois da gravação (R-I1.11-06)", () => {
+  it("CV12: a resposta é falha_parcial, e o convite pendente pode ser revogado", async () => {
+    const email = emailDeTeste("auth-falha");
+    const resultado = await convidarFornecedora(
+      dependencias(admin.sessao),
+      { email },
+      { convidarNoAuth: () => Promise.resolve(null) },
+    );
+    expect(resultado).toMatchObject({
+      ok: false,
+      erro: "falha_parcial",
+      mensagem:
+        "Convite registrado, mas o e-mail não saiu agora. Revogue e convide de novo.",
+    });
+    const pendente = (await listarConvitesDeFornecedora(admin.sessao)).find(
+      (c) => c.email === email,
+    );
+    expect(pendente?.situacao).toBe("pendente");
+    if (pendente === undefined) return;
+    const revogado = await revogarConviteDeFornecedora(
+      dependencias(admin.sessao),
+      { conviteId: pendente.id },
+    );
+    expect(revogado.ok).toBe(true);
   });
 });
 

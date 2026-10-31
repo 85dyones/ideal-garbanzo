@@ -30,19 +30,17 @@ export default async function PaginaDaAdesao() {
     return acesso.motivo === "suspenso" ? <AcessoSuspenso /> : <SemPermissao />;
   }
   const { contexto, sessao } = acesso;
-  const [pedidos, perfil, convites] = await Promise.all([
+  const [pedidos, perfil] = await Promise.all([
     listarMeusPedidos(sessao, contexto.perfilId),
     obterPerfil(sessao, contexto.perfilId),
-    convitesDeFornecedoraDoUsuario(sessao),
   ]);
   const aberto = pedidos.find((pedido) => pedidoAberto(pedido.status));
   // Só o convite do próprio e-mail confirmado libera o pedido de fornecedora;
-  // a equipe da plataforma lê todos os convites pela RLS.
+  // a equipe da plataforma lê todos os convites pela RLS, e a consulta já
+  // filtra pelo e-mail (o filtro da tela fica como defesa).
+  const email = contexto.emailConfirmado ? (perfil?.email ?? null) : null;
   const convite = conviteParaEmpresaNova(
-    convitesDoEmail(
-      convites,
-      contexto.emailConfirmado ? (perfil?.email ?? null) : null,
-    ),
+    convitesDoEmail(await convitesDeFornecedoraDoUsuario(sessao, email), email),
   );
 
   return (

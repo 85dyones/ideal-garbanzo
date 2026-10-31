@@ -42,6 +42,8 @@ const eslintConfig = defineConfig([
     "docs/**",
     // Configuração do Claude Code e worktrees dos subagentes.
     ".claude/**",
+    // Kit de marca, fora do Git e fora do código da aplicação (R-I1.11-14).
+    "entrepatios-brand/**",
   ]),
 ]);
 

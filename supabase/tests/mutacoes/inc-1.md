@@ -199,3 +199,94 @@ Troca em `pg_get_functiondef('private.proteger_convite_de_fornecedora()'::regpro
 ```sql
 regexp_replace(d, 'if old[.]organization_id is null then([[:space:]]+)raise exception ''o convite para empresa nova', 'if false then\1raise exception ''o convite para empresa nova')
 ```
+
+## I1.12: correção das ressalvas da I1.11 (31/10/2026)
+
+**Banco:** as 20 mutações da I1.9 rodaram de novo sobre o `195` corrigido (75 asserções), e entraram as C21 a C28. São 28, todas detectadas, sem derrubar o contraste. O executor é o mesmo da I1.9.
+
+| ID  | Camada             | Mudança                                                                        | Casos que devem cair                                       | Contraste                        | Caíram |
+| --- | ------------------ | ------------------------------------------------------------------------------ | ---------------------------------------------------------- | -------------------------------- | ------ |
+| C21 | gatilho do pedido  | o pedido de empresa nova usa o convite da compradora (R-I1.11-01)              | PD12: o convite para a compradora                          | CV08:                            | 8      |
+| C22 | gatilho do convite | o convite do próprio e-mail (R-I1.11-03)                                       | CV11: ninguém convida; CV11: nem para empresa nova         | CV08:                            | 2      |
+| C23 | RLS                | supplier_invitations_leitura sem o perfil ativo (R-I1.11-05)                   | LE06: com o perfil suspenso                                | LE01:                            | 1      |
+| C24 | gatilho do pedido  | supplier_invitation_id fora do que não muda (R-I1.11-12)                       | PD13 (gatilho)                                             | PD10: o pedido de N1 é rejeitado | 1      |
+| C25 | GRANT              | SELECT de invited_by para authenticated (R-I1.11-11)                           | LE07: o convidado não lê                                   | LE07: lê as colunas              | 1      |
+| C26 | gatilho do convite | o aceite confere só o papel, sem vínculo, perfil e empresa ativos (R-I1.11-05) | AC10: com o vínculo suspenso; AC11: com a empresa suspensa | CV08:                            | 2      |
+| C27 | gatilho do convite | o aceite sem conferir que a empresa ainda é só compradora (R-I1.11-05)         | AC12:                                                      | CV08:                            | 1      |
+| C28 | gatilho do convite | os dados do convite mudam no UPDATE (R-I1.11-05)                               | RV06 (gatilho)                                             | RV01: o administrador revoga     | 1      |
+
+**C01 a C20 de novo:** todas detectadas. Algumas derrubam mais casos do que na I1.9, porque o arquivo tem casos novos depois delas (C01, C02, C09, C13 e C19).
+
+**Código:** S01 e S02 rodaram de novo, com a leitura do perfil já pela sessão (R-I1.11-04). As duas foram detectadas, e o original voltou conferido byte a byte.
+
+**Equivalentes por construção (R-I1.11-05)**, sem mutação própria:
+
+- **No gatilho do pedido:**
+  - `u.email_confirmed_at is not null`: o gatilho `_proteger` recusa antes o pedido sem e-mail confirmado (PD08);
+  - `lower(u.email)`: o convite guarda o e-mail em minúsculas (CHECK), e o Auth também.
+- **No aceite:**
+  - `perfil_ativo()` e `o.status = 'active'`: o `membro_ativo` já exige perfil, vínculo e empresa ativos. A C26, que troca o `membro_ativo` por uma conferência só do papel, mostra que essas camadas valem juntas: o AC11 cai pela mensagem da compradora ativa;
+  - a política de alteração e a de leitura se sobrepõem para o membro comum e para quem é de fora (C12).
+- **No UPDATE do convite:** a imutabilidade dos dados vale pela API só pelo GRANT de UPDATE, que cobre só `status`. O RV06 exercita o gatilho sozinho, como postgres com as claims do administrador, e a C28 o derruba.
+
+### Mudança de cada mutação nova (I1.12)
+
+**C21**
+
+Troca em `pg_get_functiondef('private.vincular_convite_ao_pedido()'::regprocedure)`:
+
+```sql
+regexp_replace(d, 'c[.]organization_id is null and ', '')
+```
+
+**C22**
+
+Troca em `pg_get_functiondef('private.proteger_convite_de_fornecedora()'::regprocedure)`:
+
+```sql
+regexp_replace(d, 'if new[.]email = private[.]email_confirmado_do_usuario[(][)] then', 'if false then')
+```
+
+**C23**
+
+```sql
+alter policy supplier_invitations_leitura on public.supplier_invitations using ((select private.tem_papel_na_plataforma(array['admin', 'operator'])) or (email = (select private.email_confirmado_do_usuario())));
+```
+
+**C24**
+
+Troca em `pg_get_functiondef('private.proteger_pedido_de_adesao()'::regprocedure)`:
+
+```sql
+regexp_replace(d, '(new|old)[.]supplier_invitation_id, ', '', 'g')
+```
+
+**C25**
+
+```sql
+grant select (invited_by) on public.supplier_invitations to authenticated;
+```
+
+**C26**
+
+Troca em `pg_get_functiondef('private.proteger_convite_de_fornecedora()'::regprocedure)`:
+
+```sql
+regexp_replace(d, 'not private[.]membro_ativo[(]old[.]organization_id, array[[]''org_admin''[]][)]', 'not exists (select 1 from public.organization_members m where m.organization_id = old.organization_id and m.profile_id = ator and m.role = ''org_admin'')')
+```
+
+**C27**
+
+Troca em `pg_get_functiondef('private.proteger_convite_de_fornecedora()'::regprocedure)`:
+
+```sql
+regexp_replace(d, 'where o[.]id = old[.]organization_id and o[.]status = ''active'' and o[.]kind = ''buyer''', 'where o.id = old.organization_id and o.status = ''active''')
+```
+
+**C28**
+
+Troca em `pg_get_functiondef('private.proteger_convite_de_fornecedora()'::regprocedure)`:
+
+```sql
+regexp_replace(d, 'if [(]new[.]id, new[.]email, new[.]organization_id, new[.]invited_by, new[.]expires_at, new[.]created_at[)]', 'if false and (new.id, new.email, new.organization_id, new.invited_by, new.expires_at, new.created_at)')
+```

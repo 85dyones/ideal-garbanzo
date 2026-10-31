@@ -91,7 +91,7 @@ Os gatilhos são funções em `private` e valem para qualquer caminho: operaçã
 - **`organizations`:**
   - nasce só pela aprovação (seção 2.5), sem INSERT para `authenticated`;
   - o `org_admin` altera só `name`, `contact_email` e `contact_phone` da própria empresa ativa;
-  - `legal_name`, `cnpj`, `kind`, `status` e `is_test` só mudam por administrador da plataforma.
+  - `legal_name`, `cnpj`, `kind`, `status` e `is_test` só mudam por administrador da plataforma. Desde a §9, a compradora passa a fornecer só pelo aceite do convite, e nem o administrador abre esse lado direto.
 - **Servidor:** os esquemas Zod das operações são estritos (`.strict()`). Campo a mais no payload é erro, não é ignorado.
 
 ### 2.5. Adesão aprovada cria empresa e vínculo de uma vez
@@ -124,7 +124,7 @@ O operador só muda o status de `submitted` para `under_review`; o gatilho recus
 
 **Dados de teste (§4.4):** o pedido ganha `is_test`, que só o administrador marca na revisão, e a empresa herda o valor. Empresas de teste ficam identificadas também no piloto.
 
-**`kind`:** a empresa nasce com o tipo pedido. Mudar depois é só do administrador da plataforma, porque passar a comprador abre o catálogo.
+**`kind`:** a empresa nasce com o tipo pedido. Mudar depois é só do administrador da plataforma, porque passar a comprador abre o catálogo. A exceção vem da §9: a compradora passa a fornecer só pelo aceite do convite de fornecedora.
 
 **CNPJ:**
 - Guardado normalizado, sem pontuação e em maiúsculas, com validação dos dígitos verificadores no servidor e no banco.
@@ -242,7 +242,7 @@ Nenhuma dessas tabelas tem DELETE para `anon`, `authenticated` ou `service_role`
 - As operações de servidor da I1.5 escrevem com o cliente da sessão do usuário (chave publicável e cookie). Assim, toda escrita passa pelas políticas e pelos gatilhos com o ator verdadeiro.
 - A chave secreta (`service_role`) fica restrita a cinco usos, todos em código de servidor:
   - contagem do limite de tentativas (seção 2.16), depois da checagem de permissão da operação;
-  - API administrativa do Auth (bloqueio, desbloqueio e convite; no convite a conta existente, também a leitura da confirmação do e-mail e da origem da conta, seção 2.6);
+  - API administrativa do Auth (bloqueio, desbloqueio e convite, de membro e de fornecedora; no convite de membro a conta existente, também a leitura da confirmação do e-mail e da origem da conta, seção 2.6);
   - leitura do perfil pelo e-mail no convite de membro, depois de o servidor conferir que quem convida gere a empresa (I1.5): a sessão de quem convida não enxerga perfis fora da empresa, e a resposta é a mesma exista ou não a conta. A gravação do vínculo continua com a sessão de quem convida;
   - inclusão em `restricted_access_logs`;
   - preparação e limpeza dos testes de integração.
@@ -392,7 +392,7 @@ Respondidas pela pessoa responsável em 28/10.
 | A11 | CNPJ já cadastrado | único entre empresas não encerradas; filial é empresa separada; envio aceito sem revelar; conflito tratado na revisão | 2.5 |
 | A12 | evidência do CNPJ | tabela e bucket próprios da adesão; obrigatória para aprovar; fonte em texto livre | 2.5 |
 | A13 | ciclo do pedido | `under_review` pelo administrador ou pelo operador (Q2); decisão só do administrador; motivo obrigatório na rejeição; estados finais; novo pedido é nova linha; transições no banco | 2.5 |
-| A14 | resultado da aprovação | requerente vira `org_admin` ativo; `kind` = o pedido; empresa `active`; `kind` muda depois só pelo administrador | 2.5 |
+| A14 | resultado da aprovação | requerente vira `org_admin` ativo; `kind` = o pedido; empresa `active`; `kind` muda depois só pelo administrador, menos a compradora que passa a fornecer, que muda só pelo aceite do convite (§9) | 2.5, 9 |
 | A15 | configuração crítica | marcação por chave, crítica por padrão | 2.7 |
 | A16 | operador lê configuração | só as não críticas; não altera nenhuma | 2.7 |
 | A17 | empresas leem configuração | membros ativos leem só as não críticas | 2.7 |
@@ -488,6 +488,7 @@ Conclusões que não viram ação:
 | Quem convida? | só o administrador da plataforma; o operador não convida |
 | Como a convidada entra? | o convite libera o pedido de adesão como fornecedora ou como fornecedora e compradora; a aprovação, com a conferência de CNPJ e a evidência, continua a da seção 2.5 |
 | A empresa pode comprar e fornecer? | sim, por convite; sem convite, o cadastro cria só compradora |
+| A compradora que aceita o convite precisa de nova aprovação? (31/10, R-I1.11-02) | não: o aceite de um `org_admin` ativo basta, porque a adesão como compradora já registrou a conferência de CNPJ. Se a C5 exigir documento próprio de fornecedora, a regra volta a ser decidida |
 
 **O que muda no que já existe:**
 - **Pedido:**
@@ -545,6 +546,32 @@ Conclusões que não viram ação:
   - `/admin/convites` lista, convida e revoga, e o operador só lê;
   - a equipe lê todos os convites pela RLS, e por isso o início e a adesão filtram pelo e-mail do próprio perfil.
 - **Com a pessoa responsável:** o texto do `convite.html`, no painel do Auth.
+
+## 10. Revisão independente da I1.11: ressalvas
+
+A revisão foi feita em 31/10 por um subagente `reasoning-review` (T3), só em leitura, sobre `96b4253..39912a1`.
+- **Veredito:** "aprovado com ressalvas". Nenhum achado crítico ou alto; 2 médios, 6 baixos e 6 informativos. Não achou caminho para entrar fornecedora sem convite válido.
+- **Corrigido na I1.12,** antes de fechar a mudança de escopo, como no Inc. 2 e no Inc. 3:
+  - migração `20261031090000_ressalvas_do_convite`;
+  - o `195` passou a 75 asserções;
+  - 28 mutações de banco e 2 de código.
+
+| ID | Severidade | Ressalva | Situação |
+|---|---|---|---|
+| R-I1.11-01 | média | A regra "pedido de empresa nova não usa convite com empresa" não tinha negativo. | **Corrigido:** caso PD12 e mutação C21. |
+| R-I1.11-02 | média | A especificação pedia "a mesma aprovação" para a compradora passar a fornecer; o código não aprova. | **Decidido pela pessoa responsável em 31/10:** o aceite basta. A especificação (§0 e §6.1) e a §9 dizem isso. |
+| R-I1.11-03 | baixa | Quem administra a plataforma e uma compradora com o mesmo e-mail cumpria o controle sozinho, convidando o próprio e-mail. | **Corrigido:** ninguém convida o próprio e-mail. Caso CV11 e mutação C22. |
+| R-I1.11-04 | baixa | A leitura do perfil pelo e-mail usava a chave secreta, sem estar na §2.12. | **Corrigido:** a leitura usa a sessão do administrador; a §2.12 cita o convite de fornecedora do Auth. |
+| R-I1.11-05 | baixa | Faltavam casos de perfil, vínculo e empresa suspensos e da compradora que já fornece; havia checagens redundantes sem registro. | **Corrigido:** casos LE06, AC10, AC11, AC12 e RV06 e mutações C23 e C26 a C28. As equivalências estão em `inc-1.md`. |
+| R-I1.11-06 | baixa | A `falha_parcial` do convite não tinha teste. | **Corrigido:** caso CV12 na integração. |
+| R-I1.11-07 | baixa | O início mostrava "Aceitar" a quem já não podia aceitar. | **Corrigido:** o botão aparece só ao `org_admin` ativo de compradora ativa. O banco decide de novo. |
+| R-I1.11-08 | baixa | A leitura dos convites do usuário não filtrava pelo e-mail na consulta. | **Corrigido:** a consulta recebe o e-mail confirmado; o filtro da tela ficou como defesa. |
+| R-I1.11-09 | informativa | Trechos antigos deste ADR diziam que o tipo só muda pelo administrador. | **Corrigido:** remissões à §9 na §2.4, na §2.5 e na A14. |
+| R-I1.11-10 | informativa | O convite depende da confirmação de e-mail do Auth. | **Registrado** para a I6.9: conferir a confirmação ligada no `repasse-prod`. |
+| R-I1.11-11 | informativa | O convidado lia os ids de quem convidou, usou ou revogou. | **Corrigido:** leitura por coluna pela API. Caso LE07 e mutação C25. |
+| R-I1.11-12 | informativa | `supplier_invitation_id` ficava fora do que não muda no pedido, protegido só pelo GRANT. | **Corrigido:** entrou na lista. Caso PD13 e mutação C24. |
+| R-I1.11-13 | informativa | Contraste fraco em algumas mutações; o limite de tentativas é o mesmo dos dois convites; listas param em 200; auditoria sem empresa. | **Registrado.** As cascatas estão explicadas em `inc-1.md`. |
+| R-I1.11-14 | informativa | Nome de empresa com "Motors" num teste; lint local falhava pelo kit de marca. | **Corrigido:** nome neutro no teste; `entrepatios-brand/**` fora do ESLint. |
 
 ## Anexo A. Tabela de decisão e casos de teste (I1.1, resolvida)
 
