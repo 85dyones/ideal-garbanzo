@@ -2,7 +2,7 @@
 
 **Etapa:** Inc. 2 (oferta) concluído em 30/10, com o gate cumprido, o ADR-0003 aceito e a I2.11 fechada. O Inc. 1 foi concluído em 28/10, com o ADR-0002 aceito; a R7 fica para a I6.9.  
 **Próxima subtarefa:**
-- **Mudança de escopo de 30/10 (fornecedora só por convite):** I1.9 entregue. Faltam a I1.10 (telas, T1) e a I1.11 (revisão, T3), no ADR-0002 §9.
+- **Mudança de escopo de 30/10 (fornecedora só por convite):** I1.9 e I1.10 entregues. Falta a I1.11 (revisão independente, T3). O texto do `convite.html` no painel do Auth fica com a pessoa responsável.
 - **Inc. 4 (catálogo privado):** I4.0 em andamento, com o ADR-0005 em preparação. Faltam as respostas P5 a P7.
 - **Inc. 3 (domínio documental):** a I3.8 (revisão externa, AG), pela pessoa responsável, com o roteiro em `docs/workflow/revisao-externa-i3.8.md`. Depois dela, o gate e o aceite do ADR-0004. O piloto com dados reais continua bloqueado pela D5.
 
@@ -1154,4 +1154,18 @@
   - **integração:** `test:integration` com 13 arquivos e 132 testes passando;
   - **e2e:** `test:e2e` com 31 passando;
   - **código:** 409 unitários, tipos, lint, formatação e build passando.
+
+### 2026-10-31 · I1.10 · telas do convite de fornecedora
+
+- **Builder (T1) em worktree,** commit `e2b88df`, integrado por avanço rápido sobre o `44c28ca`.
+- **Telas:**
+  - **Adesão:** sem convite de empresa nova, não há escolha de tipo, e a tela diz que fornecedoras entram por convite. Com convite, a escolha aparece, com a validade.
+  - **Início:** mostra os convites de fornecedora do próprio e-mail confirmado. O de empresa nova leva à adesão; o da compradora tem o botão de aceitar.
+  - **`/admin/convites`:** lista com a situação; convite com e-mail e compradora opcional; revogação. O operador só lê; quem é de fora recebe "Sem permissão".
+- **Decisões do builder, conferidas pelo T2:**
+  - a equipe lê todos os convites pela RLS, por isso o início e a adesão filtram pelo e-mail do próprio perfil;
+  - a mensagem do tipo sem escolha ficou em português;
+  - a lista de compradoras usa a leitura de empresas que já existia, limitada a 200.
+- **E2E:** `convite-de-fornecedora.spec.mts` (4 cenários) e o `adesao.spec.mts` ajustado.
+- **Evidência:** e2e com 35 passando; 417 unitários, tipos, lint, formatação e build passando.
 

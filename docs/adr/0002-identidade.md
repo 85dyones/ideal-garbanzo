@@ -539,7 +539,12 @@ Conclusões que não viram ação:
   - integração `operacoes/convite-de-fornecedora` (13);
   - unitário da situação.
 - **Mutações:** 20 de banco e 2 de código, em `supabase/tests/mutacoes/inc-1.md`.
-- **Fica para a I1.10:** as telas e o texto do `convite.html`, no painel do Auth.
+- **I1.10 (31/10):**
+  - a adesão sem convite não oferece a escolha de tipo;
+  - o início mostra os convites de fornecedora do próprio e-mail confirmado, com o aceite da compradora;
+  - `/admin/convites` lista, convida e revoga, e o operador só lê;
+  - a equipe lê todos os convites pela RLS, e por isso o início e a adesão filtram pelo e-mail do próprio perfil.
+- **Com a pessoa responsável:** o texto do `convite.html`, no painel do Auth.
 
 ## Anexo A. Tabela de decisão e casos de teste (I1.1, resolvida)
 
