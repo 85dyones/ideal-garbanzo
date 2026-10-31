@@ -6,7 +6,13 @@ import { AcessoSuspenso, Aviso, SemPermissao } from "@/components/estados";
 import { LINK } from "@/components/estilos";
 import { Dados, Pagina, Secao } from "@/components/pagina";
 import { usuarioAtivo, verificarAcesso } from "@/modules/auth/queries/acesso";
+import { obterPerfil } from "@/modules/auth/queries/perfis";
+import { convitesDeFornecedoraDoUsuario } from "@/modules/membership/queries/convites";
 import { listarMeusPedidos } from "@/modules/membership/queries/pedidos";
+import {
+  conviteParaEmpresaNova,
+  convitesDoEmail,
+} from "@/modules/membership/ui/convites";
 import { FormularioDoPedido } from "@/modules/membership/ui/formulario-do-pedido";
 import {
   pedidoAberto,
@@ -24,8 +30,20 @@ export default async function PaginaDaAdesao() {
     return acesso.motivo === "suspenso" ? <AcessoSuspenso /> : <SemPermissao />;
   }
   const { contexto, sessao } = acesso;
-  const pedidos = await listarMeusPedidos(sessao, contexto.perfilId);
+  const [pedidos, perfil, convites] = await Promise.all([
+    listarMeusPedidos(sessao, contexto.perfilId),
+    obterPerfil(sessao, contexto.perfilId),
+    convitesDeFornecedoraDoUsuario(sessao),
+  ]);
   const aberto = pedidos.find((pedido) => pedidoAberto(pedido.status));
+  // Só o convite do próprio e-mail confirmado libera o pedido de fornecedora;
+  // a equipe da plataforma lê todos os convites pela RLS.
+  const convite = conviteParaEmpresaNova(
+    convitesDoEmail(
+      convites,
+      contexto.emailConfirmado ? (perfil?.email ?? null) : null,
+    ),
+  );
 
   return (
     <Pagina
@@ -55,7 +73,22 @@ export default async function PaginaDaAdesao() {
         </Aviso>
       ) : (
         <Secao titulo="Dados da empresa">
-          <FormularioDoPedido acao={enviarPedidoDeAdesaoAcao} />
+          {convite === undefined ? (
+            <p className="text-neutral-700">
+              A empresa entra como compradora. Empresas fornecedoras entram por
+              convite da plataforma.
+            </p>
+          ) : (
+            <Aviso>
+              Você tem convite da plataforma para a empresa fornecer. O convite
+              vale até {formatarDataHora(convite.venceEm)}. Escolha abaixo como
+              a empresa vai atuar.
+            </Aviso>
+          )}
+          <FormularioDoPedido
+            acao={enviarPedidoDeAdesaoAcao}
+            podeFornecer={convite !== undefined}
+          />
         </Secao>
       )}
       <p>

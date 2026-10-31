@@ -27,6 +27,11 @@ export default async function LayoutDaAdministracao({
                 </Link>
               </li>
               <li>
+                <Link href="/admin/convites" className={LINK}>
+                  Convites
+                </Link>
+              </li>
+              <li>
                 <Link href="/admin/empresas" className={LINK}>
                   Empresas
                 </Link>

@@ -33,9 +33,8 @@ test("adesão: envio, revisão, evidência e aceite; a empresa aparece para o re
     .getByLabel("Razão social", { exact: true })
     .fill(`${nomeDaEmpresa} Ltda`);
   await telaDoRequerente.getByLabel("CNPJ", { exact: true }).fill(cnpj);
-  await telaDoRequerente
-    .getByLabel("A empresa vai atuar como", { exact: true })
-    .selectOption("buyer");
+  // Sem convite de fornecedora, o pedido é de compradora e não há escolha
+  // de tipo (ADR-0002 §9; `convite-de-fornecedora.spec.mts`).
   await telaDoRequerente
     .getByRole("button", { name: "Enviar pedido", exact: true })
     .click();
@@ -44,6 +43,9 @@ test("adesão: envio, revisão, evidência e aceite; a empresa aparece para o re
   ).toBeVisible();
   await expect(
     telaDoRequerente.getByText("Enviado", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    telaDoRequerente.getByText("Compradora", { exact: true }),
   ).toBeVisible();
 
   // Administrador revisa.

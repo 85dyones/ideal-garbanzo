@@ -38,7 +38,7 @@ export async function enviarPedidoDeAdesaoAcao(
   anterior: EstadoDoFormulario,
   dados: FormData,
 ): Promise<EstadoDoFormulario> {
-  return executarOperacaoDaTela(
+  const estado = await executarOperacaoDaTela(
     anterior,
     enviarPedidoDeAdesao,
     {
@@ -52,4 +52,11 @@ export async function enviarPedidoDeAdesaoAcao(
     "Pedido enviado. Acompanhe o status pelo início.",
     { valores: valoresDoFormulario(dados, CAMPOS_DO_PEDIDO) },
   );
+  // Com convite de fornecedora, a tela pede a escolha do tipo. O esquema
+  // responde em inglês ao tipo fora do domínio; a tela diz o que fazer.
+  if (estado.campos.tipo === undefined) return estado;
+  return {
+    ...estado,
+    campos: { ...estado.campos, tipo: ["Escolha como a empresa vai atuar."] },
+  };
 }

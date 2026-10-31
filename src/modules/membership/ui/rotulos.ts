@@ -3,6 +3,7 @@
  * para não usar na interface os termos da §6.6 da especificação.
  */
 import type { StatusDoPedido } from "../queries/pedidos";
+import type { SituacaoDoConvite } from "../rules/convites";
 
 export const ROTULO_DO_STATUS_DO_PEDIDO: Readonly<
   Record<StatusDoPedido, string>
@@ -25,6 +26,35 @@ export function rotuloDoStatusDoPedido(status: string): string {
     (ROTULO_DO_STATUS_DO_PEDIDO as Readonly<Record<string, string>>)[status] ??
     status
   );
+}
+
+/**
+ * Situação do convite de fornecedora (ADR-0002 §9). O vencido continua
+ * `pending` no banco; a situação conta pela data.
+ */
+export const ROTULO_DA_SITUACAO_DO_CONVITE: Readonly<
+  Record<SituacaoDoConvite, string>
+> = {
+  pendente: "Pendente",
+  vencido: "Vencido",
+  usado: "Usado",
+  revogado: "Revogado",
+};
+
+export function rotuloDaSituacaoDoConvite(situacao: string): string {
+  return (
+    (ROTULO_DA_SITUACAO_DO_CONVITE as Readonly<Record<string, string>>)[
+      situacao
+    ] ?? situacao
+  );
+}
+
+/**
+ * O administrador revoga o convite com status ainda `pending`, também o
+ * vencido pela data; usado e revogado são finais.
+ */
+export function conviteRevogavel(situacao: SituacaoDoConvite): boolean {
+  return situacao === "pendente" || situacao === "vencido";
 }
 
 /** Pedido ainda aberto: aceita conferência, evidência e decisão. */

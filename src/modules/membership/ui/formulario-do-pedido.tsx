@@ -1,5 +1,10 @@
 "use client";
-/** Formulário do pedido de adesão; os erros vêm do `Resultado`, por campo. */
+/**
+ * Formulário do pedido de adesão; os erros vêm do `Resultado`, por campo.
+ *
+ * Sem convite de fornecedora, o pedido é de compradora e a escolha do tipo
+ * não aparece (ADR-0002 §9). O banco confere o convite de novo no envio.
+ */
 import { useActionState } from "react";
 import { ESTADO_INICIAL, type AcaoDoFormulario } from "@/app/_apoio/formulario";
 import {
@@ -12,15 +17,18 @@ import { ROTULO_DO_TIPO } from "@/modules/organizations/ui/rotulos";
 
 const OPCOES_DO_TIPO = [
   ["", "Escolha"],
-  ["supplier", ROTULO_DO_TIPO.supplier],
   ["buyer", ROTULO_DO_TIPO.buyer],
+  ["supplier", ROTULO_DO_TIPO.supplier],
   ["both", ROTULO_DO_TIPO.both],
 ] as const;
 
 export function FormularioDoPedido({
   acao,
+  podeFornecer,
 }: {
   readonly acao: AcaoDoFormulario;
+  /** Há convite de fornecedora válido para o e-mail de quem pede. */
+  readonly podeFornecer: boolean;
 }) {
   const [estado, enviar] = useActionState(acao, ESTADO_INICIAL);
   const valores = estado.valores ?? {};
@@ -52,14 +60,18 @@ export function FormularioDoPedido({
         defaultValue={valores.cnpj}
         erros={estado.campos.cnpj}
       />
-      <CampoDeSelecao
-        nome="tipo"
-        rotulo="A empresa vai atuar como"
-        required
-        opcoes={OPCOES_DO_TIPO}
-        defaultValue={valores.tipo ?? ""}
-        erros={estado.campos.tipo}
-      />
+      {podeFornecer ? (
+        <CampoDeSelecao
+          nome="tipo"
+          rotulo="A empresa vai atuar como"
+          required
+          opcoes={OPCOES_DO_TIPO}
+          defaultValue={valores.tipo ?? ""}
+          erros={estado.campos.tipo}
+        />
+      ) : (
+        <input type="hidden" name="tipo" value="buyer" />
+      )}
       <Campo
         nome="emailDeContato"
         rotulo="E-mail de contato da empresa (opcional)"

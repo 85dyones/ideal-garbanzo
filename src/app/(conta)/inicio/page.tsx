@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { responderConviteAcao } from "@/app/_acoes/conta";
+import { aceitarConviteDeFornecedoraAcao } from "@/app/_acoes/convites-de-fornecedora";
 import { formatarDataHora } from "@/app/_apoio/datas";
 import { AcessoSuspenso, SemPermissao, Vazio } from "@/components/estados";
 import { BOTAO_PRINCIPAL, LINK } from "@/components/estilos";
@@ -12,7 +13,13 @@ import {
   podeVerCatalogo,
 } from "@/modules/auth/rules/permissoes";
 import { ROTULO_DO_PAPEL_NA_PLATAFORMA } from "@/modules/auth/ui/rotulos";
+import { convitesDeFornecedoraDoUsuario } from "@/modules/membership/queries/convites";
 import { listarMeusPedidos } from "@/modules/membership/queries/pedidos";
+import {
+  convitesDoEmail,
+  empresaDoConvite,
+} from "@/modules/membership/ui/convites";
+import { ConvitesParaFornecer } from "@/modules/membership/ui/convites-de-fornecedora";
 import {
   pedidoAberto,
   rotuloDoStatusDoPedido,
@@ -40,14 +47,26 @@ export default async function PaginaDeInicio() {
   const ativos = contexto.vinculos.filter((v) => v.status === "active");
   const suspensos = contexto.vinculos.filter((v) => v.status === "suspended");
 
-  const [perfil, pedidos, empresas] = await Promise.all([
+  const [perfil, pedidos, empresas, convitesDeFornecedora] = await Promise.all([
     obterPerfil(sessao, contexto.perfilId),
     listarMeusPedidos(sessao, contexto.perfilId),
     listarResumosDasEmpresas(
       sessao,
       [...pendentes, ...ativos].map((v) => v.organizationId),
     ),
+    convitesDeFornecedoraDoUsuario(sessao),
   ]);
+  // A equipe da plataforma lê todos os convites pela RLS; aqui, só os do
+  // próprio e-mail confirmado, como o banco exige para usar o convite.
+  const paraFornecer = convitesDoEmail(
+    convitesDeFornecedora,
+    contexto.emailConfirmado ? (perfil?.email ?? null) : null,
+  ).map((convite) => ({
+    id: convite.id,
+    empresaId: convite.empresaId,
+    nomeDaEmpresa: empresaDoConvite(convite),
+    venceEm: formatarDataHora(convite.venceEm),
+  }));
   const nomeDa = (empresaId: string) =>
     empresas.find((empresa) => empresa.id === empresaId)?.nome ??
     "Empresa sem nome disponível";
@@ -104,9 +123,10 @@ export default async function PaginaDeInicio() {
       </Secao>
 
       <Secao titulo="Convites pendentes">
-        {pendentes.length === 0 ? (
+        {pendentes.length === 0 && paraFornecer.length === 0 ? (
           <Vazio>Nenhum convite pendente.</Vazio>
-        ) : (
+        ) : null}
+        {pendentes.length === 0 ? null : (
           <ul className="flex flex-col gap-4">
             {pendentes.map((vinculo) => (
               <li key={vinculo.vinculoId} className="flex flex-col gap-2">
@@ -123,6 +143,11 @@ export default async function PaginaDeInicio() {
             ))}
           </ul>
         )}
+        {/* Sempre na mesma posição: depois do aceite, o convite sai da lista e a mensagem fica. */}
+        <ConvitesParaFornecer
+          convites={paraFornecer}
+          acao={aceitarConviteDeFornecedoraAcao}
+        />
       </Secao>
 
       <Secao titulo="Suas empresas">

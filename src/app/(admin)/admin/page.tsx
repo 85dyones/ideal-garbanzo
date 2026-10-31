@@ -23,13 +23,18 @@ export default async function PaginaDaAdministracao() {
       descricao={
         administrador
           ? "Você é administrador da plataforma."
-          : "Você é operador da plataforma: revisa e suspende ofertas, lê os dados e prepara a revisão das adesões. As decisões das adesões e a reativação de ofertas ficam com o administrador."
+          : "Você é operador da plataforma: revisa e suspende ofertas, lê os dados e prepara a revisão das adesões. As decisões das adesões, os convites de fornecedora e a reativação de ofertas ficam com o administrador."
       }
     >
       <ul className="flex flex-col gap-2">
         <li>
           <Link href="/admin/adesoes" className={LINK}>
             Pedidos de adesão
+          </Link>
+        </li>
+        <li>
+          <Link href="/admin/convites" className={LINK}>
+            Convites de fornecedora
           </Link>
         </li>
         <li>
