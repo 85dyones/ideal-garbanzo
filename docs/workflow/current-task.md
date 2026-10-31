@@ -2,6 +2,8 @@
 
 **Etapa:** Inc. 2 (oferta) concluído em 30/10, com o gate cumprido, o ADR-0003 aceito e a I2.11 fechada. O Inc. 1 foi concluído em 28/10, com o ADR-0002 aceito; a R7 fica para a I6.9.  
 **Próxima subtarefa:**
+- **Mudança de escopo de 30/10 (fornecedora só por convite):** I1.9 entregue. Faltam a I1.10 (telas, T1) e a I1.11 (revisão, T3), no ADR-0002 §9.
+- **Inc. 4 (catálogo privado):** I4.0 em andamento, com o ADR-0005 em preparação. Faltam as respostas P5 a P7.
 - **Inc. 3 (domínio documental):** a I3.8 (revisão externa, AG), pela pessoa responsável, com o roteiro em `docs/workflow/revisao-externa-i3.8.md`. Depois dela, o gate e o aceite do ADR-0004. O piloto com dados reais continua bloqueado pela D5.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
@@ -1114,3 +1116,42 @@
 - **Histórico público:** os nomes de campo que a R-I3.7-13 tirou da trava continuam nas migrações `20261030120000` (enviada no `9dbfa24`) e `20261030180000`, que não se editam depois de aplicadas. O registro das mutações deixou de copiá-los.
 - **Roteiro da I3.8 atualizado:** o diff vai até o `cd83dc4`, com a migração `20261030200000`, as decisões da §8 e os achados visuais já registrados. O preview da Vercel do `cd83dc4` foi publicado.
 - **Worktrees dos builders:** os 10 de `.claude/worktrees/` foram removidos. Os seis que tinham alterações sem commit ficaram com elas guardadas num commit na própria branch local (`worktree-agent-*`), sem envio. Os arquivos estavam na `main` ou eram rascunhos que o T2 ajustou ao integrar.
+- **Segundo push (aprovado pela pessoa responsável em 30/10):** `cd83dc4..96b4253`. CI da execução `41114964905` verde nos três jobs.
+
+### 2026-10-30 · I4.0 · preparação do catálogo privado
+
+- **Extração (T0):** o `fast-helper`, só em leitura, levantou as regras de exibição ao comprador. São 28 linhas de visibilidade, os campos, a ficha, os filtros, os estados de tela, os casos de teste e 26 ambiguidades.
+- **Conferência do T2:** citações da §3.3, §5.2, §6.3, §6.4, §7.3, §8 e §9 e os fatos de código. A F7 é uma contradição real: o comentário da migração `20261030200000` adiantou que o comprador vê o detalhe da declaração, e o pacote da D5 deixa isso para o Inc. 4.
+- **ADR-0005 em preparação:** o anexo A e as perguntas. A pessoa responsável respondeu P1 a P4 pela recomendação do T2. P5 a P7 ficaram em aberto quando veio a mudança de escopo.
+
+### 2026-10-30 · mudança de escopo · fornecedora só por convite
+
+- **Decisão da pessoa responsável:** só existe cadastro público de empresa compradora. A fornecedora entra por convite.
+  - Só o administrador convida.
+  - O convite libera o pedido de adesão como fornecedora ou como as duas, com a aprovação de hoje.
+  - A empresa que compra e fornece também depende de convite.
+- **Registro:**
+  - especificação, no quadro de decisões posteriores (§0) e nas §1.3, §3.1, §5.1, §6.1 e §9;
+  - ADR-0002 §9, com a proposta do T2 para a I1.9;
+  - plano, com o Inc. 1 reaberto (I1.9 a I1.11) e a I6.10 ajustada.
+- **Pendente da pessoa responsável:** o texto do modelo `convite.html` no painel do Auth passa a servir aos dois convites. Isso entra na I1.10.
+
+### 2026-10-30 · I1.9 · convite de fornecedora
+
+- **Migração `20261030220000_convite_de_fornecedora`:**
+  - a tabela `supplier_invitations`, com a validade em `platform_settings` (14 dias);
+  - o gatilho do convite: só o administrador cria e revoga; o convite à compradora vai a um `org_admin` ativo dela;
+  - o gatilho do pedido: `supplier` e `both` usam o convite do e-mail confirmado, que fica usado na mesma transação, e uma CHECK repete a regra;
+  - o aceite pelo `org_admin` da compradora a torna `both`;
+  - `proteger_empresa` recusa abrir o lado fornecedor fora do aceite;
+  - RLS, GRANT por coluna e auditoria.
+- **Servidor:** `convidarFornecedora`, `revogarConviteDeFornecedora` e `aceitarConviteDeFornecedora` (`src/modules/membership/server/convites.ts`), as leituras e a situação do convite.
+- **Dados de teste:** os ajudantes de empresa dos 21 arquivos pgTAP, da integração e do e2e convidam antes do pedido de fornecedora. Quatro casos antigos mudaram: três pedidos `supplier` do `110` e do `120` passaram a `buyer` ou ganharam convite, sem mudar o que testam, e o reenvio depois da rejeição (D16) pede convite novo.
+- **Testes novos:** pgTAP `195-convite-de-fornecedora` (58), integração `operacoes/convite-de-fornecedora` (13) e o unitário da situação.
+- **Mutações:** 20 de banco e 2 de código, todas detectadas, em `supabase/tests/mutacoes/inc-1.md`. Uma delas mostrou que faltava o caso AC03b, que entrou.
+- **Evidência no dev**, depois de `db:reset` com as 16 migrações:
+  - **banco:** `test:db` com 28 arquivos passando;
+  - **integração:** `test:integration` com 13 arquivos e 132 testes passando;
+  - **e2e:** `test:e2e` com 31 passando;
+  - **código:** 409 unitários, tipos, lint, formatação e build passando.
+

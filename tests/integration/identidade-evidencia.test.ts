@@ -69,6 +69,17 @@ describe("Storage: bucket membership-evidence", () => {
     clienteO = await entrar(o);
     clienteR = await entrar(r);
     const clienteD = await entrar(d);
+    // Fornecedora só entra por convite (ADR-0002 §9).
+    for (const convidado of [x2, d]) {
+      exigirDados(
+        await clienteX
+          .from("supplier_invitations")
+          .insert({ email: convidado.email })
+          .select("id")
+          .single(),
+        `convidar ${convidado.email}`,
+      );
+    }
 
     pedidoDeR = await enviarPedido(
       clienteR,

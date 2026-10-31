@@ -10,6 +10,7 @@ import { randomBytes } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Dependencias } from "@/lib/operacao/dependencias";
 import { enviarPedidoDeAdesao } from "@/modules/membership/server/adesao";
+import { convidarFornecedora } from "@/modules/membership/server/convites";
 import {
   decidirPedido,
   enviarEvidencia,
@@ -227,7 +228,8 @@ export function cnpjDeTeste(variante = "A"): string {
 }
 
 /**
- * Empresa pelo fluxo real das operações: pedido do requerente, conferência,
+ * Empresa pelo fluxo real das operações: convite de fornecedora (quando o tipo
+ * não é só compradora; ADR-0002 §9), pedido do requerente, conferência,
  * evidência e aprovação pelo administrador. Devolve o id da empresa, com o
  * requerente como org_admin ativo.
  */
@@ -237,6 +239,14 @@ export async function empresaAprovada(
   tipo: "supplier" | "buyer" | "both",
   variante: string,
 ): Promise<string> {
+  if (tipo !== "buyer") {
+    const { data } = await requerente.auth.getUser();
+    const convite = await convidarFornecedora(dependencias(administrador), {
+      email: data.user?.email ?? "",
+    });
+    if (!convite.ok)
+      throw new Error(`convite ${variante}: ${convite.mensagem}`);
+  }
   const pedido = await enviarPedidoDeAdesao(dependencias(requerente), {
     nomeDaEmpresa: `Pátio ${variante} ${SUFIXO}`,
     razaoSocial: `Pátio ${variante} ${SUFIXO} Ltda`,

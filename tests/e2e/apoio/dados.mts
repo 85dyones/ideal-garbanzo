@@ -351,15 +351,29 @@ export async function pedidoDe(
   return pedido.id;
 }
 
-/** Empresa pelo fluxo real, com o dono como `org_admin` ativo. Devolve o id. */
+/**
+ * Empresa pelo fluxo real, com o dono como `org_admin` ativo. Fornecedora só
+ * entra por convite (ADR-0002 §9): o administrador convida o e-mail do dono
+ * antes do pedido. Devolve o id.
+ */
 export async function empresaDe(
   administrador: UsuarioDeTeste,
   dono: UsuarioDeTeste,
   nome: string,
   tipo: TipoDeEmpresa,
 ): Promise<string> {
-  const pedidoId = await pedidoDe(dono, nome, tipo);
   const sessao = await entrarNaApi(administrador);
+  if (tipo !== "buyer") {
+    exigirDados(
+      await sessao
+        .from("supplier_invitations")
+        .insert({ email: dono.email })
+        .select("id")
+        .single(),
+      `convidar a fornecedora ${nome}`,
+    );
+  }
+  const pedidoId = await pedidoDe(dono, nome, tipo);
   const caminho = `${pedidoId}/consulta-e2e-${SUFIXO}.pdf`;
   const conteudo = `%PDF-1.4\n% evidencia de teste ${caminho}\n`;
   exigirDados(

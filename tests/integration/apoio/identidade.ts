@@ -326,13 +326,24 @@ export async function aprovarPedido(
   return pedido.organization_id;
 }
 
-/** Empresa pelo fluxo real: pedido, arquivo, evidência e aprovação. */
+/** Empresa pelo fluxo real: convite (fornecedora; ADR-0002 §9), pedido, arquivo, evidência e aprovação. */
 export async function criarEmpresa(
   administrador: Cliente,
   requerente: Cliente,
   nome: string,
   tipo: TipoDeEmpresa,
 ): Promise<{ empresaId: string; pedidoId: string }> {
+  if (tipo !== "buyer") {
+    const { data } = await requerente.auth.getUser();
+    exigirDados(
+      await administrador
+        .from("supplier_invitations")
+        .insert({ email: data.user?.email ?? "" })
+        .select("id")
+        .single(),
+      `convidar a fornecedora ${nome}`,
+    );
+  }
   const pedidoId = await enviarPedido(requerente, nome, tipo);
   const evidenciaId = await registrarEvidencia(administrador, pedidoId);
   const empresaId = await aprovarPedido(administrador, pedidoId, evidenciaId);

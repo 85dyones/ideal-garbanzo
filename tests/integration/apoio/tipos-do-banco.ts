@@ -88,6 +88,23 @@ export interface PedidoDeAdesao {
   cnpj_check_source: string | null;
   cnpj_check_evidence_id: string | null;
   organization_id: string | null;
+  supplier_invitation_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Convite de fornecedora (ADR-0002 §9). */
+export interface ConviteDeFornecedora {
+  id: string;
+  email: string;
+  organization_id: string | null;
+  status: "pending" | "used" | "revoked";
+  invited_by: string;
+  expires_at: string;
+  used_at: string | null;
+  used_by: string | null;
+  revoked_at: string | null;
+  revoked_by: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -125,6 +142,7 @@ export interface Database {
       platform_staff: Tabela<PapelNaPlataforma>;
       membership_applications: Tabela<PedidoDeAdesao>;
       membership_evidence_files: Tabela<EvidenciaDaAdesao>;
+      supplier_invitations: Tabela<ConviteDeFornecedora>;
       audit_logs: Tabela<RegistroDeAuditoria>;
     };
     // Os testes só usam tabelas; nenhuma view, função, enum ou tipo composto.

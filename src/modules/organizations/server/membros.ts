@@ -38,7 +38,10 @@ export type ConvidarNoAuth = (
   email: string,
 ) => Promise<string | null>;
 
-const convidarPeloAuth: ConvidarNoAuth = async (administrativo, email) => {
+export const convidarPeloAuth: ConvidarNoAuth = async (
+  administrativo,
+  email,
+) => {
   const { data, error } =
     await administrativo.auth.admin.inviteUserByEmail(email);
   return error === null ? data.user.id : null;

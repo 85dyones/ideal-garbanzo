@@ -80,6 +80,18 @@ $f$;
 
 -- Empresa pelo fluxo real: pedido do requerente, arquivo e evidência, aprovação
 -- pelo administrador. Registra a empresa, o pedido e o vínculo do requerente.
+-- Fornecedora só entra por convite (ADR-0002 §9): o administrador convida o e-mail do requerente.
+create function pg_temp.convite_de_fornecedora(perfil text, quem_convida text) returns void
+language plpgsql
+as $f$
+begin
+  perform pg_temp.entrar(quem_convida);
+  insert into public.supplier_invitations (email)
+  select p.email from public.profiles p where p.id = pg_temp.id(perfil);
+  perform pg_temp.entrar(null);
+end;
+$f$;
+
 create function pg_temp.empresa(nome text, requerente text, admin text, cnpj_do_pedido text, tipo text)
 returns void
 language plpgsql
@@ -89,6 +101,9 @@ declare
   id_evidencia uuid;
   id_empresa uuid;
 begin
+  if tipo <> 'buyer' then
+    perform pg_temp.convite_de_fornecedora(requerente, admin);
+  end if;
   perform pg_temp.entrar(requerente);
   insert into public.membership_applications (organization_name, legal_name, cnpj, requested_kind)
   values (nome, nome || ' Ltda', cnpj_do_pedido, tipo)
@@ -261,7 +276,7 @@ select is(
 
 select throws_ok(
   $$insert into public.membership_applications (organization_name, legal_name, cnpj, requested_kind)
-    values ('Loja P1 B', 'Loja P1 B Ltda', '11000000000370', 'supplier')$$,
+    values ('Loja P1 B', 'Loja P1 B Ltda', '11000000000370', 'buyer')$$,
   '23505', 'duplicate key value violates unique constraint "membership_applications_um_aberto_idx"',
   'D07b: requerente com pedido aberto não envia outro');
 
@@ -284,7 +299,7 @@ select is(
 select pg_temp.entrar('P3');
 select is(
   pg_temp.resultado($$insert into public.membership_applications (organization_name, legal_name, cnpj, requested_kind)
-    values ('Loja P3', 'Loja P3 Ltda', '11000000000299', 'supplier')$$),
+    values ('Loja P3', 'Loja P3 Ltda', '11000000000299', 'buyer')$$),
   'linhas: 1',
   'D07: o envio com o CNPJ de outro pedido aberto é aceito');
 

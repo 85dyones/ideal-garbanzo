@@ -479,6 +479,68 @@ Conclusões que não viram ação:
 
 ---
 
+## 9. Mudança de escopo de 30/10: fornecedora só por convite
+
+**Decisão da pessoa responsável (30/10/2026):** só existe cadastro público de empresa compradora. A empresa fornecedora entra por convite. A especificação já traz a regra (§0, §1.3, §3.1, §5.1, §6.1 e §9).
+
+| Pergunta | Resposta |
+|---|---|
+| Quem convida? | só o administrador da plataforma; o operador não convida |
+| Como a convidada entra? | o convite libera o pedido de adesão como fornecedora ou como fornecedora e compradora; a aprovação, com a conferência de CNPJ e a evidência, continua a da seção 2.5 |
+| A empresa pode comprar e fornecer? | sim, por convite; sem convite, o cadastro cria só compradora |
+
+**O que muda no que já existe:**
+- **Pedido:**
+  - o `requested_kind` livre do pedido (seção 2.5) passa a ser `buyer` para todos;
+  - `supplier` e `both` exigem convite;
+  - o formulário de adesão deixa de oferecer a escolha sem convite.
+- **Testes:** os dados de teste que criam empresa fornecedora pelo pedido passam a criar o convite antes. Isso vale para o pgTAP, a integração e o e2e.
+- **Modelo de e-mail do Auth (`convite.html`):** hoje fala em "fazer parte de uma empresa". Passa a servir aos dois convites, de membro e de fornecedora. O texto muda no painel do Auth, pela pessoa responsável, como em 28/10.
+- **Página de apresentação (I6.10):** chama só compradores para a adesão; fornecedores, por convite.
+
+**Entregue na I1.9 (30/10):** migração `20261030220000_convite_de_fornecedora`.
+- **Convite (`supplier_invitations`):**
+  - leva o e-mail normalizado, a empresa (só no convite a uma compradora), o status (`pending`, `used` ou `revoked`), quem convidou, a validade (`expires_at`), quem usou e quando, quem revogou e quando;
+  - uma CHECK exige os campos de cada status;
+  - não há DELETE nem TRUNCATE, e a auditoria é por gatilho.
+- **Validade:**
+  - `platform_settings.supplier_invitation_validity_days`, com 14 dias, chave crítica;
+  - sem valor válido, o convite não nasce;
+  - o vencido continua `pending`, e a tela o mostra como vencido pela data.
+- **Gatilho do convite (`proteger_convite_de_fornecedora`):**
+  - só o administrador cria e revoga;
+  - há um pendente válido por e-mail e empresa, com trava consultiva por e-mail;
+  - o convite à compradora só vai ao e-mail de um `org_admin` ativo de compradora ativa;
+  - os dados não mudam, e usado e revogado são finais.
+- **Pedido:**
+  - o gatilho `membership_applications_vincular_convite` roda depois do `_proteger`, que já conferiu sessão e e-mail;
+  - o pedido `supplier` ou `both` usa o convite pendente, dentro da validade e sem empresa, do e-mail confirmado do requerente, e o marca como usado na mesma transação;
+  - `supplier_invitation_id` é único e fica fora do GRANT;
+  - a CHECK `membership_applications_convite_da_fornecedora` repete a regra;
+  - pedido rejeitado não devolve o convite: um novo pedido de fornecedora pede convite novo.
+- **Aceite pela compradora:**
+  - o `org_admin` ativo, com o e-mail convidado confirmado, muda o status para `used`;
+  - o gatilho confere a validade e a compradora ativa e torna a empresa `both`. O gatilho da empresa aceita a mudança por ela vir de outro gatilho, como na aprovação;
+  - o administrador da plataforma não aceita no lugar da empresa, nem quando também administra a empresa com outro e-mail.
+- **Tipo da empresa (`proteger_empresa`):** a mudança de `buyer` para `supplier` ou `both` fora do aceite é recusada, também para o administrador. As outras mudanças de tipo continuam com ele.
+- **RLS e GRANT:**
+  - leitura pela equipe (administrador e operador) e pelo dono do e-mail confirmado;
+  - inclusão só do administrador;
+  - alteração pelo administrador ou pelo convidado, no convite com empresa;
+  - INSERT só de `email` e `organization_id`, e UPDATE só de `status`.
+- **Servidor** (`src/modules/membership/server/convites.ts`):
+  - `convidarFornecedora` grava antes de qualquer e-mail, e o banco confere a regra primeiro;
+  - o e-mail sem conta recebe o convite do Auth. Se o Auth falhar depois da gravação, a resposta é `falha_parcial`, com o caminho de revogar e convidar de novo;
+  - `revogarConviteDeFornecedora` e `aceitarConviteDeFornecedora`;
+  - leituras em `queries/convites.ts`; a situação vem de `rules/convites.ts`.
+- **Testes:**
+  - pgTAP `195-convite-de-fornecedora` (58);
+  - os ajudantes de empresa dos 21 arquivos pgTAP, da integração e do e2e convidam antes do pedido de fornecedora;
+  - integração `operacoes/convite-de-fornecedora` (13);
+  - unitário da situação.
+- **Mutações:** 20 de banco e 2 de código, em `supabase/tests/mutacoes/inc-1.md`.
+- **Fica para a I1.10:** as telas e o texto do `convite.html`, no painel do Auth.
+
 ## Anexo A. Tabela de decisão e casos de teste (I1.1, resolvida)
 
 Base: entrega da I1.1 (T0), com as ambiguidades resolvidas pelas seções acima. "Ambos" = servidor e banco. Os IDs são os da I1.1 e servem de referência para a I1.4.

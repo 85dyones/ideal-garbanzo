@@ -129,6 +129,18 @@ begin
 end;
 $f$;
 
+-- Fornecedora só entra por convite (ADR-0002 §9): o administrador convida o e-mail do requerente.
+create function pg_temp.convite_de_fornecedora(perfil text, quem_convida text) returns void
+language plpgsql
+as $f$
+begin
+  perform pg_temp.entrar(quem_convida);
+  insert into public.supplier_invitations (email)
+  select p.email from public.profiles p where p.id = pg_temp.id(perfil);
+  perform pg_temp.entrar(null);
+end;
+$f$;
+
 create function pg_temp.empresa(nome text, requerente text, quem_aprova text, cnpj_do_pedido text, tipo text)
 returns void
 language plpgsql
@@ -136,6 +148,9 @@ as $f$
 declare
   id_empresa uuid;
 begin
+  if tipo <> 'buyer' then
+    perform pg_temp.convite_de_fornecedora(requerente, quem_aprova);
+  end if;
   perform pg_temp.pedido(nome, requerente, cnpj_do_pedido, tipo);
   perform pg_temp.evidencia(nome, quem_aprova);
   perform pg_temp.entrar(quem_aprova);

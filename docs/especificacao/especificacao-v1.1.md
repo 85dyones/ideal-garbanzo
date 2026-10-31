@@ -31,6 +31,12 @@
 | Notificações | e-mail e depois WhatsApp | e-mail no piloto; WhatsApp depende de D6 | briefing §6, item 12 |
 | Infraestrutura | Supabase gerenciado e hospedagem não definida | Supabase Cloud (`sa-east-1`) e Vercel, um projeto do Supabase por ambiente; homologação em deploys de preview | D1 final da pessoa responsável (27/10) |
 
+**Decisões posteriores à v1.1.** São da pessoa responsável e já estão no texto das seções indicadas.
+
+| Data | Tema | Decisão | Seções |
+|---|---|---|---|
+| 30/10/2026 | Entrada das empresas | O cadastro público cria só empresa compradora. A fornecedora entra por convite do administrador da plataforma, que libera o pedido de adesão; a aprovação continua a mesma. A empresa que compra e fornece também depende de convite. | §1.3, §3.1, §5.1, §6.1, §9 |
+
 ---
 
 # 1. VISÃO DO PRODUTO
@@ -53,7 +59,7 @@ A fase atual valida o modelo com o menor software capaz de demonstrar o fluxo co
 
 ## 1.3. Modelo de operação
 
-- Fornecedores aprovados publicam veículos com preço, características, condições e informações documentais.
+- Fornecedores convidados pela plataforma e aprovados publicam veículos com preço, características, condições e informações documentais.
 - Compradores profissionais aprovados acessam as oportunidades.
 - A plataforma é a fonte oficial das informações da oferta. WhatsApp e e-mail distribuem avisos e apoiam a conversa, mas não substituem o registro.
 - O comprador registra interesse e ciência das ressalvas. A negociação fica vinculada a veículo, comprador e fornecedor.
@@ -129,7 +135,7 @@ Salvo decisão expressa baseada em evidência:
 
 Ficam em tabela própria (`platform_staff`), concedidos só por um administrador e nunca por alteração do próprio usuário.
 
-- **Administrador:** gestão global; aprova e suspende empresas, usuários e ofertas; configura parâmetros; consulta auditoria; registra e revisa desfechos e comissões. Não apaga evidências nem histórico.
+- **Administrador:** gestão global; convida empresas fornecedoras; aprova e suspende empresas, usuários e ofertas; configura parâmetros; consulta auditoria; registra e revisa desfechos e comissões. Não apaga evidências nem histórico.
 - **Operador:** operação diária; revisa ofertas; registra consultas e evidências; marca análise documental; acompanha negociações. Não altera configuração crítica nem comissões confirmadas.
 
 ## 3.2. Papéis na empresa
@@ -234,6 +240,11 @@ Modelo conceitual, base para as migrações. Toda tabela tem `id` UUID, `created
 - `status`: `submitted`, `under_review`, `approved` ou `rejected`
 - `reviewed_by`, `reviewed_at`, `decision_reason`
 - `cnpj_checked_at`, `cnpj_check_source`, `cnpj_check_evidence_id`
+- `requested_kind` `supplier` ou `both` só com convite de fornecedora válido (seção 6.1)
+
+**Convite de fornecedora**
+- e-mail convidado, quem convidou (administrador da plataforma), validade e situação
+- o pedido de adesão que usou o convite
 
 ## 5.2. Veículo e oferta
 
@@ -366,6 +377,11 @@ O efeito sobre a publicação depende da decisão D9.
 
 - Empresa e usuário só acessam o produto depois de aprovados por um administrador.
 - A aprovação registra quem aprovou, quando, com qual conferência de CNPJ e qual evidência.
+- O cadastro público cria só empresa compradora (decisão da pessoa responsável em 30/10/2026):
+  - a empresa fornecedora entra por convite de um administrador da plataforma;
+  - o convite vai para um e-mail e libera, a quem confirmar esse e-mail, o pedido de adesão como fornecedora ou como fornecedora e compradora;
+  - a aprovação segue a regra acima;
+  - a empresa compradora ativa passa a fornecer também só por convite, com a mesma aprovação.
 - Os documentos exigidos para aprovação dependem de decisão (seção 13). Até lá, o registro guarda o que foi conferido, sem lista fixa no código.
 - Empresa suspensa perde o acesso na operação seguinte. A revalidação acontece no servidor e nas políticas do banco, não só no vencimento do token.
 
@@ -557,7 +573,7 @@ Contratos funcionais, não assinaturas obrigatórias no código. Toda operação
 
 # 9. TELAS
 
-**Pública:** apresentação, pedido de adesão, login, recuperação de acesso, termos e privacidade.
+**Pública:** apresentação, pedido de adesão (de compradora; de fornecedora, só com convite), login, recuperação de acesso, termos e privacidade.
 
 **Fornecedor:**
 - painel de ofertas;
@@ -574,6 +590,7 @@ Contratos funcionais, não assinaturas obrigatórias no código. Toda operação
 
 **Administrativa:**
 - adesões;
+- convites de fornecedoras;
 - empresas e usuários;
 - ofertas (revisão, suspensão);
 - registro de consultas e revisões documentais;

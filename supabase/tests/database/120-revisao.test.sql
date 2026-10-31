@@ -132,6 +132,18 @@ $f$;
 
 -- Empresa pelo fluxo real: pedido, evidência e aprovação pelo administrador.
 -- Registra a empresa, o pedido, a evidência e o vínculo do requerente.
+-- Fornecedora só entra por convite (ADR-0002 §9): o administrador convida o e-mail do requerente.
+create function pg_temp.convite_de_fornecedora(perfil text, quem_convida text) returns void
+language plpgsql
+as $f$
+begin
+  perform pg_temp.entrar(quem_convida);
+  insert into public.supplier_invitations (email)
+  select p.email from public.profiles p where p.id = pg_temp.id(perfil);
+  perform pg_temp.entrar(null);
+end;
+$f$;
+
 create function pg_temp.empresa(nome text, requerente text, quem_aprova text, cnpj_do_pedido text, tipo text)
 returns void
 language plpgsql
@@ -139,6 +151,9 @@ as $f$
 declare
   id_empresa uuid;
 begin
+  if tipo <> 'buyer' then
+    perform pg_temp.convite_de_fornecedora(requerente, quem_aprova);
+  end if;
   perform pg_temp.pedido(nome, requerente, cnpj_do_pedido, tipo);
   perform pg_temp.evidencia(nome, quem_aprova);
   perform pg_temp.entrar(quem_aprova);
@@ -195,7 +210,9 @@ select pg_temp.conceder('O', 'operator', 'X');
 select pg_temp.empresa('A', 'A1', 'X', '12000000000170', 'supplier');
 select pg_temp.vincular('A', 'AM', 'member', 'A1');
 select pg_temp.pedido('R1', 'R1', '12000000000251', 'buyer');
+select pg_temp.convite_de_fornecedora('R2', 'X');
 select pg_temp.pedido('R2', 'R2', '12000000000332', 'supplier');
+select pg_temp.convite_de_fornecedora('R3', 'X');
 select pg_temp.pedido('R3', 'R3', '12000000000413', 'both');
 select pg_temp.pedido('X2', 'X2', '12000000000502', 'buyer');
 select pg_temp.evidencia('R1', 'X');
@@ -523,6 +540,8 @@ select throws_ok(
   $$update public.membership_applications set status = 'under_review' where id = pg_temp.id('pedido R2')$$,
   'P0001', 'pedido decidido não muda; um novo pedido é uma nova linha',
   'D16: nem o operador reabre pedido decidido');
+-- O convite foi usado pelo pedido rejeitado; o reenvio como fornecedora pede outro (ADR-0002 §9).
+select pg_temp.convite_de_fornecedora('R2', 'X');
 select pg_temp.entrar('R2');
 select is(
   pg_temp.resultado($$insert into public.membership_applications (organization_name, legal_name, cnpj, requested_kind)
