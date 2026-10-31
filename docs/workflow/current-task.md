@@ -1200,3 +1200,17 @@
   - **e2e:** 35 passando (32 numa rodada e o `ofertas.spec` de novo depois da janela do limite);
   - **código:** 417 unitários, tipos, lint, formatação e build passando.
 
+- **Push (aprovado pela pessoa responsável em 31/10):** `96b4253..82c9bb3`, com a I1.9 a I1.12 e a I4.0. A execução `41198667541` do CI passou nos três jobs.
+
+### 2026-10-31 · E2E · sessão reaproveitada contra o limite de login
+
+- **Problema:** a suíte e2e passava de 30 entradas pela tela numa rodada. O limite da própria aplicação é de 30 por IP a cada 15 minutos (ADR-0002 §2.16). Por isso, o `ofertas.spec` falhou numa rodada na tela de entrar.
+- **Correção** (`tests/e2e/apoio/tela.mts`):
+  - o `entrarPelaTela` guarda os cookies da sessão de cada usuário depois da primeira entrada pela tela;
+  - as abas seguintes do mesmo usuário recebem a sessão, como quem volta ao site com a sessão salva;
+  - se a sessão não valer mais, o usuário entra de novo pelo formulário;
+  - o limite da aplicação não mudou.
+- **Evidência:**
+  - e2e com 35 passando numa rodada só;
+  - a chave mais usada do limite ficou com 25 entradas na janela da rodada.
+  - Cada rodada completa ainda pede a própria janela de 15 minutos. O catálogo do Inc. 4 deve reaproveitar usuários dos cenários.
