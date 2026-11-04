@@ -3,7 +3,7 @@
 **Etapa:** Inc. 2 (oferta) concluído em 30/10, com o gate cumprido, o ADR-0003 aceito e a I2.11 fechada. O Inc. 1 foi concluído em 28/10, com o ADR-0002 aceito; a R7 fica para a I6.9.  
 **Próxima subtarefa:**
 - **Mudança de escopo de 30/10 (fornecedora só por convite):** concluída em 31/10, com I1.9 a I1.12 e a revisão independente sem crítico nem alto (ADR-0002 §9 e §10). Fica com a pessoa responsável o texto do `convite.html` no painel do Auth.
-- **Inc. 4 (catálogo privado):** I4.0 em andamento, com o ADR-0005 em preparação. Faltam as respostas P5 a P7.
+- **Inc. 4 (catálogo privado):** I4.0 entregue em 04/11 (ADR-0005 proposto). Próxima: I4.1, a leitura do comprador no banco e no servidor (T2).
 - **Inc. 3 (domínio documental):** a I3.8 (revisão externa, AG), pela pessoa responsável, com o roteiro em `docs/workflow/revisao-externa-i3.8.md`. Depois dela, o gate e o aceite do ADR-0004. O piloto com dados reais continua bloqueado pela D5.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
@@ -1214,3 +1214,24 @@
   - e2e com 35 passando numa rodada só;
   - a chave mais usada do limite ficou com 25 entradas na janela da rodada.
   - Cada rodada completa ainda pede a própria janela de 15 minutos. O catálogo do Inc. 4 deve reaproveitar usuários dos cenários.
+- **Push (aprovado pela pessoa responsável em 31/10):** `82c9bb3..02a81e1`. A execução `41199986610` do CI passou nos três jobs.
+
+### 2026-11-04 · I4.0 · decisões do catálogo e modelo do convite
+
+- **Respostas da pessoa responsável (04/11):**
+  - **P5:** o comprador de teste vê todos os carros à venda, reais e de teste. O real continua sem ver oferta de teste;
+  - **P6:** a própria oferta aparece no catálogo, com as métricas da performance do anúncio e a opção de ajustar os detalhes;
+  - **P7:** filtro por categoria e estado, pela sugestão do T2.
+- **ADR-0005 proposto:**
+  - a leitura do comprador sai por duas funções do banco, e não por visões nem por políticas nas tabelas, porque o GRANT por papel abriria placa, RENAVAM e chassi;
+  - lista positiva de campos;
+  - ficha e resumo;
+  - filtros, ordenação e paginação;
+  - métricas do anúncio: aberturas da ficha por empresa compradora, uma por dia, sem dizer quais empresas viram;
+  - respostas às 26 ambiguidades.
+- **Registro:**
+  - especificação: quadro de decisões posteriores (§0), §5.2 e §9;
+  - ADR-0002: D47 corrigido (F25);
+  - plano: Inc. 4 com a I4.0 entregue e a I4.6 (métricas) nova.
+- **Modelo `convite.html`:** o texto serve ao convite de membro e ao de fornecedora. A pessoa responsável cola o modelo no painel do Auth.
+

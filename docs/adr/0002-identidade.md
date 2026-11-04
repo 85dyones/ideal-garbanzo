@@ -666,7 +666,7 @@ Base: entrega da I1.1 (T0), com as ambiguidades resolvidas pelas seções acima.
 
 | ID | Ator e condição | Ação | Resultado | Onde | Base |
 |---|---|---|---|---|---|
-| D47 | sem empresa aprovada; anônimo | catálogo ou ficha, inclusive por URL | "sem permissão", para id existente ou não | ambos | §6.1, §7.4.1; 2.15 |
+| D47 | sem empresa aprovada; anônimo | catálogo ou ficha, inclusive por URL | "sem permissão", para id existente ou não; o anônimo vai para "Entrar", com o caminho de volta (ADR-0005 §2.1, F25) | ambos | §6.1, §7.4.1; 2.15 |
 | D48 | membro ativo de empresa ativa `buyer` ou `both` | catálogo | permitido (página provisória no Inc. 1) | ambos | §3.3; 2.15 |
 | D49 | membro só de empresa `supplier` | catálogo | recusado | ambos | §3.3; 2.2 |
 | D50 | membro de A | ler empresa, vínculos, perfis ou pedido de B | recusado | banco | §1.4.7, §5.1 |

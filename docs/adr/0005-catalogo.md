@@ -1,8 +1,8 @@
 # ADR-0005: Catálogo privado
 
-**Status:** em preparação desde 30/10/2026. O anexo A (I4.0) traz as regras extraídas da especificação, conferidas pelo T2. As decisões (seção 2) entram depois das respostas da pessoa responsável às perguntas da seção 6. O aceite vem no gate do Inc. 4, depois da revisão de exposição de dados (I4.4).
-**Data:** 2026-10-30
-**Subtarefa:** I4.0 (anexo A e perguntas) do plano orquestrado v2
+**Status:** proposto em 04/11/2026. O anexo A (I4.0) traz as regras extraídas da especificação, conferidas pelo T2; as decisões seguem as respostas da pessoa responsável (seção 6, P1 a P7) e, onde a especificação não decide, a leitura que mostra menos e pode ser aberta depois. O aceite vem no gate do Inc. 4, depois da revisão de exposição de dados (I4.4).  
+**Data:** 2026-10-30 (anexo A); 2026-11-04 (decisões)
+**Subtarefa:** I4.0 (anexo A, perguntas e decisões) do plano orquestrado v2
 **Base:** especificação v1.1 (§1.4, §3.3, §5.1, §5.2, §6.2 a §6.11, §7.1 a §7.4, §8, §9, §10, §13), ADR-0002, ADR-0003, ADR-0004, anexo A
 
 ---
@@ -18,26 +18,202 @@ Hoje nenhum comprador lê oferta (anexo A.9):
 
 ## 2. Decisões
 
-Entram depois das respostas da seção 6.
+### 2.1. Quem vê o catálogo e a ficha
+
+- **Comprador com acesso:** a regra de `private.pode_ver_catalogo()`, que não muda. É membro ativo, com perfil ativo, de empresa ativa compradora (`buyer` ou `both`).
+- **Oferta no catálogo:** a de `private.oferta_aberta`. São `published` ou `reserved`, dentro da validade, de empresa ativa e sem impedimento ativo (D9, P4 do ADR-0004).
+- **Ofertas de teste (P5):**
+  - o comprador de empresa real nunca vê oferta de teste (§5.2);
+  - o comprador de empresa de teste vê todas as ofertas abertas, reais e de teste;
+  - a oferta de teste aparece identificada como teste (§10, critério 13).
+- **Oferta da própria empresa (P6):**
+  - quem é membro ativo da empresa dona vê a oferta no catálogo, marcada como "da sua empresa", com as métricas do anúncio (seção 2.6) e o link "Ajustar detalhes" para a área do fornecedor;
+  - no Inc. 5, ela não tem interesse.
+- **Equipe da plataforma (F4):**
+  - a área administrativa já lê todas as ofertas e atende à §3.3;
+  - a rota do comprador segue `pode_ver_catalogo()`: quem é da equipe e tem vínculo de compradora vê como compradora.
+- **Oferta fora do catálogo (F2):**
+  - rascunho, em revisão, vendida, retirada, expirada, suspensa, vencida, com impedimento ativo ou de empresa suspensa mostram "Registro inexistente", igual a um id inexistente, a quem tem acesso;
+  - quem não tem acesso recebe "Sem permissão" para qualquer id (ADR-0002 §2.15).
+- **Reservada (F1):** aparece com o rótulo "Reservada". O status não diz quem negocia.
+- **Anônimo (F25):** vai para "Entrar", com o caminho de volta, como o código já faz. O texto do D47 no ADR-0002 passa a dizer isso.
+
+### 2.2. Leitura do comprador por funções do banco
+
+- **Por que não visões nem políticas nas tabelas:**
+  - o GRANT de SELECT é por papel, e `authenticated` é o mesmo para fornecedor e comprador. Uma política de leitura do comprador em `vehicles` ou `offers` abriria placa, RENAVAM e chassi pela API;
+  - uma visão `security definer` passa por cima da RLS sem aparecer na política, e o linter do Supabase a aponta;
+  - uma visão `security invoker` precisaria da política na tabela.
+- **A decisão:** duas funções `security definer`, com `search_path = ''`, chamadas por RPC.
+  - **Lista** do catálogo: com os filtros, a ordenação e o cursor da seção 2.5.
+  - **Ficha** de uma oferta.
+- **O que as duas funções fazem:**
+  - conferem `pode_ver_catalogo()`, ou o vínculo com a empresa dona, para a própria oferta;
+  - montam a resposta campo a campo, pela lista positiva da seção 2.3;
+  - os nomes saem na I4.1.
+- **O que esta decisão substitui:** as "visões sem os campos restritos" previstas no ADR-0002 §2.9 e no ADR-0003 §2.11 e §2.14 (B19).
+- **Estados documentais na ficha:**
+  - a função usa `private.estados_documentais_da_oferta` depois da própria conferência de acesso;
+  - `private.conferir_leitura_da_oferta` continua só para fornecedor e equipe;
+  - isso responde à R-I2.11-07, a variante interna antes do Inc. 4 ou 5.
+- **Fotos:**
+  - a política de leitura do bucket `offer-photos` ganha o comprador com acesso, para oferta aberta ou da própria empresa, e só com linha de `offer_media` não removida (ACH-09 do ADR-0003);
+  - a URL temporária sai do servidor, com a sessão do comprador.
+- **Toda coluna classificada:**
+  - um teste lista as colunas de `vehicles`, `offers`, `organizations`, `offer_media`, `supplier_declarations` e `vehicle_checks`;
+  - cada coluna fica marcada como exposta ao comprador ou não;
+  - uma coluna nova sem classificação faz o teste falhar (ADR-0003 A.8).
+
+### 2.3. O que o comprador vê (lista positiva)
+
+| Grupo | Mostra | Não mostra |
+|---|---|---|
+| Veículo | marca, modelo, versão, ano de fabricação e do modelo, quilometragem, combustível, câmbio, cor e carroceria | placa, RENAVAM, chassi e ids internos |
+| Oferta | preço, condições comerciais, cidade e UF, "Reservada", validade e a data da última confirmação de disponibilidade, ou "Disponibilidade ainda não confirmada" (F15) | quem autorizou, datas de suspensão e retirada, histórico de preço (P4) |
+| Fornecedora | nada até o interesse (P1). A própria empresa vê a marca "da sua empresa" | nome, razão social, CNPJ, contatos e membros |
+| Fotos | as não removidas, na ordem, por URL temporária | caminho, quem enviou e as removidas |
+| Documentos | nada (P3) | linha e arquivo, até a D5 |
+| Declarações | valor, origem "Declarada pelo fornecedor", detalhe (P2) e data | quem declarou |
+| Consultas vigentes | fonte, tipo de fonte, data, resultado por extenso, resumo, limitações, origem (O3 ou O4), quem registrou sem nome ("pela plataforma" ou "pelo fornecedor", F10) e "evidência anexada, oculta ao comprador" ou "sem evidência anexada" (F9) | `details`, `protocol`, autores e arquivos (ADR-0004 §2.14) |
+| Consultas substituídas | as mesmas informações, marcadas "Substituída em [data]" (P4) | o mesmo |
+| Revisão documental | só o estado "Em análise" (P4) | motivo, autor e revisões fechadas |
+| Impedimentos | o resolvido como "Impedimento de transferência resolvido em [data]" (P4); o ativo tira a oferta do catálogo | base, motivo e evidência da resolução |
+
+- **Detalhe da declaração (P2):** a tela de declarações do fornecedor passa a dizer que o comprador vê o texto e que ele não deve ter nome, CPF, telefone nem outro dado pessoal. O texto já passa pela lista de linguagem (R-I3.7-07).
+
+### 2.4. Ficha e resumo documental
+
+- **Ficha:**
+  - todos os estados por categoria, com os rótulos da §6.4 e a origem de cada informação;
+  - nunca um rótulo que funda origens (§6.5);
+  - "Sem apontamentos nas fontes consultadas" sempre com a fonte e a data de cada consulta ao lado.
+- **Resumo no card (F23):**
+  - contagens por estado (ex.: "2 com apontamentos, 3 pendentes"), com "(fontes e datas na ficha)", como a R-I3.7-12 fez na tela do fornecedor;
+  - nunca selo único.
+- **Ressalvas:** as da versão vigente (`notices`), com o texto do catálogo, provisório até a D5.
+- **Textos novos:** passam pelo varredor de linguagem (gate 5).
+
+### 2.5. Busca, filtros, ordenação e paginação
+
+| Item | Decisão |
+|---|---|
+| Preço | mínimo e máximo |
+| Marca e modelo | seleção pelos valores das ofertas abertas |
+| Ano (F17) | ano do modelo, mínimo e máximo |
+| Quilometragem | máxima |
+| Localização (F18) | UF e cidade. Sem restrição por região ou categoria de veículo até a C6 |
+| Estado documental (P7, F19) | uma categoria documental e um ou mais estados dela, com os rótulos da §6.4 (ex.: "Gravame: Com apontamentos ou Pendente"). Não há filtro agregado positivo, como "nenhuma categoria com apontamentos", porque funciona como selo único (§6.4) |
+| Busca textual (F20) | marca, modelo e versão. Nunca placa, RENAVAM, chassi nem as condições comerciais |
+| Ordenação (F21) | mais recentes (padrão), menor preço, maior preço, menor quilometragem, ano mais novo. Nunca por estado documental |
+| Paginação (F22) | por cursor, 24 ofertas por vez, sem contagem total |
+| Card (F16) | primeira foto, marca, modelo e versão, ano, quilometragem, preço, cidade e UF, resumo documental, "Reservada", "Oferta de teste" e "da sua empresa" quando valer |
+
+### 2.6. Métricas do anúncio (P6)
+
+- **O que conta:** a abertura da ficha por comprador com acesso. Não conta a própria empresa nem a equipe da plataforma.
+- **Uma por dia:** cada empresa compradora conta uma vez por dia em cada oferta.
+- **Teste:** só conta a empresa compradora com a mesma marcação de teste da oferta. Comprador de teste não infla a oferta real.
+- **O que a fornecedora vê:**
+  - visualizações da ficha e empresas compradoras distintas, nos últimos 7 e 30 dias e desde a publicação;
+  - interesses e negociações entram com o Inc. 5;
+  - só contagens, nunca quais empresas viram, como a §1.4.7 faz com as negociações.
+- **Onde:** na ficha da própria oferta no catálogo e no painel da oferta, na área do fornecedor.
+- **Registro:**
+  - tabela só de inclusão, com oferta, empresa compradora e dia;
+  - sem perfil nem dado pessoal;
+  - gravada por função do banco, chamada pelo servidor ao abrir a ficha;
+  - a leitura das contagens é só da empresa dona e da equipe.
+- **"Ajustar detalhes":** leva à área do fornecedor da oferta (`/empresa/[empresaId]/ofertas/[ofertaId]`). Lá valem as regras de edição por estado do ADR-0003 §2.5.
+
+### 2.7. Estados de tela (§9)
+
+- O catálogo e a ficha tratam carregamento, vazio, erro, sem permissão e registro inexistente (A.6).
+- O filtro sem resultado tem mensagem própria, com o caminho de limpar os filtros.
+- **Usuário suspenso (F24):** recebe "Acesso suspenso" na área do comprador, como nas outras áreas.
+
+### 2.8. Limite de taxa (F26)
+
+Sem limite novo no Inc. 4. O catálogo é só de comprador com acesso, e a paginação limita o volume por chamada. A proteção contra raspagem por comprador com acesso fica registrada para depois do piloto, com evidência de uso.
+
+### 2.9. Operações (I4.1)
+
+- `listOffers(filters, cursor)` e `getOfferDetails(offerId)` (§8), no servidor, sobre as funções da seção 2.2.
+- A abertura da ficha registra a visualização (seção 2.6) e gera as URLs das fotos.
+- O T2 confere a resposta de rede, não só a tela (plano, I4.1).
+
+## 3. Testes do Inc. 4
+
+- **Teste 1 (§7.4.1):** CT1.5 a CT1.10 do anexo A.7, com contraste e mutação por camada (função, política do bucket, servidor e página).
+- **Critérios 4, 6, 7 e 10:** CR4.1 a CR10.9 do anexo A.7, com estes acertos:
+  - CR6.5 (P3): o comprador não vê documento;
+  - CR10.7 (P5): a oferta de teste fica fora para comprador real e aparece, identificada, para comprador de teste.
+- **Negativos da §7.4:** N2.1 a N12.1.
+- **Métricas:**
+  - a própria empresa e a equipe não contam;
+  - uma por empresa por dia;
+  - a fornecedora não vê quem viu;
+  - outra empresa não lê as contagens.
+- **Toda coluna classificada:** seção 2.2.
+- **Verificação de mutação:** como nos incrementos anteriores, com o registro em `supabase/tests/mutacoes/inc-4.md`.
+
+## 4. Alternativas descartadas
+
+- Visões sem os campos restritos e políticas de leitura do comprador nas tabelas (seção 2.2).
+- Filtro agregado de estado documental e ordenação por "qualidade documental", porque sugerem verificação (§1.4.2, §6.4).
+- Contar visualização por perfil, porque guarda quem viu sem necessidade.
+- Mostrar a fornecedora no catálogo (P1).
+
+## 5. Consequências
+
+- **Exposição:** o comprador lê ofertas só pelas duas funções e pela política nova de fotos. Uma coluna nova em tabela de oferta precisa de classificação antes de chegar ao catálogo.
+- **Teste e real (P5):** o comprador de teste vê dados reais de ofertas. Por isso, as empresas de teste ficam restritas à equipe e ao piloto, e a marcação de teste só é feita pelo administrador.
+- **Métricas:** pedem uma tabela nova e uma escrita a cada abertura de ficha, deduplicada por dia.
+- **ADR-0002 e ADR-0003:** a seção 2.2 substitui as visões previstas, e o D47 do ADR-0002 é corrigido (F25).
 
 ## 6. Perguntas à pessoa responsável
 
-Respondidas em 30/10, todas pela recomendação do T2:
+Respondidas pela pessoa responsável:
 
 | # | Pergunta | Resposta | Ambiguidades |
 |---|---|---|---|
-| P1 | O comprador vê quem é a empresa fornecedora? | **Anônima até o interesse** (Inc. 5). CNPJ e contatos ficam fora em qualquer caso (ADR-0002 §2.9) | F6 |
-| P2 | O comprador vê o texto livre do detalhe da declaração? | **Mostra, com orientação** ao fornecedor para não escrever dado pessoal. O snapshot e a ciência (§6.7) já levam o texto | F7 |
-| P3 | O comprador vê que existe documento anexado (tipo e data)? | **Não vê nada:** leitura literal da §7.3 e do CT2.14 do ADR-0003. O arquivo fica oculto até a D5 | F8 |
-| P4 | Que histórico a ficha mostra ao comprador? | **As consultas substituídas e o vigente:** revisão só como "Em análise", sem o motivo; impedimento resolvido só com a data; sem histórico de preço | F11 a F14 |
+| P1 | O comprador vê quem é a empresa fornecedora? | **Anônima até o interesse** (Inc. 5). CNPJ e contatos ficam fora em qualquer caso (ADR-0002 §2.9). 30/10 | F6 |
+| P2 | O comprador vê o texto livre do detalhe da declaração? | **Mostra, com orientação** ao fornecedor para não escrever dado pessoal. O snapshot e a ciência (§6.7) já levam o texto. 30/10 | F7 |
+| P3 | O comprador vê que existe documento anexado (tipo e data)? | **Não vê nada:** leitura literal da §7.3 e do CT2.14 do ADR-0003. O arquivo fica oculto até a D5. 30/10 | F8 |
+| P4 | Que histórico a ficha mostra ao comprador? | **As consultas substituídas e o vigente:** revisão só como "Em análise", sem o motivo; impedimento resolvido só com a data; sem histórico de preço. 30/10 | F11 a F14 |
+| P5 | O que a empresa compradora de teste vê? | **Todos os carros à venda:** as ofertas abertas reais e as de teste, estas identificadas. O comprador real continua sem ver oferta de teste (§5.2). 04/11 | F3 |
+| P6 | Na empresa que compra e fornece, a oferta da própria empresa aparece no catálogo dela? | **Sim, com métricas da performance do anúncio e a opção de ajustar detalhes** (seção 2.6). As métricas são proposta do T2, aceita junto com a P7. 04/11 | F5 |
+| P7 | Como é o filtro de estado documental? | **Por categoria e estado,** pela sugestão do T2 ("sugira algo e vamos em frente"). Sem agregado positivo (seção 2.5). 04/11 | F19 |
 
-Em aberto:
+## 7. Respostas às ambiguidades da I4.0
 
-| # | Pergunta | Opções | Recomendação do T2 | Ambiguidades |
-|---|---|---|---|---|
-| P5 | O que a empresa compradora de teste vê? | só ofertas de teste; teste e reais; nenhuma oferta de teste | só ofertas de teste: igualdade nos dois sentidos, como nas consultas de teste (E15) | F3 |
-| P6 | Na empresa que compra e fornece (que agora só existe por convite; ADR-0002 §9), a oferta da própria empresa aparece no catálogo dela? | fica fora; aparece marcada como da própria empresa | fica fora: a empresa já vê a própria oferta na área do fornecedor | F5 |
-| P7 | Como é o filtro de estado documental? | por categoria e estado, com os rótulos da §6.4; também agregado ("nenhuma categoria com apontamentos") | por categoria e estado: o agregado funciona como selo único (§6.4) | F19 |
+| ID | Resposta | Seção |
+|---|---|---|
+| F1 | "Reservada" aparece como rótulo | 2.1 |
+| F2 | "Registro inexistente" para toda oferta fora do catálogo, igual a id inexistente | 2.1 |
+| F3 | P5: o comprador de teste vê todas as ofertas abertas; o real nunca vê as de teste | 2.1 |
+| F4 | a área administrativa atende à §3.3; a rota do comprador segue `pode_ver_catalogo()` | 2.1 |
+| F5 | P6: a própria oferta aparece marcada, com métricas e "Ajustar detalhes" | 2.1, 2.6 |
+| F6 | P1: fornecedora anônima até o interesse | 2.3 |
+| F7 | P2: o detalhe aparece, com orientação ao fornecedor | 2.3 |
+| F8 | P3: nada de documento ao comprador | 2.3 |
+| F9 | rótulo O4 e a indicação de evidência, com o arquivo oculto | 2.3 |
+| F10 | quem registrou aparece só como "pela plataforma" ou "pelo fornecedor" | 2.3 |
+| F11 | P4: consultas substituídas visíveis, marcadas | 2.3 |
+| F12 | P4: revisão só como "Em análise" | 2.3 |
+| F13 | P4: impedimento resolvido só com a data | 2.3 |
+| F14 | P4: só a versão vigente, sem histórico de preço | 2.3 |
+| F15 | validade e última confirmação de disponibilidade; sem confirmação, "Disponibilidade ainda não confirmada" | 2.3 |
+| F16 | card com a primeira foto e os campos da seção 2.5 | 2.5 |
+| F17 | ano do modelo | 2.5 |
+| F18 | UF e cidade, genéricos até a C6 | 2.5 |
+| F19 | P7: categoria e estados, sem agregado | 2.5 |
+| F20 | marca, modelo e versão; nunca campo restrito | 2.5 |
+| F21 | recentes, preço, quilometragem e ano; nunca estado documental | 2.5 |
+| F22 | cursor, 24 por vez, sem contagem total | 2.5 |
+| F23 | resumo com remissão à ficha, como a R-I3.7-12 | 2.4 |
+| F24 | "Acesso suspenso" também na área do comprador | 2.7 |
+| F25 | o anônimo vai para "Entrar"; o D47 do ADR-0002 é corrigido | 2.1 |
+| F26 | sem limite novo no Inc. 4; registrado para depois do piloto | 2.8 |
 
 ## Anexo A. Regras extraídas da especificação (I4.0)
 

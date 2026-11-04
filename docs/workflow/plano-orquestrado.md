@@ -226,16 +226,17 @@ Paralelismo: no máximo dois subagentes simultâneos, cada um com fronteira de a
 
 **Aceite:** critérios 4, 6, 7 e 10 da §10.  
 **Seções:** §6.4 (exibição), §6.6, §7.2, §7.3, §9.  
-**Decisões:** D5 deixa as evidências ocultas; C6 deixa os filtros genéricos.
+**Decisões:** D5 deixa as evidências ocultas; C6 deixa os filtros genéricos. P1 a P7 do ADR-0005 respondidas pela pessoa responsável (30/10 e 04/11): fornecedora anônima até o interesse; detalhe da declaração visível; documentos ocultos; consultas substituídas visíveis; comprador de teste vê todas as ofertas; a própria oferta aparece com métricas e "Ajustar detalhes"; filtro documental por categoria e estado.
 
 | ID | Subtarefa → entrega | Nível | Arquivos permitidos | Aceite e verificação |
 |---|---|---|---|---|
-| I4.0 | Regras de exibição ao comprador extraídas da especificação (T0) e conferidas; perguntas à pessoa responsável; ADR-0005 | T0 e T2 | `docs/adr/0005-catalogo.md` | cada regra cita a especificação ou um ADR. **Em andamento desde 30/10:** anexo A do ADR-0005 (28 linhas de visibilidade, 26 ambiguidades); P1 a P4 respondidas; P5 a P7 em aberto |
+| I4.0 | Regras de exibição ao comprador extraídas da especificação (T0) e conferidas; perguntas à pessoa responsável; ADR-0005 | T0 e T2 | `docs/adr/0005-catalogo.md` | cada regra cita a especificação ou um ADR. **Entregue em 04/11:** ADR-0005 proposto: anexo A (28 linhas de visibilidade, 26 ambiguidades), P1 a P7 respondidas, leitura do comprador por duas funções do banco em vez de visões, lista positiva de campos, filtros e métricas do anúncio |
 | I4.1 | `listOffers` e `getOfferDetails`: só para comprador aprovado; sem placa, RENAVAM, chassi nem documento; resumo documental proporcional; `is_test` fora para comprador real; fotos por URL temporária | T2 | consultas de `src/modules/offers/**`, `src/modules/documental/**` | T2 confere a resposta de rede, não só a tela |
 | I4.2 | Catálogo: busca, filtros (preço, marca, modelo, ano, quilometragem, localização, estado documental), ordenação, paginação; ficha com ressalvas e origem | T1 | rotas do comprador em `app/`, componentes | consome só a I4.1; estados do §9 |
 | I4.3 | E2E: comprador aprovado vê; não aprovado não vê, nem por URL direta (teste 1); oferta pendente nunca aparece como verificada | T1 | `tests/e2e/catalogo/**` | passam localmente e em homologação |
 | I4.4 | Revisão de exposição de dados | T3 | leitura | sem crítico aberto |
 | I4.5 | Screenshots do catálogo e da ficha em mobile e desktop | TV | leitura | estados do §9 visíveis |
+| I4.6 | Métricas do anúncio (P6; ADR-0005 §2.6): registro da abertura da ficha por empresa compradora, um por dia, sem perfil; contagens de 7 e 30 dias e desde a publicação, só para a empresa dona e a equipe; exibição na própria oferta no catálogo e no painel do fornecedor | T2 no banco e no servidor; T1 nas telas | `supabase/migrations/**`, `supabase/tests/**`, `src/modules/offers/**`, rotas do comprador e do fornecedor | a própria empresa e a equipe não contam; a fornecedora não vê quem viu; outra empresa não lê as contagens; mutação |
 
 **Paralelismo:** I4.2 ∥ I4.3 depois da I4.1.  
 **Gate:** critérios 4, 6, 7 e 10; T3 limpo.

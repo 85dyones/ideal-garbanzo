@@ -37,6 +37,8 @@
 |---|---|---|---|
 | 30/10/2026 | Entrada das empresas | O cadastro público cria só empresa compradora. A fornecedora entra por convite do administrador da plataforma, que libera o pedido de adesão; a aprovação continua a mesma. A empresa que compra e fornece também depende de convite. | §1.3, §3.1, §5.1, §6.1, §9 |
 | 31/10/2026 | Compradora que passa a fornecer | O aceite do convite por um administrador ativo da compradora basta, sem nova aprovação: a adesão como compradora já registrou a conferência de CNPJ. Se a C5 exigir documento próprio de fornecedora, a regra volta a ser decidida. | §6.1 |
+| 04/11/2026 | Comprador de teste | A empresa compradora de teste vê todas as ofertas abertas, reais e de teste; as de teste aparecem identificadas. O comprador real continua sem ver oferta de teste. | §5.2 |
+| 04/11/2026 | Oferta da própria empresa | Na empresa que compra e fornece, a própria oferta aparece no catálogo, marcada, com as métricas do anúncio e a opção de ajustar os detalhes. As métricas contam as aberturas da ficha por empresa compradora, sem dizer quais empresas viram (ADR-0005 §2.6). | §9 |
 
 ---
 
@@ -262,7 +264,7 @@ Modelo conceitual, base para as migrações. Toda tabela tem `id` UUID, `created
 - `published_at`, `valid_until`, `availability_confirmed_at`
 - `current_version`
 - `suspended_reason`, `suspended_by`, `suspended_at`
-- `is_test`: oferta de teste, nunca exibida a comprador real
+- `is_test`: oferta de teste, nunca exibida a comprador real; o comprador de empresa de teste vê as reais e as de teste (decisão de 04/11/2026)
 
 **offer_versions** (só inclusão)
 - `offer_id`, `version_number` (único por oferta)
@@ -581,6 +583,7 @@ Contratos funcionais, não assinaturas obrigatórias no código. Toda operação
 - cadastro em etapas: veículo, fotos, condições, declarações por categoria, documentos, consultas;
 - ficha com estados documentais;
 - interesses e negociações;
+- métricas do anúncio (aberturas da ficha por empresa compradora, sem dizer quais), também na própria oferta vista no catálogo;
 - histórico.
 
 **Comprador:**
