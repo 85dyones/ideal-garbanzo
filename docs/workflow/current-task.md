@@ -4,7 +4,7 @@
 **Próxima subtarefa:**
 - **Mudança de escopo de 30/10 (fornecedora só por convite):** concluída em 31/10, com I1.9 a I1.12 e a revisão independente sem crítico nem alto (ADR-0002 §9 e §10). Fica com a pessoa responsável o texto do `convite.html` no painel do Auth.
 - **Inc. 4 (catálogo privado):** I4.0 entregue em 04/11 (ADR-0005 proposto). Próxima: I4.1, a leitura do comprador no banco e no servidor (T2).
-- **Inc. 3 (domínio documental):** a I3.10 corrigiu os achados da revisão prévia da I3.8 (04/11). A I3.11 (envio direto de arquivos ao Storage) foi entregue em 04/11. Falta a I3.8 (revisão externa, AG), pela pessoa responsável, com o roteiro em `docs/workflow/revisao-externa-i3.8.md`. Depois, o gate e o aceite do ADR-0004. O piloto com dados reais continua bloqueado pela D5.
+- **Inc. 3 (domínio documental):** a I3.10 corrigiu os achados da revisão prévia da I3.8 (04/11). A I3.11 (envio direto de arquivos ao Storage) foi entregue em 04/11. Falta a I3.8 (revisão externa, AG), pela pessoa responsável, com o roteiro em `docs/workflow/revisao-externa-i3.8.md`. As contas de teste existem desde 04/11, e a **janela de revisão está aberta**: nada de reset, testes de banco, de integração ou E2E, nem migração nova no dev, até a entrega do relatório. Depois, o gate e o aceite do ADR-0004. O piloto com dados reais continua bloqueado pela D5.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -1310,3 +1310,16 @@
   - **código:** 438 unitários, tipos, lint, formatação e build passando.
 - **Falta verificar no preview:** o arquivo de 6 MB, porque o limite de 4,5 MB só existe na Vercel.
 
+
+### 2026-11-04 · I3.8 · contas de teste criadas; janela de revisão aberta
+
+- **Pedido da pessoa responsável:** criar por script as contas da revisão externa.
+- **Contas:** as cinco do roteiro, criadas no projeto de desenvolvimento pelo fluxo real (convite, pedido, evidência e aprovação):
+  - administrador da plataforma;
+  - operador da plataforma;
+  - administrador e membro de uma fornecedora, que tem uma oferta completa em rascunho com dados fictícios;
+  - administrador de outra fornecedora, sem oferta.
+- **Onde ficam:** o script, os e-mails e as senhas estão em `notas-privadas/`, fora do Git. A entrega ao revisor é por canal privado.
+- **Conferência:** login pela API com cada conta. A equipe vê o papel certo, cada vínculo está ativo na empresa certa, a fornecedora vê só a própria oferta e a outra empresa não vê nenhuma.
+- **Janela de revisão aberta:** nada de reset, testes de banco, de integração ou E2E, nem migração nova no dev, até a entrega do relatório. O CI segue normal, porque usa banco efêmero. A I4.1 espera a janela fechar.
+- **Roteiro atualizado:** a I3.11 saiu de "fora do escopo", e o roteiro agora registra as contas e a janela.

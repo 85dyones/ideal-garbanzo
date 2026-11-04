@@ -4,7 +4,8 @@
 **Preparado por:** T2, em 30/10/2026.
 **Revisões do roteiro:**
 - 04/11: links, critérios verificáveis, lista de conferência, severidades, dados pessoais e acesso;
-- 04/11: correções apontadas pela revisão prévia (ADR-0004 §9).
+- 04/11: correções apontadas pela revisão prévia (ADR-0004 §9);
+- 04/11: envio direto entregue (I3.11); contas de teste criadas e janela de revisão aberta.
 
 **Base:** plano orquestrado, I3.8; ADR-0004 (decisões, respostas P1 a P4, ressalvas da §8 e revisão prévia da §9); especificação v1.1, §6.3 a §6.6, §6.11 e §7.2.
 
@@ -80,7 +81,7 @@ O repositório é público: https://github.com/85dyones/ideal-garbanzo.
   - A §8 traz a revisão do T3, o que a I3.9 corrigiu e as decisões da pessoa responsável sobre a R-I3.7-07 e a R-I3.7-13.
   - A §9 traz a revisão prévia e o que a I3.10 corrigiu.
 - **Já registrados, sem precisar voltar:** os achados visuais TV-08, TV-11, TV-13, TV-16, TV-18, TV-20 e TV-24, no [`current-task.md`](https://github.com/85dyones/ideal-garbanzo/blob/main/docs/workflow/current-task.md) (entradas da revisão visual da I3.6).
-- **Fora da I3.10:** o envio direto de arquivos ao Storage (R-AG-06) é a I3.11. Até ela, arquivo acima de 4,5 MB falha no preview.
+- **Envio direto ao Storage (I3.11, R-AG-06):** desde o `90af13a`, os arquivos vão do navegador direto ao bucket, e o servidor confere tamanho, tipo pelo conteúdo e sha256 antes de gravar a linha ([ADR-0004 §10](https://github.com/85dyones/ideal-garbanzo/blob/main/docs/adr/0004-documental.md)). Arquivo de até 10 MB deve subir no preview.
 - **Evidência de testes:**
   - [pgTAP](https://github.com/85dyones/ideal-garbanzo/tree/main/supabase/tests/database), arquivos `400` a `430`;
   - [integração](https://github.com/85dyones/ideal-garbanzo/tree/main/tests/integration): `documental-operacoes.test.ts` e `estado-documental-paridade.test.ts`;
@@ -100,8 +101,11 @@ O repositório é público: https://github.com/85dyones/ideal-garbanzo.
   - um administrador de outra empresa;
   - um operador da plataforma;
   - um administrador da plataforma.
+  - As cinco foram criadas pelo T2 em 04/11, pelo fluxo real (convite, pedido, evidência e aprovação). A fornecedora do administrador e do membro tem uma oferta completa em rascunho, com dados fictícios; a outra empresa também é fornecedora, sem oferta.
+  - A equipe da plataforma vê também as ofertas que os testes automáticos deixaram no banco de desenvolvimento.
 - **Janela de revisão:**
-  - o T2 e o revisor combinam um período sem reset do banco, sem testes de banco ou de integração e sem migração nova no projeto de desenvolvimento;
+  - aberta em 04/11, com a criação das contas, até a entrega do relatório;
+  - nesse período, nada de reset do banco, de testes de banco, de integração ou E2E, nem de migração nova no projeto de desenvolvimento. O CI não conta, porque usa um banco efêmero;
   - o reset apaga as contas e os arquivos, e os testes criam e mudam dados.
 - **Dados:** use só textos e arquivos fictícios, nunca dado real.
 - **Sem acesso ao preview:** a revisão fica no código, nos testes e nos documentos, e o relatório marca como "não verificado (sem acesso)" os critérios que dependem da tela.
@@ -112,7 +116,6 @@ O repositório é público: https://github.com/85dyones/ideal-garbanzo.
 - O texto jurídico (D5): os textos das telas são provisórios.
 - A integração automática de consulta (C7).
 - A conformidade jurídica completa com a LGPD, que fica com a D5. O ponto 7 cobre só o que o código grava e mostra.
-- O envio de arquivos acima de 4,5 MB, que é a I3.11.
 
 ## Entrega esperada
 
