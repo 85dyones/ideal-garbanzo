@@ -20,6 +20,7 @@ import {
   autoriaDaConsulta,
   autoriaDaRevisao,
   ressalvaDoImpedimento,
+  explicacaoDaDivergencia,
   textoDaRevisaoAberta,
   textoDaSubstituicao,
   textoDoImpedimentoNaCategoria,
@@ -156,8 +157,10 @@ function CartaoDaConsulta({
           {comMaiuscula(consulta.explicacaoDoResultado)}
         </p>
       )}
-      <p className="break-words">Resumo: {consulta.resumo}</p>
-      <p className="break-words">
+      <p className="break-words whitespace-pre-line">
+        Resumo: {consulta.resumo}
+      </p>
+      <p className="break-words whitespace-pre-line">
         Limitações conhecidas: {consulta.limitacoes}
       </p>
       {consulta.protocolo === null ? null : (
@@ -226,6 +229,14 @@ function BlocoDaCategoria({
           data-revisao-aberta=""
         >
           {textoDaRevisaoAberta(categoria.revisaoAberta)}
+        </p>
+      )}
+      {explicacaoDaDivergencia(categoria) === null ? null : (
+        <p
+          className="break-words rounded border-l-4 border-amber-500 bg-amber-50 p-2 text-sm text-amber-950"
+          data-divergencia=""
+        >
+          {explicacaoDaDivergencia(categoria)}
         </p>
       )}
       {!completo || categoria.impedimento === null ? null : (

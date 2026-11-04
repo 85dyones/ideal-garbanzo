@@ -64,7 +64,7 @@ As decisões seguem as leituras conservadoras do anexo A (A.9). A exceção são
 
 ### 2.5. Revisão documental (E8, E19)
 
-- **Quem:** operador ou administrador sem vínculo não removido com a empresa dona (B25 do ADR-0003). O fornecedor vê a revisão, o motivo e quem a fechou.
+- **Quem:** operador ou administrador sem vínculo não removido com a empresa dona (B25 do ADR-0003). O fornecedor vê a revisão e o motivo; quem abriu e quem fechou aparecem como "equipe da plataforma", sem nome.
 - **Aberta:** a última ação da (oferta, categoria) é `open_review`.
 - **Regras:** o banco recusa fechar sem revisão aberta e abrir de novo com uma aberta. O motivo é obrigatório nas duas ações, pelo cabeçalho `x-audit-reason`, como no ADR-0002 §2.11.
 - **Só inclusão:** fechar é linha nova (CT11.11).
@@ -134,7 +134,7 @@ As decisões seguem as leituras conservadoras do anexo A (A.9). A exceção são
   - de uma consulta vigente `has_occurrence`, e o impedimento aponta para ela (`source_check_id`).
 
   Há no máximo um impedimento por registro de origem. O `basis` traz a categoria e o detalhe do registro de origem.
-- **Outras categorias:** o dano de média ou grande monta da §6.11 (Res. CONTRAN 810/2020, art. 14) só gera impedimento se aparecer também em `transfer_conditions`. A tela de declarações orienta o fornecedor a fazer isso, e a revisão da plataforma confere.
+- **Outras categorias:** o dano de média ou grande monta da §6.11 (Res. CONTRAN 810/2020, art. 14) só gera impedimento se aparecer também em `transfer_conditions`. A tela de declarações e a etapa Consultas orientam o fornecedor a fazer isso, e a revisão da plataforma confere: o detalhe administrativo destaca a oferta com ocorrência em sinistro e sem impedimento ativo, e a regra de não devolver por apontamento tem essa exceção. A orientação e a conferência só entraram na I3.10 (R-AG-01, seção 9).
 - **Resolução (E21):**
   - só o administrador resolve, com motivo e evidência da regularização, um arquivo de `check_evidence_files` da mesma oferta;
   - a resolução não é automática: declaração ou consulta nova que não aponte mais a ocorrência não resolve o impedimento sozinha;
@@ -152,7 +152,7 @@ As decisões seguem as leituras conservadoras do anexo A (A.9). A exceção são
 - **Lista (E25):** entra "sem ocorrências", só no plural (ajuste da I3.5): no singular, a expressão colidiria com "sem ocorrência conhecida", o valor legítimo da declaração. "100% liberado" não aparece em tela. Outros termos, se surgirem, vão para a pessoa responsável.
 - **Data (E26):** o varredor continua aceitando a qualificação sem a data. A regra fica na tela: onde aparece `no_findings_in_sources`, a data da consulta e a fonte aparecem ao lado (§6.4, "Exibição"). Um teste da I3.6 confere isso.
 - **Alcance do varredor (E27):** passa a ler também os modelos de `supabase/templates/` e as mensagens de `raise exception` das migrações, que chegam à tela. As notificações do Inc. 5 ficam em pastas varridas.
-- **Texto livre gravado na hora (E28):** `result_summary`, `known_limitations` e os motivos das revisões e dos impedimentos passam pela mesma lista. A conferência é feita no servidor e num gatilho. A lista do banco fica numa chave de `platform_settings`, e um teste confere que ela é igual a `config/linguagem-proibida.json`. Entrou na I3.5: migração `20261030150000_linguagem_no_texto_livre`, com a busca do varredor repetida no banco (sem maiúsculas nem acentos, palavra inteira, linha com a qualificação ou com o marcador não conta) e gatilhos em `vehicle_checks`, `documental_reviews` e na resolução do impedimento. Desde a I3.9, por decisão da pessoa responsável (R-I3.7-07), o `detail` da declaração do fornecedor também passa: gatilho `supplier_declarations_revisar_linguagem` (migração `20261030200000_decisoes_do_documental`) e o esquema do servidor.
+- **Texto livre gravado na hora (E28):** `result_summary`, `known_limitations` e os motivos das revisões e dos impedimentos passam pela mesma lista. A conferência é feita no servidor e num gatilho. A lista do banco fica numa chave de `platform_settings`, e um teste confere que ela é igual a `config/linguagem-proibida.json`. Entrou na I3.5: migração `20261030150000_linguagem_no_texto_livre`, com a busca do varredor repetida no banco (sem maiúsculas nem acentos, palavra inteira, linha com a qualificação ou com o marcador não conta) e gatilhos em `vehicle_checks`, `documental_reviews` e na resolução do impedimento. Desde a I3.10 (seção 9), o texto digitado não aceita o marcador de exceção, que vale só para o código-fonte, e a busca é por frase: a quebra de linha vira espaço, e a qualificação vale só na frase em que aparece. Por isso, o nome "Certificado de Registro de Veículo" no texto livre se escreve "CRV". As condições comerciais e a descrição do documento também passam pela lista. Desde a I3.9, por decisão da pessoa responsável (R-I3.7-07), o `detail` da declaração do fornecedor também passa: gatilho `supplier_declarations_revisar_linguagem` (migração `20261030200000_decisoes_do_documental`) e o esquema do servidor.
 
 ### 2.13. Snapshot e versão (E32, E33)
 
@@ -226,7 +226,7 @@ As decisões seguem as leituras conservadoras do anexo A (A.9). A exceção são
 ## 5. Consequências
 
 - **O estado da I2.5 muda em 32 das 40 linhas** quando as consultas e as revisões entrarem. Ofertas já publicadas no `dev` ganham versão nova só quando algum registro novo mudar o snapshot.
-- **Formato 2 do snapshot:** as telas e a ciência (Inc. 5) leem as duas versões.
+- **Snapshot:** continua no `schema_version` 1, com as chaves novas opcionais (seção 2.13). As telas e a ciência (Inc. 5) leem as versões com e sem as chaves novas.
 - **Catálogo (Inc. 4):** usa `private.oferta_aberta`, que já sabe do impedimento ativo.
 - **Mais um bucket privado** (`check-evidence`) no reset e na trava de destino (ADR-0002 §2.14).
 - **O varredor de linguagem fica maior:** lê modelos HTML e migrações.
@@ -311,6 +311,45 @@ A revisão foi feita em 30/10 por um subagente `reasoning-review` (T3), só em l
 
 ---
 
+## 9. Revisão prévia da I3.8: achados
+
+Uma sessão nova do mesmo modelo do T2 leu, em 04/11, o código e os testes da `main` em `9a59e99`, sem executar nada.
+- **Veredito:** 1 crítico aberto, 1 alto, 7 médios, 2 baixos e 2 informativos.
+- **Decisões da pessoa responsável (04/11):**
+  - a revisão só antecede a I3.8, que continua com o Antigravity;
+  - R-AG-01: orientação e conferência, mantendo a P3;
+  - R-AG-07: recusar dado pessoal no texto livre;
+  - R-AG-06: envio direto ao Storage, na I3.11.
+- **Corrigido na I3.10:**
+  - migração `20261104090000_achados_da_revisao_previa`;
+  - o `430` com os casos novos;
+  - 20 mutações, no registro do Inc. 3.
+
+| ID | Severidade | Achado | Situação |
+|---|---|---|---|
+| R-AG-01 | crítica | Dano de média ou grande monta declarado em sinistro passava sem impedimento, e a orientação e a conferência prometidas na seção 2.11 não existiam. | **Corrigido:** orientação nas declarações e na etapa Consultas; a revisão da equipe destaca o caso; a regra de não devolver tem a exceção. A P3 continua. |
+| R-AG-02 | alta | O marcador de exceção liberava qualquer termo no texto digitado, e "nada" e "consta" em linhas diferentes passavam. | **Corrigido:** no servidor e no banco, o texto digitado não aceita o marcador, a busca é por frase e a quebra de linha vira espaço. Mutações G01 a G03. |
+| R-AG-03 | média | O histórico chamava de "declaração" a mudança vinda de consulta ou revisão. | **Corrigido:** "informações em [categoria]", e o texto do histórico cita consultas, revisões e impedimentos. |
+| R-AG-04 | média | "Em análise" por divergência não dizia a causa, e as mensagens da revisão prometiam o que não acontece. | **Corrigido:** a ficha explica a divergência e o que resolve; as mensagens de abertura e fechamento foram acertadas; a ressalva passou ao código `.v2`, e o `.v1` fica para as versões antigas. |
+| R-AG-05 | média | O corte da base do impedimento podia deixar espaço no fim e derrubar a gravação inteira. | **Corrigido:** `rtrim` depois do corte, com teste nos dois limites. Mutação G16. |
+| R-AG-06 | média | Arquivo acima de 4,5 MB falha na Vercel, também nas fotos e documentos. | **Na I3.11:** envio direto ao Storage por URL assinada (decisão da pessoa responsável). |
+| R-AG-07 | média | CPF, nome ou placa no texto livre gravavam sem recusa. | **Corrigido:** o servidor e o banco recusam CPF, número de 11 dígitos, telefone, placa e chassi nos textos livres. Mutações G04 a G11. |
+| R-AG-08 | média | Condições comerciais e descrição do documento não passavam pela lista. | **Corrigido:** passam pela lista e pela trava de dado pessoal; na alteração, os gatilhos conferem só o campo que mudou. Mutações G12 a G15. |
+| R-AG-09 | média | Não havia teste de versão nova ao abrir e fechar revisão e ao resolver impedimento. | **Corrigido:** casos no `430`. Mutações G17 e G18. |
+| R-AG-10 | baixa | O botão "Reservar" aparecia com impedimento ativo. | **Corrigido:** a tela não oferece a reserva com impedimento ativo. |
+| R-AG-11 | baixa | Resumo e limitações com quebra de linha apareciam corridos. | **Corrigido:** os textos livres da ficha mantêm as quebras. |
+| R-AG-12 | informativa | A trava de chaves não reconhecia titular, possuidor, WhatsApp, rua nem bairro. | **Corrigido.** Mutação G19. |
+| R-AG-13 | informativa | Trechos deste ADR estavam desatualizados (§2.5, §5 e A.2, linha 25). | **Corrigido.** |
+
+- **Roteiro da I3.8:** corrigido com os apontamentos da revisão prévia:
+  - critérios precisos nos pontos 1 a 5 e 7;
+  - os pontos 8 (impedimento) e 9 (origem e evidência);
+  - mais contas;
+  - janela sem reset;
+  - dados fictícios;
+  - onde entregar.
+- **Convite:** o link do e-mail passa a seguir o ambiente de quem convida (`redirectTo` e `{{ .RedirectTo }}`), como o cadastro e a recuperação.
+
 ## Anexo A. Regras extraídas da especificação (I3.1)
 
 **Origem:**
@@ -387,7 +426,7 @@ A revisão foi feita em 30/10 por um subagente `reasoning-review` (T3), só em l
 | 22 | dho | — | sim | R2, R4a, R5b | não | `under_review` | O1 | `with_findings` | sim | §6.4 |
 | 23 | dho | aw | não | R2\*, R3, R5b | não | `with_findings` | O1, O3 | `with_findings` | não (a O3 entra) | §6.4 |
 | 24 | dho | aw | sim | R2\*, R3, R4a, R5b | não | `under_review` | O1, O3 | `with_findings` | sim | §6.4 |
-| 25 | dho | nos | não | R2\*, R4b (E4), R5b, R6 | **sim (E4)** | `under_review`; sem divergência, seria `with_findings` | O1, O3/O4 | `with_findings` | sim (não, se a E4 disser que não há divergência) | §6.4 |
+| 25 | dho | nos | não | R2\*, R4b (E4), R5b, R6 | **sim (E4)** | `under_review`; sem divergência, seria `with_findings` (leitura da extração; a P1 decidiu `with_findings`, seção 2.4) | O1, O3/O4 | `with_findings` | sim (não, se a E4 disser que não há divergência) | §6.4 |
 | 26 | dho | nos | sim | R2\*, R4a, R4b (E4), R5b | sim (E4) | `under_review` | O1, O3/O4 | `with_findings` | sim | §6.4 |
 | 27 | dho | cho | não | R5a, R5b | não (E6) | `with_findings` | O1, O3/O4 | `with_findings` | não (a O3/O4 entra) | §6.4 |
 | 28 | dho | cho | sim | R4a, R5a, R5b | não | `under_review` | O1, O3/O4 | `with_findings` | sim | §6.4 |

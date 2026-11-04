@@ -4,7 +4,7 @@
 **Próxima subtarefa:**
 - **Mudança de escopo de 30/10 (fornecedora só por convite):** concluída em 31/10, com I1.9 a I1.12 e a revisão independente sem crítico nem alto (ADR-0002 §9 e §10). Fica com a pessoa responsável o texto do `convite.html` no painel do Auth.
 - **Inc. 4 (catálogo privado):** I4.0 entregue em 04/11 (ADR-0005 proposto). Próxima: I4.1, a leitura do comprador no banco e no servidor (T2).
-- **Inc. 3 (domínio documental):** a I3.8 (revisão externa, AG), pela pessoa responsável, com o roteiro em `docs/workflow/revisao-externa-i3.8.md`. Depois dela, o gate e o aceite do ADR-0004. O piloto com dados reais continua bloqueado pela D5.
+- **Inc. 3 (domínio documental):** a I3.10 corrigiu os achados da revisão prévia da I3.8 (04/11). Falta a I3.11 (envio direto de arquivos ao Storage) e a I3.8 (revisão externa, AG), pela pessoa responsável, com o roteiro em `docs/workflow/revisao-externa-i3.8.md`. Depois, o gate e o aceite do ADR-0004. O piloto com dados reais continua bloqueado pela D5.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -1234,4 +1234,52 @@
   - ADR-0002: D47 corrigido (F25);
   - plano: Inc. 4 com a I4.0 entregue e a I4.6 (métricas) nova.
 - **Modelo `convite.html`:** o texto serve ao convite de membro e ao de fornecedora. A pessoa responsável cola o modelo no painel do Auth.
+- **Push (aprovado pela pessoa responsável em 04/11):** `02a81e1..9a59e99`. A execução `41830407909` do CI passou nos três jobs.
+
+### 2026-11-04 · I3.10 · achados da revisão prévia da I3.8
+
+- **Revisão prévia:** uma sessão nova do mesmo modelo do T2 leu o código e os testes da `main` em `9a59e99`, sem executar nada.
+  - **Veredito:** 1 crítico, 1 alto, 7 médios, 2 baixos e 2 informativos.
+  - **Conferência do T2:** os achados que pesam no gate procedem.
+- **Decisões da pessoa responsável (04/11):**
+  - a revisão só antecede a I3.8, que continua com o Antigravity;
+  - R-AG-01: orientação e conferência do dano de média ou grande monta, mantendo a P3;
+  - R-AG-07: recusar dado pessoal no texto livre;
+  - R-AG-06: envio direto ao Storage, na I3.11.
+- **I3.10 (T2):**
+  - **Migração `20261104090000_achados_da_revisao_previa`:**
+    - texto digitado sem o marcador e com a busca por frase;
+    - CPF, número de 11 dígitos, telefone, placa e chassi recusados no texto livre;
+    - linguagem e dado pessoal nas condições comerciais e na descrição do documento;
+    - na alteração, os gatilhos conferem só o campo que mudou;
+    - base do impedimento sem espaço no fim;
+    - ressalva "Em análise" no `.v2`;
+    - trava de chaves com titular, possuidor, WhatsApp, rua e bairro.
+  - **Servidor:** `varrerTextoDigitado` e `dadoPessoalNoTexto` repetem o banco nos esquemas.
+  - **Telas:**
+    - orientação de sinistro nas declarações e na etapa Consultas;
+    - conferência na revisão da equipe;
+    - divergência explicada na ficha;
+    - histórico com rótulo neutro;
+    - "Reservar" fora com impedimento ativo;
+    - quebras de linha mantidas.
+  - **Convite:** o link do e-mail segue o ambiente de quem convida (`redirectTo` e `{{ .RedirectTo }}`).
+  - **Roteiro da I3.8:**
+    - critérios corrigidos;
+    - os pontos 8 e 9;
+    - mais contas;
+    - janela sem reset;
+    - dados fictícios;
+    - onde entregar;
+    - achados da revisão externa numerados R-I3.8-NN.
+  - **ADR-0004:** §2.5, §2.11, §2.12, §5 e A.2 acertados, e a §9 nova.
+- **Mutações:** 20 (G01 a G20), todas detectadas, em `supabase/tests/mutacoes/inc-3.md`.
+- **Evidência no dev**, depois de `db:reset` com as 18 migrações:
+  - **banco:** `test:db` com 28 arquivos passando;
+  - **integração:** `test:integration` com 13 arquivos e 133 testes passando;
+  - **e2e:** 35 passando numa rodada;
+  - **código:** 438 unitários, tipos, lint, formatação e build passando.
+- **Pendente da pessoa responsável:**
+  - colar de novo o `convite.html`, porque o link mudou para `{{ .RedirectTo }}`;
+  - ajustar a Site URL quando a homologação entrar em uso.
 

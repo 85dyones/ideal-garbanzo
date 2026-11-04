@@ -106,3 +106,34 @@ describe("esquema da consulta (ADR-0004 §2.9 e §2.12)", () => {
     expect(camposComErro(consulta({ detalhes: { cpf: "1" } }))).not.toEqual([]);
   });
 });
+
+describe("dado pessoal no texto livre (R-AG-07)", () => {
+  it("o resumo e as limitações com CPF, telefone ou placa são recusados", () => {
+    expect(camposComErro(consulta({ resumo: "Dono 123.456.789-09." }))).toEqual(
+      ["resumo"],
+    );
+    expect(
+      camposComErro(consulta({ limitacoes: "Credor no (11) 98765-4321." })),
+    ).toEqual(["limitacoes"]);
+    expect(camposComErro(consulta({ resumo: "Placa ABC1D23." }))).toEqual([
+      "resumo",
+    ]);
+  });
+
+  it("o motivo da revisão também", () => {
+    const resultado = esquemaDaRevisao.safeParse({
+      ofertaId: OFERTA,
+      categoria: "lien",
+      motivo: "Chassi 9BWZZZ377VT004251 diverge.",
+    });
+    expect(resultado.success).toBe(false);
+  });
+
+  it("contraste: ano, preço e quilometragem entram", () => {
+    expect(
+      camposComErro(
+        consulta({ resumo: "Modelo 2019-2020, 45.000 km, R$ 89.900,00." }),
+      ),
+    ).toEqual([]);
+  });
+});

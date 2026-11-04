@@ -5,6 +5,7 @@ import {
   normalizar,
   validarLista,
   varrerTexto,
+  varrerTextoDigitado,
 } from "./linguagem-proibida";
 
 const lista = carregarListaPadrao();
@@ -227,5 +228,46 @@ describe("validarLista", () => {
     expect(() => validarLista(dado)).toThrow(
       /Lista de linguagem proibida inválida/,
     );
+  });
+});
+
+describe("texto digitado por usuário (R-AG-02; igual a private.termo_proibido)", () => {
+  const termos = (texto: string) =>
+    varrerTextoDigitado(texto).map((ocorrencia) => ocorrencia.termo);
+
+  it("o marcador de exceção não libera o texto digitado", () => {
+    expect(
+      termos("Veículo verificado e garantido, linguagem-permitida: ok"),
+    ).toEqual(["verificado", "garantido"]);
+  });
+
+  it("a quebra de linha não separa os termos de duas palavras", () => {
+    expect(termos("O relatório diz nada\nconsta para o veículo")).toEqual([
+      "nada consta",
+    ]);
+  });
+
+  it("a qualificação vale só na frase em que aparece", () => {
+    expect(
+      termos(
+        "Veículo verificado. Nada consta nas fontes consultadas, em 30/10/2026.",
+      ),
+    ).toEqual(["verificado"]);
+  });
+
+  it("contraste: qualificação na mesma frase, palavra parecida e sublinhado passam", () => {
+    expect(
+      termos("Nada consta nas fontes consultadas, em 30/10/2026."),
+    ).toEqual([]);
+    expect(termos("Certificação do laudo; sem ocorrência conhecida.")).toEqual(
+      [],
+    );
+    expect(termos("nada_consta")).toEqual([]);
+  });
+
+  it("o trecho vem como digitado, para a mensagem", () => {
+    expect(varrerTextoDigitado("Tudo OK. Procedência\nGarantida.")).toEqual([
+      expect.objectContaining({ termo: "procedência garantida" }),
+    ]);
   });
 });

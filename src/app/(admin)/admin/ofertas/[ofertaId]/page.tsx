@@ -49,6 +49,7 @@ import {
   consultasSubstituiveis,
   impedimentosAtivos,
   montarFicha,
+  precisaConferirMonta,
   ressalvasSemImpedimento,
   resumoTemSemApontamentos,
 } from "@/modules/documental/ui/ficha";
@@ -237,6 +238,9 @@ export default async function PaginaDaOfertaNaAdministracao({
     vencida,
   );
   const ativos = impedimentosAtivos(registros.impedimentos);
+  // Com impedimento ativo, o banco recusa a reserva (T08; ADR-0004, P4), e a
+  // tela nem oferece o botão (R-AG-10).
+  const podeReservar = acoes.reservar && ativos.length === 0;
   const podeResolver = podeResolverImpedimento(situacao.ator);
   // A evidência da resolução segue a regra de envio da evidência da consulta.
   const resolucaoNoEstado = podeResolver && podeRegistrar;
@@ -252,7 +256,7 @@ export default async function PaginaDaOfertaNaAdministracao({
     .filter((categoria) => abertas.has(categoria.categoria))
     .map((categoria) => [categoria.categoria, categoria.rotulo] as const);
   const ressalvas = ressalvasSemImpedimento(estados.avisos);
-  const outrasAcoes = acoes.retirar || acoes.reservar || acoes.liberar;
+  const outrasAcoes = acoes.retirar || podeReservar || acoes.liberar;
   const algumaAcao =
     acoes.revisar ||
     acoes.suspender ||
@@ -906,6 +910,14 @@ export default async function PaginaDaOfertaNaAdministracao({
             {acoes.revisar ? (
               <Secao titulo="Revisão">
                 <p>{TEXTO_DA_PLATAFORMA.revisao}</p>
+                {precisaConferirMonta(ficha) ? (
+                  <Aviso tom="alerta">
+                    Há ocorrência em “Sinistro e danos relevantes” e nenhum
+                    impedimento ativo. Confira se o dano é de média ou grande
+                    monta: se for, devolva a oferta para a empresa declarar a
+                    ocorrência em “Condições de transferência”.
+                  </Aviso>
+                ) : null}
                 <Aviso>{TEXTO_DA_PLATAFORMA.devolucaoNaoPorPendencia}</Aviso>
                 <RevisaoPelaPlataforma
                   ofertaId={oferta.id}
@@ -946,13 +958,13 @@ export default async function PaginaDaOfertaNaAdministracao({
 
             {outrasAcoes ? (
               <Secao titulo="Outras ações">
-                {acoes.reservar || acoes.liberar ? (
+                {podeReservar || acoes.liberar ? (
                   <div className="flex flex-col gap-2">
                     <p className="text-sm text-neutral-700">
                       {TEXTO_DA_PLATAFORMA.reserva}
                     </p>
                     <div className="flex flex-wrap items-start gap-3">
-                      {acoes.reservar ? (
+                      {podeReservar ? (
                         <AcaoDaOferta
                           ofertaId={oferta.id}
                           rotulo="Reservar"

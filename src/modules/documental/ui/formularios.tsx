@@ -42,6 +42,8 @@ import {
   TIPOS_DE_FONTE,
 } from "../rules/estados";
 import {
+  CATEGORIA_DE_SINISTRO,
+  ORIENTACAO_DE_SINISTRO,
   EXPLICACAO_DO_RESULTADO,
   TEXTO_DOCUMENTAL,
   rotuloDoLinkDaEvidencia,
@@ -210,6 +212,14 @@ function CamposDaConsulta({
           }}
           erros={estado.campos.categoria}
         />
+        {categoria === CATEGORIA_DE_SINISTRO ? (
+          <p
+            className="break-words rounded border-l-4 border-amber-500 bg-amber-50 p-2 text-sm text-amber-950 sm:col-span-2"
+            data-orientacao-de-sinistro=""
+          >
+            {ORIENTACAO_DE_SINISTRO}
+          </p>
+        ) : null}
         <CampoDeSelecao
           nome="tipoDeFonte"
           rotulo="Tipo da fonte"

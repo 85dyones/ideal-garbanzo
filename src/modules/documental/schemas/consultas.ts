@@ -11,7 +11,8 @@
  */
 import { z } from "zod";
 import { id, motivo, textoDeLinha, textoLivre } from "@/lib/operacao/campos";
-import { varrerTexto } from "@/lib/linguagem-proibida";
+import { dadoPessoalNoTexto, mensagemDoDadoPessoal } from "@/lib/dado-pessoal";
+import { varrerTextoDigitado } from "@/lib/linguagem-proibida";
 import {
   TAMANHO_MAXIMO_DO_ARQUIVO,
   TIPOS_DE_ARQUIVO_DO_DOCUMENTO,
@@ -46,8 +47,26 @@ export function mensagemDaLinguagem(
 /** Os trechos com termo da §6.6 sem a qualificação, como digitados e sem repetir. */
 export function trechosProibidos(valor: string): string[] {
   return [
-    ...new Set(varrerTexto(valor).map((ocorrencia) => ocorrencia.trecho)),
+    ...new Set(
+      varrerTextoDigitado(valor).map((ocorrencia) => ocorrencia.trecho),
+    ),
   ];
+}
+
+/**
+ * O campo de texto recusa CPF, número de 11 dígitos, telefone, placa e
+ * chassi, como o gatilho do banco (R-AG-07; ADR-0004 §9).
+ */
+export function semDadoPessoal<T extends z.ZodType<string>>(campo: T) {
+  return campo.superRefine((valor, contexto) => {
+    const achado = dadoPessoalNoTexto(valor);
+    if (achado !== null) {
+      contexto.addIssue({
+        code: "custom",
+        message: mensagemDoDadoPessoal(achado),
+      });
+    }
+  });
 }
 
 /** O campo de texto recusa termo da §6.6 sem a qualificação, como o gatilho do banco (E28). */
@@ -94,8 +113,8 @@ export const esquemaDaConsulta = z.strictObject({
       error: "A data da consulta não pode estar no futuro.",
     }),
   resultado: z.enum(RESULTADOS_DA_CONSULTA),
-  resumo: semLinguagemProibida(textoLivre(2000)),
-  limitacoes: semLinguagemProibida(textoLivre(2000)),
+  resumo: semDadoPessoal(semLinguagemProibida(textoLivre(2000))),
+  limitacoes: semDadoPessoal(semLinguagemProibida(textoLivre(2000))),
   protocolo: semLinguagemProibida(textoDeLinha(200)).optional(),
   substitui: id.optional(),
   evidencia: esquemaDaEvidencia.optional(),
@@ -104,12 +123,12 @@ export const esquemaDaConsulta = z.strictObject({
 export const esquemaDaRevisao = z.strictObject({
   ofertaId: id,
   categoria,
-  motivo: semLinguagemProibida(motivo),
+  motivo: semDadoPessoal(semLinguagemProibida(motivo)),
 });
 
 export const esquemaDaResolucao = z.strictObject({
   impedimentoId: id,
-  motivo: semLinguagemProibida(motivo),
+  motivo: semDadoPessoal(semLinguagemProibida(motivo)),
   evidencia: esquemaDaEvidencia,
 });
 

@@ -3,6 +3,10 @@
  * estritos: campo a mais no payload é erro, não é ignorado.
  */
 import { z } from "zod";
+import {
+  semDadoPessoal,
+  semLinguagemProibida,
+} from "@/modules/documental/schemas/consultas";
 import { id, textoDeLinha } from "@/lib/operacao/campos";
 import {
   TAMANHO_MAXIMO_DO_ARQUIVO,
@@ -33,7 +37,8 @@ export const esquemaDoDocumento = z.strictObject({
   conteudo,
   // Como `offer_documents.description` (`private.texto_de_linha`, 300): sem
   // controle nem invisível, para a recusa sair antes do envio ao bucket.
-  descricao: textoDeLinha(300).optional(),
+  // Aparece na ficha: passa pela lista e pela trava de dado pessoal (R-AG-08).
+  descricao: semDadoPessoal(semLinguagemProibida(textoDeLinha(300))).optional(),
 });
 
 export const esquemaDaUrlDaFoto = z.strictObject({ fotoId: id });

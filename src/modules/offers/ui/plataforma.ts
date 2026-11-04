@@ -250,9 +250,9 @@ export const TEXTO_DA_PLATAFORMA = {
   conflito:
     "Você tem vínculo com a empresa dona desta oferta. Para evitar conflito de interesse, você não age nela como plataforma: revisão, suspensão, reativação, reserva e retirada ficam com outra pessoa da equipe. Se precisar agir como empresa fornecedora, use o painel da empresa.",
   revisao:
-    "A revisão confere completude, linguagem e indício de fraude. Publique a oferta ou devolva-a à empresa fornecedora com o motivo.",
+    "A revisão confere completude, linguagem e indício de fraude. Em “Sinistro e danos relevantes” com ocorrência, confere também se o dano é de média ou grande monta: nesse caso, a ocorrência precisa estar em “Condições de transferência”. Publique a oferta ou devolva-a à empresa fornecedora com o motivo.",
   devolucaoNaoPorPendencia:
-    "Pendência, apontamento ou divergência documental não justificam a devolução: elas viram aviso na oferta.",
+    "Pendência, apontamento ou divergência documental não justificam a devolução: elas viram aviso na oferta. A exceção é o dano de média ou grande monta em “Sinistro e danos relevantes” sem a ocorrência em “Condições de transferência”: devolva com esse motivo.",
   publicacaoBloqueada:
     "Faltam dados obrigatórios para publicar. Se a empresa fornecedora precisar completar, devolva com o motivo.",
   motivoDaDevolucao: "O motivo aparece para a empresa fornecedora.",

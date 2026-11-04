@@ -210,6 +210,73 @@ export function criarVarredor(
   };
 }
 
+/**
+ * Varredor do texto digitado por usuário (ADR-0004 §9, R-AG-02), igual a
+ * `private.termo_proibido` no banco:
+ * - o marcador de exceção não vale: ele existe para o código-fonte;
+ * - a quebra de linha vira espaço, para os termos de duas palavras não
+ *   escaparem;
+ * - a qualificação vale só na frase em que aparece. As frases se separam por
+ *   ponto, ponto e vírgula, exclamação ou interrogação.
+ */
+export function criarVarredorDeTextoDigitado(
+  lista: ListaDeLinguagemProibida,
+): (texto: string) => Ocorrencia[] {
+  const padroes: PadraoDeTermo[] = lista.termos.flatMap((item) =>
+    item.variantes.map((variante) => ({
+      termo: item.termo,
+      expressao: expressaoDePalavraInteira(variante, "gu"),
+    })),
+  );
+  const qualificacao = expressaoDePalavraInteira(lista.qualificacao, "u");
+
+  return (texto: string): Ocorrencia[] => {
+    const ocorrencias: Ocorrencia[] = [];
+    const corrido = texto.replace(/[\r\n]/gu, " ");
+    for (const frase of corrido.matchAll(/[^.;!?]+/gu)) {
+      const { texto: normal, origem } = normalizarComMapa(frase[0]);
+      if (qualificacao.test(normal)) {
+        continue;
+      }
+      const achados: Achado[] = [];
+      for (const padrao of padroes) {
+        for (const resultado of normal.matchAll(padrao.expressao)) {
+          achados.push({
+            inicio: resultado.index,
+            fim: resultado.index + resultado[0].length,
+            termo: padrao.termo,
+          });
+        }
+      }
+      achados.sort((a, b) => a.inicio - b.inicio || b.fim - a.fim);
+      let fimDoUltimo = -1;
+      for (const achado of achados) {
+        if (achado.inicio < fimDoUltimo) {
+          continue;
+        }
+        fimDoUltimo = achado.fim;
+        const inicioOriginal = origem[achado.inicio] ?? 0;
+        const fimOriginal = origem[achado.fim] ?? frase[0].length;
+        ocorrencias.push({
+          linha: 1,
+          coluna: frase.index + inicioOriginal + 1,
+          termo: achado.termo,
+          trecho: frase[0].slice(inicioOriginal, fimOriginal),
+        });
+      }
+    }
+    return ocorrencias;
+  };
+}
+
+/** Varre um texto digitado por usuário com a lista padrão (R-AG-02). */
+export function varrerTextoDigitado(
+  texto: string,
+  lista: ListaDeLinguagemProibida = carregarListaPadrao(),
+): Ocorrencia[] {
+  return criarVarredorDeTextoDigitado(lista)(texto);
+}
+
 /** `raise exception '...'`, com a mensagem como literal SQL (aspas dobradas dentro). */
 const RAISE_EXCEPTION = /\braise\s+exception\s+'((?:[^']|'')*)'/gi;
 

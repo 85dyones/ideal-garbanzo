@@ -20,6 +20,10 @@ import {
   ROTULO_DO_VALOR_DECLARADO,
   VALORES_DECLARADOS,
 } from "@/modules/documental/rules/estados";
+import {
+  CATEGORIA_DE_SINISTRO,
+  ORIENTACAO_DE_SINISTRO,
+} from "@/modules/documental/ui/ficha";
 
 export interface CategoriaParaDeclarar {
   readonly categoria: string;
@@ -82,11 +86,21 @@ function LinhaDaCategoria({
         )}
         {item.vigente?.detalhe === null ||
         item.vigente?.detalhe === undefined ? null : (
-          <p className="break-words">Detalhe: {item.vigente.detalhe}</p>
+          <p className="break-words whitespace-pre-line">
+            Detalhe: {item.vigente.detalhe}
+          </p>
         )}
         <p className="break-words text-sm text-neutral-700">
           Estado: {item.estado}
         </p>
+        {item.categoria === CATEGORIA_DE_SINISTRO ? (
+          <p
+            className="break-words rounded border-l-4 border-amber-500 bg-amber-50 p-2 text-sm text-amber-950"
+            data-orientacao-de-sinistro=""
+          >
+            {ORIENTACAO_DE_SINISTRO}
+          </p>
+        ) : null}
         {item.vigente === null ? null : (
           <p className="text-sm text-neutral-700">
             Marque uma resposta só se quiser mudar a declaração.
@@ -122,8 +136,8 @@ function LinhaDaCategoria({
           maxLength={2000}
           dica={
             escolha === "has_occurrence"
-              ? "Obrigatório: descreva a ocorrência."
-              : undefined
+              ? "Obrigatório: descreva a ocorrência. O comprador lê este texto: não escreva nome, CPF, telefone, placa nem outro dado pessoal."
+              : "O comprador lê este texto: não escreva nome, CPF, telefone, placa nem outro dado pessoal."
           }
           defaultValue={detalheInicial}
           erros={erros[nomeDoDetalhe]}

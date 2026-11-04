@@ -60,7 +60,8 @@ export default async function PaginaDoHistorico({
       <Secao titulo="Versões">
         <p className="text-sm text-neutral-700">
           Uma versão nova nasce quando muda um dado importante da oferta, como
-          preço, quilometragem, condições comerciais ou declarações.
+          preço, quilometragem, condições comerciais, declarações, consultas,
+          revisões documentais ou impedimentos de transferência.
         </p>
         {versoes.length === 0 ? (
           <Vazio>Nenhuma versão registrada.</Vazio>

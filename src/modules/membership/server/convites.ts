@@ -24,7 +24,7 @@ import { ehAdministrador, vinculoAtivo } from "@/modules/auth/rules/permissoes";
 import { executarOperacao } from "@/modules/auth/server/operacao";
 import {
   convidarPeloAuth,
-  type ConvidarNoAuth,
+  type OpcoesDoConvite,
 } from "@/modules/organizations/server/membros";
 import {
   esquemaDoConviteDeFornecedora,
@@ -34,7 +34,7 @@ import {
 export function convidarFornecedora(
   dependencias: Dependencias,
   entrada: unknown,
-  opcoes: { readonly convidarNoAuth?: ConvidarNoAuth } = {},
+  opcoes: OpcoesDoConvite = {},
 ): Promise<Resultado<{ conviteId: string }>> {
   return executarOperacao(
     dependencias,
@@ -81,6 +81,7 @@ export function convidarFornecedora(
         const criado = await (opcoes.convidarNoAuth ?? convidarPeloAuth)(
           administrativo,
           email,
+          opcoes.urlDeRetorno,
         );
         if (criado === null) {
           return falha(

@@ -162,7 +162,7 @@ describe("resumo da mudança da versão", () => {
         "categories.auction, fields.asking_price, notices, transfer_impediments",
       ),
     ).toBe(
-      "Declaração em Passagem por leilão; Preço; avisos documentais; impedimentos de transferência",
+      "Informações em Passagem por leilão; Preço; avisos documentais; impedimentos de transferência",
     );
     expect(resumoDaMudanca("fields.campo_novo")).toBe("Campo_novo");
   });

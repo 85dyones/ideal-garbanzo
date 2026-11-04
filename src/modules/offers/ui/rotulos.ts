@@ -90,7 +90,7 @@ export function resumoDaMudanca(resumo: string): string {
       }
       if (parte.startsWith("categories.")) {
         const categoria = parte.slice("categories.".length);
-        return `declaração em ${rotuloDaCategoria(categoria)}`;
+        return `informações em ${rotuloDaCategoria(categoria)}`;
       }
       return ROTULO_DA_SECAO_DO_SNAPSHOT[parte] ?? parte;
     });

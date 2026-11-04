@@ -20,8 +20,11 @@ export const AVISOS = {
     "Há categorias com apontamentos. Leia o detalhe de cada uma antes de seguir.",
   "categoria_pendente.v1":
     "Há categorias com consulta pendente ou incompleta. Leia o detalhe de cada uma antes de seguir.",
+  /** Só para as versões antigas: o .v2 não diz que a plataforma já está analisando (R-AG-04). */
   "categoria_em_analise.v1":
     "Há categorias em análise pela plataforma, por divergência ou por apontamento que exige avaliação.",
+  "categoria_em_analise.v2":
+    "Há categorias em análise: a declaração do fornecedor e a consulta divergem, ou há revisão documental aberta. O motivo está na ficha de cada categoria.",
   "sem_apontamentos_nas_fontes_consultadas.v1":
     "Há categorias sem apontamentos nas fontes consultadas. O resultado vale só para essas fontes, na data de cada consulta.",
   "impedimento_de_transferencia.v1":
@@ -36,7 +39,7 @@ const AVISO_DO_ESTADO: Readonly<
   declared_unverified: "declaracao_sem_comprovacao.v1",
   with_findings: "categoria_com_apontamentos.v1",
   pending: "categoria_pendente.v1",
-  under_review: "categoria_em_analise.v1",
+  under_review: "categoria_em_analise.v2",
   no_findings_in_sources: "sem_apontamentos_nas_fontes_consultadas.v1",
 };
 

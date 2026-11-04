@@ -1,9 +1,9 @@
 <!--
   Supabase Auth → Emails → Invite user.
   Assunto: Você recebeu um convite para o EntrePátios
-  O convite (`inviteUserByEmail`) não manda URL de retorno, por isso o link
-  usa a Site URL. O destino padrão do tipo `invite` é /nova-senha
-  (docs/ambiente.md §5).
+  O convite (`inviteUserByEmail`) manda a URL de retorno do ambiente de quem
+  convida (`<origem>/auth/confirmar?proximo=/nova-senha`), como o cadastro e a
+  recuperação; o modelo acrescenta só o token (docs/ambiente.md §5).
 -->
 <div
   style="
@@ -25,7 +25,7 @@
 
   <p style="margin: 24px 0">
     <a
-      href="{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&type=invite"
+      href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=invite"
       style="
         background: #1f2933;
         color: #ffffff;

@@ -19,6 +19,8 @@ import {
   valoresDoFormulario,
   type EstadoDoFormulario,
 } from "../_apoio/formulario";
+import { headers } from "next/headers";
+import { origemDaRequisicao, urlDeRetorno } from "../_apoio/origem";
 import { executarOperacaoDaTela } from "./executar";
 
 export async function alterarDadosDaEmpresaAcao(
@@ -49,9 +51,15 @@ export async function convidarMembroAcao(
   anterior: EstadoDoFormulario,
   dados: FormData,
 ): Promise<EstadoDoFormulario> {
+  // O link do e-mail do Auth volta ao ambiente de quem convida.
+  const retorno = urlDeRetorno(
+    origemDaRequisicao(await headers()),
+    "/nova-senha",
+  );
   return executarOperacaoDaTela(
     anterior,
-    convidarMembro,
+    (dependencias, entrada) =>
+      convidarMembro(dependencias, entrada, { urlDeRetorno: retorno }),
     {
       empresaId: texto(dados, "empresaId"),
       email: texto(dados, "email"),

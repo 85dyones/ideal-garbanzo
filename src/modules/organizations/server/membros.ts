@@ -32,20 +32,34 @@ import {
 } from "../schemas/empresas";
 import type { PapelNaEmpresa, StatusDoVinculo } from "../tipos";
 
-/** Cria a conta pelo convite do Auth e devolve o id; `null` se falhar. */
+/**
+ * Cria a conta pelo convite do Auth e devolve o id; `null` se falhar. A URL
+ * de retorno vem da origem de quem convida (`src/app/_apoio/origem.ts`), para o
+ * link do e-mail voltar ao mesmo ambiente; sem ela, o Auth usa a Site URL.
+ */
 export type ConvidarNoAuth = (
   administrativo: SupabaseClient,
   email: string,
+  urlDeRetorno?: string,
 ) => Promise<string | null>;
 
 export const convidarPeloAuth: ConvidarNoAuth = async (
   administrativo,
   email,
+  urlDeRetorno,
 ) => {
-  const { data, error } =
-    await administrativo.auth.admin.inviteUserByEmail(email);
+  const { data, error } = await administrativo.auth.admin.inviteUserByEmail(
+    email,
+    urlDeRetorno === undefined ? undefined : { redirectTo: urlDeRetorno },
+  );
   return error === null ? data.user.id : null;
 };
+
+/** Opções das operações que convidam pelo Auth. */
+export interface OpcoesDoConvite {
+  readonly convidarNoAuth?: ConvidarNoAuth;
+  readonly urlDeRetorno?: string;
+}
 
 const RECUSA_DO_CONVITE = "Não foi possível convidar este e-mail.";
 
@@ -69,7 +83,7 @@ async function contaAceitaConvite(
 export function convidarMembro(
   dependencias: Dependencias,
   entrada: unknown,
-  opcoes: { readonly convidarNoAuth?: ConvidarNoAuth } = {},
+  opcoes: OpcoesDoConvite = {},
 ): Promise<Resultado<{ vinculoId: string }>> {
   return executarOperacao(
     dependencias,
@@ -106,6 +120,7 @@ export function convidarMembro(
         (await (opcoes.convidarNoAuth ?? convidarPeloAuth)(
           administrativo,
           email,
+          opcoes.urlDeRetorno,
         ));
       if (perfilId === null) {
         return falha("falha", "Não foi possível enviar o convite agora.");

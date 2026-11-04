@@ -154,6 +154,49 @@ export interface RevisaoNaFicha {
   readonly em: string;
 }
 
+/**
+ * "Em análise" sem revisão aberta vem da divergência pelo valor (E4 a E7): a
+ * declaração diz que não há ocorrência, e a consulta acha uma. A ficha diz a
+ * causa e o que resolve (R-AG-04).
+ */
+export function explicacaoDaDivergencia(
+  categoria: Pick<CategoriaNaFicha, "estado" | "revisaoAberta">,
+): string | null {
+  if (categoria.estado !== "under_review" || categoria.revisaoAberta !== null) {
+    return null;
+  }
+  return "Divergência: a declaração do fornecedor diz que não há ocorrência, e a consulta encontrou uma. Para resolver, registre uma declaração nova ou uma consulta nova que substitua a anterior.";
+}
+
+/** Categoria de sinistro (§6.11): o dano de média ou grande monta também impede a transferência. */
+export const CATEGORIA_DE_SINISTRO = "casualty";
+
+/**
+ * Orientação ao fornecedor e à equipe (ADR-0004 §2.11; R-AG-01): o impedimento
+ * nasce só de "Condições de transferência" (P3), então o dano de média ou
+ * grande monta precisa ser declarado ou registrado também lá.
+ */
+export const ORIENTACAO_DE_SINISTRO =
+  "Dano de média ou grande monta não regularizado (Resolução CONTRAN nº 810/2020) impede a transferência. Se for o caso, declare ou registre a ocorrência também em “Condições de transferência”: é ela que gera o impedimento.";
+
+/**
+ * A equipe confere na revisão (R-AG-01): sinistro com ocorrência e nenhum
+ * impedimento ativo em "Condições de transferência".
+ */
+export function precisaConferirMonta(
+  ficha: readonly Pick<
+    CategoriaNaFicha,
+    "categoria" | "estado" | "impedimento"
+  >[],
+): boolean {
+  const sinistro = ficha.find((c) => c.categoria === CATEGORIA_DE_SINISTRO);
+  const comOcorrencia =
+    sinistro !== undefined &&
+    (sinistro.estado === "with_findings" || sinistro.estado === "under_review");
+  const impedimentoAtivo = ficha.some((c) => c.impedimento?.ativo === true);
+  return comOcorrencia && !impedimentoAtivo;
+}
+
 export interface CategoriaNaFicha {
   readonly categoria: string;
   readonly rotulo: string;

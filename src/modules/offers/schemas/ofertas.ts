@@ -6,7 +6,10 @@
 import { z } from "zod";
 import { id, textoDeLinha, textoLivre } from "@/lib/operacao/campos";
 import { VALORES_DECLARADOS } from "@/modules/documental/rules/estados";
-import { semLinguagemProibida } from "@/modules/documental/schemas/consultas";
+import {
+  semDadoPessoal,
+  semLinguagemProibida,
+} from "@/modules/documental/schemas/consultas";
 import {
   CATEGORIAS_DA_SUSPENSAO,
   FORMATO_DO_PRECO,
@@ -88,7 +91,10 @@ const preco = z
 
 const dadosDaOferta = z.strictObject({
   preco: preco.optional(),
-  condicoesComerciais: textoLivre(2000).optional(),
+  /** Campo material do snapshot e lido pelo comprador: passa pela lista e pela trava de dado pessoal (R-AG-08). */
+  condicoesComerciais: semDadoPessoal(
+    semLinguagemProibida(textoLivre(2000)),
+  ).optional(),
   cidade: textoDeLinha(120).optional(),
   uf: z.enum(UFS).optional(),
   /** Dia final da validade (AAAA-MM-DD), que vale até 23:59:59 de Brasília. */
@@ -126,9 +132,11 @@ export const esquemaDaAlteracao = z
  * Passa pela lista de linguagem, como o gatilho do banco (decisão da pessoa
  * responsável sobre a R-I3.7-07, em 30/10).
  */
-const detalheDaDeclaracao = semLinguagemProibida(
-  textoLivre(2000),
-  "Descreva a ocorrência com o que você sabe dela",
+const detalheDaDeclaracao = semDadoPessoal(
+  semLinguagemProibida(
+    textoLivre(2000),
+    "Descreva a ocorrência com o que você sabe dela",
+  ),
 );
 
 export const esquemaDaDeclaracao = z

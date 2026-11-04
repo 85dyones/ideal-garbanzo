@@ -16,6 +16,8 @@ import {
   valoresDoFormulario,
   type EstadoDoFormulario,
 } from "../_apoio/formulario";
+import { headers } from "next/headers";
+import { origemDaRequisicao, urlDeRetorno } from "../_apoio/origem";
 import { executarOperacaoDaTela } from "./executar";
 
 /** A mesma resposta para e-mail com ou sem conta, para não revelar quem já está na plataforma. */
@@ -23,9 +25,15 @@ export async function convidarFornecedoraAcao(
   anterior: EstadoDoFormulario,
   dados: FormData,
 ): Promise<EstadoDoFormulario> {
+  // O link do e-mail do Auth volta ao ambiente de quem convida.
+  const retorno = urlDeRetorno(
+    origemDaRequisicao(await headers()),
+    "/nova-senha",
+  );
   return executarOperacaoDaTela(
     anterior,
-    convidarFornecedora,
+    (dependencias, entrada) =>
+      convidarFornecedora(dependencias, entrada, { urlDeRetorno: retorno }),
     {
       email: texto(dados, "email"),
       empresaId: textoOpcional(dados, "empresaId"),

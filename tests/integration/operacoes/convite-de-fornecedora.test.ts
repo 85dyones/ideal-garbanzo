@@ -137,12 +137,17 @@ describe("convite de fornecedora pelo servidor", () => {
 
     // Sem conta: o convite do Auth é trocado por uma criação sem e-mail.
     let pedidosAoAuth = 0;
+    let retornoRecebido: string | undefined;
+    const retorno =
+      "http://localhost:3000/auth/confirmar?proximo=%2Fnova-senha";
     const semConta = await convidarFornecedora(
       dependencias(admin.sessao),
       { email: emailDeTeste("fornecedora-sem-conta") },
       {
-        convidarNoAuth: async (administrativo, email) => {
+        urlDeRetorno: retorno,
+        convidarNoAuth: async (administrativo, email, urlDeRetorno) => {
           pedidosAoAuth += 1;
+          retornoRecebido = urlDeRetorno;
           const { data, error } = await administrativo.auth.admin.createUser({
             email,
             email_confirm: false,
@@ -154,6 +159,8 @@ describe("convite de fornecedora pelo servidor", () => {
     expect(semConta.ok).toBe(true);
     expect(Object.keys(semConta)).toEqual(Object.keys(existente));
     expect(pedidosAoAuth).toBe(1);
+    // O link do e-mail volta ao ambiente de quem convida (I3.10).
+    expect(retornoRecebido).toBe(retorno);
   });
 
   it("CV04: o segundo convite pendente para o mesmo e-mail é recusado pelo banco", async () => {

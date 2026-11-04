@@ -722,3 +722,195 @@ Troca em `pg_get_functiondef('private.chave_de_dado_pessoal(text)'::regprocedure
 ```sql
 regexp_replace(d, '''(nome|razao)'', |nome[|]razao[|]', '', 'g')
 ```
+
+## I3.10: achados da revisão prévia da I3.8 (04/11/2026)
+
+Resultado: 20 mutações, todas detectadas, sem derrubar o contraste. A G20 roda no `350`, e as outras no `430`. O executor é o da I3.9, com os mesmos critérios.
+
+| ID  | Camada            | Mudança                                                  | Casos que devem cair                                                                            | Contraste                               | Caíram |
+| --- | ----------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------- | ------ |
+| G01 | função do private | termo_proibido() volta a aceitar o marcador              | R-AG-02: o marcador                                                                             | contraste R-I3.7-03                     | 1      |
+| G02 | função do private | termo_proibido() volta a separar por linha               | R-AG-02: a quebra de linha                                                                      | contraste R-I3.7-03                     | 1      |
+| G03 | função do private | termo_proibido() sem separar as frases                   | R-AG-02: a qualificação vale só na frase                                                        | contraste R-I3.7-03                     | 1      |
+| G04 | função do private | dado_pessoal_no_texto() sem o CPF                        | R-AG-07: CPF com pontuação; R-AG-07: o detalhe da declaração com CPF                            | R-AG-07: contraste: data                | 2      |
+| G05 | função do private | dado_pessoal_no_texto() sem os 11 dígitos                | R-AG-07: 11 dígitos seguidos                                                                    | R-AG-07: contraste: data                | 1      |
+| G06 | função do private | dado_pessoal_no_texto() sem o telefone                   | R-AG-07: telefone com DDD; R-AG-07: celular sem DDD; R-AG-07: o resumo da consulta com telefone | R-AG-07: contraste: data                | 4      |
+| G07 | função do private | dado_pessoal_no_texto() sem a placa                      | R-AG-07: placa Mercosul; R-AG-07: placa antiga; R-AG-07: o motivo da revisão com placa          | R-AG-07: contraste: data                | 3      |
+| G08 | função do private | dado_pessoal_no_texto() sem o chassi                     | R-AG-07: chassi                                                                                 | R-AG-07: contraste: data                | 1      |
+| G09 | gatilho           | supplier_declarations_revisar_dado_pessoal desligado     | R-AG-07: o detalhe da declaração com CPF                                                        | R-AG-05: o detalhe com espaço           | 1      |
+| G10 | gatilho           | vehicle_checks_revisar_dado_pessoal desligado            | R-AG-07: o resumo da consulta com telefone                                                      | R-AG-05: o resumo com espaço            | 1      |
+| G11 | gatilho           | documental_reviews_revisar_dado_pessoal desligado        | R-AG-07: o motivo da revisão com placa                                                          | R-AG-09: o operador abre a revisão      | 1      |
+| G12 | gatilho           | offers_revisar_linguagem desligado                       | R-AG-08: as condições comerciais passam pela lista                                              | contraste R-AG-08: condições comerciais | 1      |
+| G13 | gatilho           | offers_revisar_dado_pessoal desligado                    | R-AG-08: e pela trava de dado pessoal                                                           | contraste R-AG-08: condições comerciais | 1      |
+| G14 | gatilho           | offer_documents_revisar_linguagem desligado              | R-AG-08: a descrição do documento                                                               | contraste R-AG-08: condições comerciais | 2      |
+| G15 | função do private | revisar_linguagem() confere também o campo que não mudou | R-AG-08: na alteração, só o campo que mudou                                                     | contraste R-AG-08: condições comerciais | 3      |
+| G16 | função do private | registrar_impedimento() sem cortar o espaço do fim       | R-AG-05: o detalhe com espaço; R-AG-05: o resumo com espaço                                     | contraste R-I3.7-07                     | 3      |
+| G17 | gatilho           | documental_reviews_versionar desligado                   | R-AG-09: abrir a revisão gera versão; R-AG-09: fechar a revisão gera versão                     | R-AG-09: o operador abre a revisão      | 2      |
+| G18 | gatilho           | transfer_impediments_versionar desligado                 | R-AG-09: resolver o impedimento gera versão                                                     | R-AG-09: o administrador resolve        | 1      |
+| G19 | função da trava   | chave_de_dado_pessoal() sem as chaves da R-AG-12         | R-I3.7-02: chave recusada: titular; R-I3.7-02: chave recusada: WhatsApp de contato              | contraste R-I3.7-02                     | 2      |
+| G20 | função do private | aviso_do_estado() volta ao .v1 em análise                | ressalvas de todos os estados                                                                   | —                                       | 1      |
+
+**Ajustes ao rodar:**
+
+- **G01:** na primeira rodada, o marcador estava em outra frase do caso de teste, e a mutação não reproduzia o comportamento antigo. O caso passou a ter o marcador na mesma frase.
+- **G02 e G03:** o padrão da própria mutação tinha erro de escape, e foi corrigido.
+- **G06 e G07:** o `and false` desligava só uma das duas expressões ligadas por `or`. A mutação passou a anular o rótulo.
+- **G19:** a chave do caso tinha também "dono", que já é recusada. O caso passou a usar `contatoWhatsapp`.
+
+### Mudança de cada mutação (I3.10)
+
+**G01**
+
+Troca em `pg_get_functiondef('private.termo_proibido(text)'::regprocedure)`:
+
+```sql
+regexp_replace(d, 'if frase ~ qualificacao then', 'if frase ~ qualificacao or frase ~ ''linguagem-permitida'' then')
+```
+
+**G02**
+
+Troca em `pg_get_functiondef('private.termo_proibido(text)'::regprocedure)`:
+
+```sql
+regexp_replace(d, 'regexp_replace[(]valor, ''[[]....[]][+]'', '' '', ''g''[)]', 'valor')
+```
+
+Troca em `pg_get_functiondef('private.termo_proibido(text)'::regprocedure)`:
+
+```sql
+regexp_replace(d, '''[[][.];![?][]][+]''', '''[.;!?\r\n]+''')
+```
+
+**G03**
+
+Troca em `pg_get_functiondef('private.termo_proibido(text)'::regprocedure)`:
+
+```sql
+regexp_replace(d, '''[[][.];![?][]][+]''', '''~~~~~~''')
+```
+
+**G04**
+
+Troca em `pg_get_functiondef('private.dado_pessoal_no_texto(text)'::regprocedure)`:
+
+```sql
+regexp_replace(d, ' then ''um CPF''', ' and false then ''um CPF''')
+```
+
+**G05**
+
+Troca em `pg_get_functiondef('private.dado_pessoal_no_texto(text)'::regprocedure)`:
+
+```sql
+regexp_replace(d, ' then ''um número de 11', ' and false then ''um número de 11')
+```
+
+**G06**
+
+Troca em `pg_get_functiondef('private.dado_pessoal_no_texto(text)'::regprocedure)`:
+
+```sql
+regexp_replace(d, ' then ''um telefone''', ' then null')
+```
+
+**G07**
+
+Troca em `pg_get_functiondef('private.dado_pessoal_no_texto(text)'::regprocedure)`:
+
+```sql
+regexp_replace(d, ' then ''uma placa''', ' then null')
+```
+
+**G08**
+
+Troca em `pg_get_functiondef('private.dado_pessoal_no_texto(text)'::regprocedure)`:
+
+```sql
+regexp_replace(d, ' then ''um chassi''', ' and false then ''um chassi''')
+```
+
+**G09**
+
+```sql
+alter table public.supplier_declarations disable trigger supplier_declarations_revisar_dado_pessoal;
+```
+
+**G10**
+
+```sql
+alter table public.vehicle_checks disable trigger vehicle_checks_revisar_dado_pessoal;
+```
+
+**G11**
+
+```sql
+alter table public.documental_reviews disable trigger documental_reviews_revisar_dado_pessoal;
+```
+
+**G12**
+
+```sql
+alter table public.offers disable trigger offers_revisar_linguagem;
+```
+
+**G13**
+
+```sql
+alter table public.offers disable trigger offers_revisar_dado_pessoal;
+```
+
+**G14**
+
+```sql
+alter table public.offer_documents disable trigger offer_documents_revisar_linguagem;
+```
+
+**G15**
+
+Troca em `pg_get_functiondef('private.revisar_linguagem()'::regprocedure)`:
+
+```sql
+regexp_replace(d, 'if tg_op = ''UPDATE'' and registro -> campo is not distinct from to_jsonb[(]old[)] -> campo then', 'if false then')
+```
+
+**G16**
+
+Troca em `pg_get_functiondef('private.registrar_impedimento()'::regprocedure)`:
+
+```sql
+regexp_replace(d, 'rtrim[(](left[(][^)]*[)]), E'' .n''[)]', '\1', 'g')
+```
+
+**G17**
+
+```sql
+alter table public.documental_reviews disable trigger documental_reviews_versionar;
+```
+
+**G18**
+
+```sql
+alter table public.transfer_impediments disable trigger transfer_impediments_versionar;
+```
+
+**G19**
+
+Troca em `pg_get_functiondef('private.chave_de_dado_pessoal(text)'::regprocedure)`:
+
+```sql
+regexp_replace(d, ', ''titular'', ''possuidor'', ''possuidora'', ''whatsapp'', ''rua'', ''bairro''', '')
+```
+
+Troca em `pg_get_functiondef('private.chave_de_dado_pessoal(text)'::regprocedure)`:
+
+```sql
+regexp_replace(d, '[|]titular[|]possuidor[|]whatsapp', '')
+```
+
+**G20**
+
+Troca em `pg_get_functiondef('private.aviso_do_estado(text)'::regprocedure)`:
+
+```sql
+regexp_replace(d, 'categoria_em_analise[.]v2', 'categoria_em_analise.v1')
+```

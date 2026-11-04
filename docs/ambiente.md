@@ -62,15 +62,16 @@ Projeto `ralmlmuewullugeqtgoz`, painel → **Authentication**. Valores da I1.6 (
 | Modelo no painel | Arquivo | Assunto | Link |
 |---|---|---|---|
 | Confirm sign up | `supabase/templates/confirmacao-de-cadastro.html` | Confirme seu e-mail no EntrePátios | `{{ .RedirectTo }}&token_hash=…&type=email` |
-| Invite user | `supabase/templates/convite.html` | Você recebeu um convite para o EntrePátios | `{{ .SiteURL }}/auth/confirmar?token_hash=…&type=invite` |
+| Invite user | `supabase/templates/convite.html` | Você recebeu um convite para o EntrePátios | `{{ .RedirectTo }}&token_hash=…&type=invite` |
 | Reset password | `supabase/templates/recuperacao-de-senha.html` | Redefinição de senha do EntrePátios | `{{ .RedirectTo }}&token_hash=…&type=recovery` |
 | Change email address | `supabase/templates/troca-de-email.html` | Confirme o novo e-mail no EntrePátios | `{{ .SiteURL }}/auth/confirmar?token_hash=…&type=email_change` |
 
 **Duas formas de link:**
 
-- **Cadastro e recuperação:** a tela manda a URL de retorno `<origem>/auth/confirmar?proximo=…` (`src/app/_apoio/origem.ts`). O modelo acrescenta só o token. Assim, o link volta para o endereço em que a pessoa estava, seja local ou preview.
+- **Cadastro, recuperação e convite:** a tela manda a URL de retorno `<origem>/auth/confirmar?proximo=…` (`src/app/_apoio/origem.ts`). O modelo acrescenta só o token. Assim, o link volta para o endereço em que a pessoa estava, seja local ou preview.
   - Se a origem não estiver nas Redirect URLs, o Supabase troca a URL de retorno pela Site URL, e esse link sai quebrado. Por isso, a lista precisa cobrir todo endereço que mostra as telas.
-- **Convite e troca de e-mail:** o convite (`inviteUserByEmail`) não manda URL de retorno, e ainda não existe tela de troca de e-mail. Por isso, esses links usam a Site URL, e o destino vem do tipo: convite vai para `/nova-senha`.
+- **Troca de e-mail:** ainda não existe tela de troca de e-mail. Por isso, esse link usa a Site URL. Desde a I3.10 (04/11), o convite (`inviteUserByEmail`) manda a URL de retorno da origem de quem convida.
+- **Validade do link:** em Emails → Email OTP Expiration, no máximo 24 horas. Se o link do convite vencer, convidar de novo não reenvia o e-mail, porque a conta já existe: a pessoa usa "Recuperar acesso".
 
 **Pré-abertura dos links (ressalva R1 da I1.7, corrigida em 28/10; ADR-0002 §8):** alguns provedores de e-mail abrem os links antes da pessoa, como o Safe Links do Microsoft Defender. A documentação do Supabase ("Email prefetching") avisa que isso consome o token. Por isso, `/auth/confirmar` é uma página com botão: abrir o link não usa o token, só o clique.
 

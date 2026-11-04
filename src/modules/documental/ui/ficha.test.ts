@@ -748,3 +748,52 @@ describe("linguagem dos textos documentais (§6.6)", () => {
     }
   });
 });
+
+describe("revisão prévia da I3.8 (ADR-0004 §9)", () => {
+  it("R-AG-04: 'Em análise' sem revisão aberta explica a divergência e o que resolve", async () => {
+    const { explicacaoDaDivergencia } = await import("./ficha");
+    expect(
+      explicacaoDaDivergencia({ estado: "under_review", revisaoAberta: null }),
+    ).toContain("registre uma declaração nova ou uma consulta nova");
+    expect(
+      explicacaoDaDivergencia({ estado: "with_findings", revisaoAberta: null }),
+    ).toBeNull();
+    expect(
+      explicacaoDaDivergencia({
+        estado: "under_review",
+        revisaoAberta: {
+          id: "r",
+          acao: "open_review",
+          motivo: "Conferir.",
+          autor: "equipe da plataforma",
+          em: "2026-11-04T10:00:00Z",
+        },
+      }),
+    ).toBeNull();
+  });
+
+  it("R-AG-01: a equipe confere o sinistro com ocorrência sem impedimento ativo", async () => {
+    const { precisaConferirMonta, ORIENTACAO_DE_SINISTRO } =
+      await import("./ficha");
+    const sinistro = (estado: "with_findings" | "not_checked") => ({
+      categoria: "casualty",
+      estado,
+      impedimento: null,
+    });
+    const transferencia = (ativo: boolean) => ({
+      categoria: "transfer_conditions",
+      estado: "with_findings" as const,
+      impedimento: { ativo, resolvidoEm: null },
+    });
+    expect(precisaConferirMonta([sinistro("with_findings")])).toBe(true);
+    expect(
+      precisaConferirMonta([sinistro("with_findings"), transferencia(true)]),
+    ).toBe(false);
+    expect(
+      precisaConferirMonta([sinistro("with_findings"), transferencia(false)]),
+    ).toBe(true);
+    expect(precisaConferirMonta([sinistro("not_checked")])).toBe(false);
+    expect(ORIENTACAO_DE_SINISTRO).toContain("Condições de transferência");
+    expect(varrerTexto(ORIENTACAO_DE_SINISTRO)).toEqual([]);
+  });
+});

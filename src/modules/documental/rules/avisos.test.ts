@@ -23,7 +23,7 @@ describe("catálogo das ressalvas", () => {
       "categoria_com_apontamentos.v1",
     );
     expect(avisoDoEstado("pending")).toBe("categoria_pendente.v1");
-    expect(avisoDoEstado("under_review")).toBe("categoria_em_analise.v1");
+    expect(avisoDoEstado("under_review")).toBe("categoria_em_analise.v2");
     expect(avisoDoEstado("no_findings_in_sources")).toBe(
       "sem_apontamentos_nas_fontes_consultadas.v1",
     );

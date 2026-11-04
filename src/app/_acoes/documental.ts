@@ -132,7 +132,7 @@ export async function abrirRevisaoDocumentalAcao(
     anterior,
     abrirRevisaoDocumental,
     lido.entrada,
-    "Revisão aberta. A categoria fica em análise até a revisão ser fechada.",
+    "Revisão aberta. A categoria fica em análise enquanto a revisão estiver aberta.",
     { valores: valoresDoFormulario(dados, ["categoria", "motivo"]) },
   );
 }
@@ -153,7 +153,7 @@ export async function fecharRevisaoDocumentalAcao(
     anterior,
     fecharRevisaoDocumental,
     lido.entrada,
-    "Revisão fechada. O motivo ficou registrado.",
+    "Revisão fechada. O motivo ficou registrado. A categoria volta ao estado das informações, que continua em análise se a declaração e a consulta divergirem.",
     { valores: valoresDoFormulario(dados, ["categoria", "motivo"]) },
   );
 }

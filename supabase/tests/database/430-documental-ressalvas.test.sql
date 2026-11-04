@@ -7,7 +7,7 @@
 -- fechada (R-I3.7-04); a categoria que sai da configuração (R-I3.7-05); as
 -- sequências (R-I3.7-08); e o veículo da oferta por chave (R-I3.7-11).
 begin;
-select plan(41);
+select plan(75);
 set constraints all immediate;
 
 -- Apoio do arquivo (objetos temporários, desfeitos no rollback) -------------------
@@ -472,7 +472,7 @@ alter table public.check_evidence_files enable trigger check_evidence_files_prot
 alter table public.documental_reviews enable trigger documental_reviews_proteger;
 
 -- R-I3.7-02: details pela trava de chaves, nos caminhos de dentro do banco ------------------
--- asserções a mais: 9 (o throws_ok da lista roda uma vez por linha)
+-- asserções a mais: 11 (o throws_ok da lista roda uma vez por linha)
 
 select pg_temp.entrar('O');
 select throws_ok(
@@ -492,7 +492,9 @@ from (values
   ('em inglês, aninhada', '{"dados": {"owner": {"x": 1}}}'),
   ('razão social do dono, genérica (R-I3.7-13)', '{"razaoSocialDoDono": "x"}'),
   ('razão social, genérica (R-I3.7-13)', '{"razaoSocial": "x"}'),
-  ('nome completo, genérica (R-I3.7-13)', '{"nome_completo": "x"}')) as d(caso, valor);
+  ('nome completo, genérica (R-I3.7-13)', '{"nome_completo": "x"}'),
+  ('titular (R-AG-12)', '{"titular": "x"}'),
+  ('WhatsApp de contato (R-AG-12)', '{"contatoWhatsapp": "x"}')) as d(caso, valor);
 select is(
   pg_temp.resultado(format($$insert into public.vehicle_checks (offer_id, category, source_name, source_type,
       method, performed_at, result, result_summary, known_limitations, details)
@@ -525,10 +527,19 @@ select ok(
   'R-I3.7-03: cada linha é conferida');
 select ok(
   private.termo_proibido('Nada consta nas fontes consultadas, em 30/10/2026.') is null
-    and private.termo_proibido('linguagem-permitida: nome do documento oficial; certificado de registro') is null
     and private.termo_proibido('Certificação do laudo; sem ocorrência conhecida.') is null
     and private.termo_proibido('nada_consta') is null,
-  'contraste R-I3.7-03: qualificação, marcador, palavra parecida e termo colado por sublinhado passam');
+  'contraste R-I3.7-03: qualificação na mesma frase, palavra parecida e termo colado por sublinhado passam');
+select ok(
+  private.termo_proibido('Veículo verificado e garantido, linguagem-permitida: ok') is not null,
+  'R-AG-02: o marcador de exceção não libera o texto digitado');
+select ok(
+  private.termo_proibido(E'O relatório diz nada
+consta para o veículo') is not null,
+  'R-AG-02: a quebra de linha não separa os termos de duas palavras');
+select ok(
+  private.termo_proibido('Veículo verificado. Nada consta nas fontes consultadas, em 30/10/2026.') is not null,
+  'R-AG-02: a qualificação vale só na frase em que aparece');
 
 set local role authenticated;
 select pg_temp.entrar('O');
@@ -604,6 +615,167 @@ select throws_ok(
   '23503', 'insert or update on table "vehicle_checks" violates foreign key constraint "vehicle_checks_veiculo_da_oferta_fkey"',
   'R-I3.7-11: o veículo de outra oferta é recusado mesmo sem o gatilho');
 alter table public.vehicle_checks enable trigger vehicle_checks_proteger;
+
+-- I3.10: achados da revisão prévia da I3.8 (ADR-0004 §9) -------------------------------
+-- asserções a mais: 9 (o is da lista roda uma vez por linha)
+
+-- R-AG-07: o que conta como dado pessoal ou restrito no texto livre.
+select is(private.dado_pessoal_no_texto(d.texto), d.esperado, 'R-AG-07: ' || d.caso)
+from (values
+  ('CPF com pontuação', 'Comprador 123.456.789-09 desistiu.', 'um CPF'),
+  ('11 dígitos seguidos', 'RENAVAM 12345678901 na consulta.', 'um número de 11 dígitos (CPF, RENAVAM ou telefone)'),
+  ('telefone com DDD', 'Ligar no (11) 98765-4321.', 'um telefone'),
+  ('celular sem DDD', 'Ligar no 98765-4321.', 'um telefone'),
+  ('placa Mercosul', 'Placa ABC1D23 no laudo.', 'uma placa'),
+  ('placa antiga', 'Placa abc-1234 no laudo.', 'uma placa'),
+  ('chassi', 'Chassi 9BWZZZ377VT004251.', 'um chassi'),
+  ('contraste: ano, preço e quilometragem', 'Modelo 2019-2020, 45.000 km, R$ 89.900,00.', null),
+  ('contraste: versão e número curto', 'Versão XRE300, lote 1234, 2 donos.', null),
+  ('contraste: data', 'Consulta de 30/10/2026 às 14:30.', null)) as d(caso, texto, esperado);
+
+-- R-AG-07: os gatilhos recusam, e a mensagem diz o que tirar.
+set local role authenticated;
+select pg_temp.entrar('F1');
+select throws_matching(
+  $$insert into public.supplier_declarations (offer_id, category, declared_value, detail)
+    values (pg_temp.id('R'), 'lien', 'has_occurrence', 'Dono anterior, CPF 123.456.789-09, avisou do gravame.')$$,
+  'parece ter um CPF',
+  'R-AG-07: o detalhe da declaração com CPF é recusado');
+select throws_matching(
+  $$insert into public.vehicle_checks (offer_id, category, source_name, source_type, method, performed_at, result,
+      result_summary, known_limitations)
+    values (pg_temp.id('R'), 'lien', 'DETRAN-SP', 'official', 'manual', now() - interval '1 hour', 'has_occurrence',
+      'Gravame ativo; credor atende no (11) 98765-4321.', 'Limitação.')$$,
+  'parece ter um telefone',
+  'R-AG-07: o resumo da consulta com telefone é recusado');
+select pg_temp.entrar('O');
+select pg_temp.api('{"x-audit-reason": "A placa ABC1D23 diverge do documento."}');
+select throws_matching(
+  $$insert into public.documental_reviews (offer_id, category, action) values (pg_temp.id('P'), 'casualty', 'open_review')$$,
+  'parece ter uma placa',
+  'R-AG-07: o motivo da revisão com placa é recusado');
+select pg_temp.api(null);
+
+-- R-AG-08: condições comerciais e descrição do documento.
+select pg_temp.entrar('F1');
+select throws_matching(
+  $$update public.offers set commercial_conditions = 'Procedência garantida, aceita troca.' where id = pg_temp.id('R')$$, -- linguagem-permitida: exemplo negativo do teste
+  'sem a qualificação exigida',
+  'R-AG-08: as condições comerciais passam pela lista');
+select throws_matching(
+  $$update public.offers set commercial_conditions = 'Negociação pelo 98765-4321.' where id = pg_temp.id('R')$$,
+  'parece ter um telefone',
+  'R-AG-08: e pela trava de dado pessoal');
+select is(
+  pg_temp.resultado($$update public.offers set commercial_conditions = 'Aceita troca; pagamento à vista.' where id = pg_temp.id('R')$$),
+  'linhas: 1',
+  'contraste R-AG-08: condições comerciais sem termo da lista entram');
+reset role;
+select pg_temp.entrar(null);
+-- Texto antigo com termo da lista, gravado com o gatilho desligado e as claims do fornecedor.
+alter table public.offers disable trigger offers_revisar_linguagem;
+select pg_temp.entrar('F1');
+update public.offers set commercial_conditions = 'Garantido pela loja.' where id = pg_temp.id('R'); -- linguagem-permitida: exemplo negativo do teste
+select pg_temp.entrar(null);
+alter table public.offers enable trigger offers_revisar_linguagem;
+insert into storage.objects (bucket_id, name, owner_id)
+select 'offer-documents', o.supplier_organization_id || '/' || o.id || '/0f0f0f0f-0000-4000-8000-000000000a08.pdf', pg_temp.id('F1')::text
+from public.offers o where o.id = pg_temp.id('R');
+set local role authenticated;
+select pg_temp.entrar('F1');
+select is(
+  pg_temp.resultado($$update public.offers set location_city = 'Campinas' where id = pg_temp.id('R')$$),
+  'linhas: 1',
+  'R-AG-08: na alteração, só o campo que mudou é conferido');
+select throws_matching(
+  $$insert into public.offer_documents (offer_id, kind, storage_path, sha256, description)
+    select o.id, 'laudo_cautelar', o.supplier_organization_id || '/' || o.id || '/0f0f0f0f-0000-4000-8000-000000000a08.pdf', repeat('c', 64),
+      'Laudo garantido pela oficina'
+    from public.offers o where o.id = pg_temp.id('R')$$, -- linguagem-permitida: exemplo negativo do teste
+  'sem a qualificação exigida',
+  'R-AG-08: a descrição do documento passa pela lista');
+select is(
+  pg_temp.resultado($$insert into public.offer_documents (offer_id, kind, storage_path, sha256, description)
+    select o.id, 'laudo_cautelar', o.supplier_organization_id || '/' || o.id || '/0f0f0f0f-0000-4000-8000-000000000a08.pdf', repeat('c', 64),
+      'Laudo da oficina'
+    from public.offers o where o.id = pg_temp.id('R')$$),
+  'linhas: 1',
+  'contraste R-AG-08: a descrição sem termo da lista entra');
+
+-- R-AG-05: a base do impedimento corta sem deixar espaço no fim.
+select is(
+  pg_temp.resultado($$insert into public.supplier_declarations (offer_id, category, declared_value, detail)
+    values (pg_temp.id('R'), 'transfer_conditions', 'has_occurrence', repeat('a', 899) || ' fim do detalhe')$$),
+  'linhas: 1',
+  'R-AG-05: o detalhe com espaço no caractere 900 gera o impedimento');
+select is(
+  pg_temp.resultado($$insert into public.vehicle_checks (offer_id, category, source_name, source_type, method, performed_at,
+      result, result_summary, known_limitations)
+    values (pg_temp.id('S'), 'transfer_conditions', 'DETRAN-SP', 'official', 'manual', now() - interval '1 hour',
+      'has_occurrence', repeat('b', 699) || ' fim do resumo', 'Limitação.')$$),
+  'linhas: 1',
+  'R-AG-05: o resumo com espaço no caractere 700 também');
+reset role;
+select is(
+  (select count(*)::int from public.transfer_impediments
+   where offer_id in (pg_temp.id('R'), pg_temp.id('S')) and basis = rtrim(basis) and status = 'identified'),
+  2,
+  'R-AG-05: as duas bases ficam sem espaço no fim');
+
+-- R-AG-09: abrir e fechar a revisão e resolver o impedimento geram versão nova.
+create temporary table versao_antes (acao text primary key, versao integer);
+insert into versao_antes select 'abrir', current_version from public.offers where id = pg_temp.id('P');
+set local role authenticated;
+select pg_temp.entrar('O');
+select pg_temp.api('{"x-audit-reason": "Divergência no documento."}');
+select is(
+  pg_temp.resultado($$insert into public.documental_reviews (offer_id, category, action)
+    values (pg_temp.id('P'), 'debts_fines', 'open_review')$$),
+  'linhas: 1',
+  'R-AG-09: o operador abre a revisão');
+reset role;
+select cmp_ok(
+  (select current_version from public.offers where id = pg_temp.id('P')), '>',
+  (select versao from versao_antes where acao = 'abrir'),
+  'R-AG-09: abrir a revisão gera versão nova');
+insert into versao_antes select 'fechar', current_version from public.offers where id = pg_temp.id('P');
+set local role authenticated;
+select pg_temp.entrar('O');
+select pg_temp.api('{"x-audit-reason": "Documento conferido."}');
+select is(
+  pg_temp.resultado($$insert into public.documental_reviews (offer_id, category, action)
+    values (pg_temp.id('P'), 'debts_fines', 'close_review')$$),
+  'linhas: 1',
+  'R-AG-09: o operador fecha a revisão');
+reset role;
+select cmp_ok(
+  (select current_version from public.offers where id = pg_temp.id('P')), '>',
+  (select versao from versao_antes where acao = 'fechar'),
+  'R-AG-09: fechar a revisão gera versão nova');
+set local role authenticated;
+select pg_temp.entrar('F1');
+select is(
+  pg_temp.resultado($$insert into public.supplier_declarations (offer_id, category, declared_value, detail)
+    values (pg_temp.id('P'), 'transfer_conditions', 'has_occurrence', 'Restrição judicial em andamento.')$$),
+  'linhas: 1',
+  'R-AG-09: a declaração gera o impedimento');
+reset role;
+insert into versao_antes select 'resolver', current_version from public.offers where id = pg_temp.id('P');
+set local role authenticated;
+select pg_temp.entrar('X');
+select pg_temp.api('{"x-audit-reason": "Restrição baixada."}');
+select is(
+  pg_temp.resultado($$update public.transfer_impediments set status = 'resolved', resolution_evidence_id = pg_temp.id('evidência X')
+    where offer_id = pg_temp.id('P') and status = 'identified'$$),
+  'linhas: 1',
+  'R-AG-09: o administrador resolve o impedimento');
+select pg_temp.api(null);
+reset role;
+select cmp_ok(
+  (select current_version from public.offers where id = pg_temp.id('P')), '>',
+  (select versao from versao_antes where acao = 'resolver'),
+  'R-AG-09: resolver o impedimento gera versão nova');
+select pg_temp.entrar(null);
 
 -- R-I3.7-04: lista ausente ou fora do formato falha fechada (por último: muda a configuração) -
 
