@@ -16,8 +16,8 @@ import {
   VALIDADE_DA_URL_DO_DOCUMENTO,
 } from "@/modules/offers/storage/arquivos";
 import {
-  enviarDocumentoDaOferta,
   enviarFotoDaOferta,
+  prepararEnvioDaFoto,
   gerarUrlDaFoto,
   gerarUrlDoDocumento,
 } from "@/modules/offers/storage/servidor";
@@ -29,8 +29,10 @@ import {
   criarUsuario,
   dependencias,
   dependenciasEspiadas,
+  documentoDaOferta,
   empresaAprovada,
   entrar,
+  fotoDaOferta,
   pdfDeTeste,
   type UsuarioDeTeste,
 } from "./operacoes/apoio";
@@ -131,19 +133,14 @@ beforeAll(async () => {
   if (deG.error !== null) throw new Error(deG.error.message);
   ofertaG = deG.data as string;
 
-  const foto = await enviarFotoDaOferta(dependencias(f1.sessao), {
-    ofertaId: ofertaR,
-    tipoDoArquivo: "image/png",
-    conteudo: pngDeTeste(),
-  });
+  const foto = await fotoDaOferta(f1.sessao, ofertaR, pngDeTeste());
   if (!foto.ok) throw new Error(`foto: ${foto.mensagem}`);
   fotoR = foto.dados.fotoId;
-  const documento = await enviarDocumentoDaOferta(dependencias(f1.sessao), {
-    ofertaId: ofertaR,
-    tipo: "crlv",
-    tipoDoArquivo: "application/pdf",
-    conteudo: conteudoDoDocumento,
-  });
+  const documento = await documentoDaOferta(
+    f1.sessao,
+    ofertaR,
+    conteudoDoDocumento,
+  );
   if (!documento.ok) throw new Error(`documento: ${documento.mensagem}`);
   documentoR = documento.dados.documentoId;
 
@@ -382,20 +379,27 @@ describe("teste 6: arquivo privado da oferta", () => {
   });
 
   it("Q3: o staff não envia arquivo, e o servidor recusa antes do Storage", async () => {
+    const preparada = await prepararEnvioDaFoto(dependencias(operador.sessao), {
+      ofertaId: ofertaR,
+      tipoDoArquivo: "image/png",
+      tamanho: pngDeTeste().byteLength,
+    });
+    expect(preparada).toMatchObject({ ok: false, erro: "sem_permissao" });
     const enviada = await enviarFotoDaOferta(dependencias(operador.sessao), {
       ofertaId: ofertaR,
       tipoDoArquivo: "image/png",
-      conteudo: pngDeTeste(),
+      caminho: `${empresaF}/${ofertaR}/00000000-0000-4000-8000-0000000000a3.png`,
     });
     expect(enviada).toMatchObject({ ok: false, erro: "sem_permissao" });
   });
 
   it("o conteúdo precisa ter a assinatura do tipo declarado", async () => {
-    const trocado = await enviarFotoDaOferta(dependencias(f1.sessao), {
-      ofertaId: ofertaR,
-      tipoDoArquivo: "image/png",
-      conteudo: pdfDeTeste(),
-    });
+    const trocado = await fotoDaOferta(
+      f1.sessao,
+      ofertaR,
+      pdfDeTeste(),
+      "image/png",
+    );
     expect(trocado).toMatchObject({ ok: false, erro: "entrada_invalida" });
   });
 

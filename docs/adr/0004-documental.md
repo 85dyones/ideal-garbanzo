@@ -350,6 +350,23 @@ Uma sessão nova do mesmo modelo do T2 leu, em 04/11, o código e os testes da `
   - onde entregar.
 - **Convite:** o link do e-mail passa a seguir o ambiente de quem convida (`redirectTo` e `{{ .RedirectTo }}`), como o cadastro e a recuperação.
 
+## 10. Envio direto de arquivo ao Storage (I3.11)
+
+**Decisão da pessoa responsável (04/11, R-AG-06):** os arquivos vão do navegador direto ao Storage. A Vercel recusa corpo de requisição acima de 4,5 MB, e o teto dos arquivos é 10 MB. Vale para as fotos e os documentos da oferta, a evidência da consulta e da resolução do impedimento e a evidência da adesão.
+
+**Três passos** (`src/lib/operacao/envio-direto.ts`):
+1. **Preparar:** a operação de cada destino confere a permissão como antes e pede ao Storage uma URL assinada de envio, com a sessão de quem age. A política de inclusão do bucket decide de novo. O caminho é gerado pelo servidor: `<empresa>/<oferta>/<uuid>.<extensão>`, ou `<pedido>/<uuid>.<extensão>` na adesão.
+2. **Enviar:** o navegador envia o arquivo ao bucket com o token (`src/app/_apoio/envio-direto.ts`) e troca, no formulário, o arquivo pelo caminho e pelo tipo. A Server Action recebe só texto.
+3. **Registrar:** a operação confere que o caminho é da oferta ou do pedido e do tipo. Depois, baixa o arquivo com a chave secreta e confere o tamanho e o tipo pelo conteúdo, e calcula o sha256. Arquivo que não confere é apagado, e a operação recusa. Só então a linha é gravada com a sessão, e o gatilho da linha decide de novo.
+
+**Chave secreta:** a leitura e a remoção do passo 3 são um uso novo, registrado no ADR-0002 §2.12. Elas vêm depois da checagem de permissão da operação, porque o bucket das evidências não tem política de leitura.
+
+**Teto das Server Actions:** volta ao padrão do Next, 1 MB. Um arquivo que volte a passar por uma ação falha já no ambiente local.
+
+**Fica registrado:**
+- o arquivo enviado e não registrado (formulário abandonado, ou registro recusado por outro campo) fica no bucket sem linha e não aparece para ninguém;
+- a limpeza desses arquivos fica para depois do piloto.
+
 ## Anexo A. Regras extraídas da especificação (I3.1)
 
 **Origem:**

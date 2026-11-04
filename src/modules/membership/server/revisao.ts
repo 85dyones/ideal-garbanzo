@@ -11,8 +11,13 @@
  * O servidor confere o papel antes (camada 2); o banco decide de novo com as
  * políticas e os gatilhos, com o ator da sessão.
  */
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type { Dependencias } from "@/lib/operacao/dependencias";
+import {
+  conferirArquivoEnviado,
+  prepararUrlDeEnvio,
+  type EnvioPreparado,
+} from "@/lib/operacao/envio-direto";
 import {
   falha,
   sucesso,
@@ -29,13 +34,16 @@ import { executarOperacao } from "@/modules/auth/server/operacao";
 import {
   BUCKET_DA_EVIDENCIA,
   EXTENSAO_DO_TIPO,
+  TAMANHO_MAXIMO_DA_EVIDENCIA,
   conteudoConfereComOTipo,
+  type TipoDaEvidencia,
 } from "../rules/evidencia";
 import {
   esquemaDaConferencia,
   esquemaDaDecisao,
   esquemaDaEvidencia,
   esquemaDaUrlDaEvidencia,
+  esquemaDoEnvioDaEvidencia,
   esquemaDoPedidoEmAnalise,
 } from "../schemas/adesao";
 
@@ -116,11 +124,35 @@ export interface EvidenciaEnviada {
   readonly sha256: string;
 }
 
+const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+
 /**
- * Envia o arquivo ao bucket privado e registra a evidência. O arquivo vai
- * primeiro, porque o gatilho exige o objeto no Storage. Se o registro falhar
- * depois do envio, o arquivo fica sem referência (ninguém apaga no bucket);
- * a evidência só vale pela linha em `membership_evidence_files`.
+ * Passo 1 do envio direto da evidência (I3.11): só o administrador; a URL
+ * assinada nasce com a sessão, e a política do bucket decide de novo.
+ */
+export function prepararEnvioDaEvidencia(
+  dependencias: Dependencias,
+  entrada: unknown,
+): Promise<Resultado<EnvioPreparado>> {
+  return executarOperacao(
+    dependencias,
+    esquemaDoEnvioDaEvidencia,
+    entrada,
+    async (dados, contexto) => {
+      if (!ehAdministrador(contexto)) return falha("sem_permissao");
+      return prepararUrlDeEnvio(
+        dependencias.sessao,
+        BUCKET_DA_EVIDENCIA,
+        `${dados.pedidoId}/${randomUUID()}.${EXTENSAO_DO_TIPO[dados.tipoDoArquivo]}`,
+      );
+    },
+  );
+}
+
+/**
+ * Passo 3: confere o arquivo que chegou ao bucket privado e registra a
+ * evidência. Se o registro falhar depois da conferência, o arquivo fica sem
+ * referência; a evidência só vale pela linha em `membership_evidence_files`.
  */
 export function enviarEvidencia(
   dependencias: Dependencias,
@@ -132,32 +164,33 @@ export function enviarEvidencia(
     entrada,
     async (dados, contexto) => {
       if (!ehAdministrador(contexto)) return falha("sem_permissao");
-      if (!conteudoConfereComOTipo(dados.conteudo, dados.tipoDoArquivo)) {
-        return falha(
-          "entrada_invalida",
-          "O conteúdo do arquivo não corresponde ao tipo informado.",
-        );
-      }
-      const caminho = `${dados.pedidoId}/${randomUUID()}.${EXTENSAO_DO_TIPO[dados.tipoDoArquivo]}`;
-      const sha256 = createHash("sha256").update(dados.conteudo).digest("hex");
-
-      const envio = await dependencias.sessao.storage
-        .from(BUCKET_DA_EVIDENCIA)
-        .upload(caminho, dados.conteudo, {
-          contentType: dados.tipoDoArquivo,
-          upsert: false,
-        });
-      if (envio.error !== null) return falha("sem_permissao");
+      const esperado = new RegExp(
+        `^${dados.pedidoId}/${UUID}\\.${EXTENSAO_DO_TIPO[dados.tipoDoArquivo]}$`,
+        "u",
+      );
+      if (!esperado.test(dados.caminho)) return falha("sem_permissao");
+      const arquivo = await conferirArquivoEnviado(
+        dependencias.administrativo(),
+        BUCKET_DA_EVIDENCIA,
+        dados.caminho,
+        {
+          tipo: dados.tipoDoArquivo,
+          tamanhoMaximo: TAMANHO_MAXIMO_DA_EVIDENCIA,
+          confere: (conteudo, tipo) =>
+            conteudoConfereComOTipo(conteudo, tipo as TipoDaEvidencia),
+        },
+      );
+      if (!arquivo.ok) return arquivo;
 
       const { data, error } = await comRastreio(
         dependencias.sessao
           .from("membership_evidence_files")
           .insert({
             application_id: dados.pedidoId,
-            storage_path: caminho,
-            sha256,
+            storage_path: dados.caminho,
+            sha256: arquivo.dados.sha256,
             content_type: dados.tipoDoArquivo,
-            size_bytes: dados.conteudo.byteLength,
+            size_bytes: arquivo.dados.tamanho,
             description: dados.descricao ?? null,
           })
           .select("id")
@@ -165,7 +198,7 @@ export function enviarEvidencia(
         dependencias.requestId,
       ).overrideTypes<{ id: string }, { merge: false }>();
       if (error !== null) return traduzirErroDoBanco(error);
-      return sucesso({ evidenciaId: data.id, sha256 });
+      return sucesso({ evidenciaId: data.id, sha256: arquivo.dados.sha256 });
     },
   );
 }

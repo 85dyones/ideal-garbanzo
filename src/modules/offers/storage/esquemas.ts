@@ -15,18 +15,36 @@ import {
   TIPOS_DE_FOTO,
 } from "./arquivos";
 
-const conteudo = z
-  .instanceof(Uint8Array)
-  .refine(
-    (arquivo) =>
-      arquivo.byteLength > 0 && arquivo.byteLength <= TAMANHO_MAXIMO_DO_ARQUIVO,
-    { error: "O arquivo precisa ter até 10 MB." },
-  );
+/** Tamanho declarado no passo 1 do envio direto; o servidor confere o real no passo 3 (I3.11). */
+export const tamanhoDoArquivo = z
+  .int()
+  .min(1, { error: "O arquivo está vazio." })
+  .max(TAMANHO_MAXIMO_DO_ARQUIVO, {
+    error: "O arquivo precisa ter até 10 MB.",
+  });
+
+/** Caminho no bucket depois do envio direto; o servidor confere a oferta e o tipo. */
+export const caminhoDoEnvio = z
+  .string()
+  .min(1, { error: "Envie o arquivo." })
+  .max(300);
+
+export const esquemaDoEnvioDaFoto = z.strictObject({
+  ofertaId: id,
+  tipoDoArquivo: z.enum(TIPOS_DE_FOTO),
+  tamanho: tamanhoDoArquivo,
+});
+
+export const esquemaDoEnvioDoDocumento = z.strictObject({
+  ofertaId: id,
+  tipoDoArquivo: z.enum(TIPOS_DE_ARQUIVO_DO_DOCUMENTO),
+  tamanho: tamanhoDoArquivo,
+});
 
 export const esquemaDaFoto = z.strictObject({
   ofertaId: id,
   tipoDoArquivo: z.enum(TIPOS_DE_FOTO),
-  conteudo,
+  caminho: caminhoDoEnvio,
   ordem: z.int().min(0).max(999).optional(),
 });
 
@@ -34,7 +52,7 @@ export const esquemaDoDocumento = z.strictObject({
   ofertaId: id,
   tipo: z.enum(TIPOS_DE_DOCUMENTO),
   tipoDoArquivo: z.enum(TIPOS_DE_ARQUIVO_DO_DOCUMENTO),
-  conteudo,
+  caminho: caminhoDoEnvio,
   // Como `offer_documents.description` (`private.texto_de_linha`, 300): sem
   // controle nem invisível, para a recusa sair antes do envio ao bucket.
   // Aparece na ficha: passa pela lista e pela trava de dado pessoal (R-AG-08).

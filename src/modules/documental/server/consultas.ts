@@ -14,8 +14,13 @@
  * - O motivo da revisão e da resolução vai no cabeçalho `x-audit-reason`, e o
  *   gatilho o grava na linha (ADR-0002 §2.11).
  */
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type { Dependencias } from "@/lib/operacao/dependencias";
+import {
+  conferirArquivoEnviado,
+  prepararUrlDeEnvio,
+  type EnvioPreparado,
+} from "@/lib/operacao/envio-direto";
 import {
   falha,
   sucesso,
@@ -37,8 +42,11 @@ import {
 } from "@/modules/offers/rules/transicoes";
 import { lerOferta, type OfertaLida } from "@/modules/offers/server/leitura";
 import {
+  TAMANHO_MAXIMO_DO_ARQUIVO,
+  caminhoConfere,
   caminhoDoArquivo,
   conteudoConfere,
+  type TipoDeArquivoDoDocumento,
 } from "@/modules/offers/storage/arquivos";
 import {
   ehDaEquipeSemVinculo,
@@ -48,6 +56,7 @@ import {
 } from "../rules/registro";
 import {
   esquemaDaConsulta,
+  esquemaDoEnvioDaEvidencia,
   esquemaDaResolucao,
   esquemaDaRevisao,
   esquemaDaUrlDaEvidencia,
@@ -57,9 +66,6 @@ import type { z } from "zod";
 export const BUCKET_DAS_EVIDENCIAS = "check-evidence";
 /** Validade da URL da evidência, em segundos. Técnica e provisória, como a do documento. */
 export const VALIDADE_DA_URL_DA_EVIDENCIA = 60;
-
-const CONTEUDO_TROCADO =
-  "O conteúdo do arquivo não corresponde ao tipo informado.";
 
 type Evidencia = z.infer<typeof esquemaDaConsulta>["evidencia"] & object;
 
@@ -76,37 +82,77 @@ function estadoRecusado(oferta: OfertaLida, acao: string) {
   );
 }
 
-/** Envia a evidência ao bucket e registra a linha, com o sha256. */
+/**
+ * Passo 1 do envio direto da evidência (I3.11): a URL assinada nasce com a
+ * sessão, e a política do bucket (`check_evidence_envio`) decide quem envia,
+ * nos estados da E17.
+ */
+export function prepararEnvioDaEvidencia(
+  dependencias: Dependencias,
+  entrada: unknown,
+): Promise<Resultado<EnvioPreparado>> {
+  return executarOperacao(
+    dependencias,
+    esquemaDoEnvioDaEvidencia,
+    entrada,
+    async (dados, contexto) => {
+      const lida = await lerOferta(dependencias, dados.ofertaId);
+      if (!lida.ok) return lida;
+      const ator = atorDaOferta(contexto, lida.dados.empresaId);
+      if (ator === "nenhum" || ator === "sistema") {
+        return falha("sem_permissao");
+      }
+      return prepararUrlDeEnvio(
+        dependencias.sessao,
+        BUCKET_DAS_EVIDENCIAS,
+        caminhoDoArquivo(
+          lida.dados.empresaId,
+          lida.dados.id,
+          randomUUID(),
+          dados.tipoDoArquivo,
+        ),
+      );
+    },
+  );
+}
+
+/** Passo 3: confere a evidência que chegou ao bucket e registra a linha, com o sha256. */
 async function enviarEvidencia(
   dependencias: Dependencias,
   oferta: OfertaLida,
   evidencia: Evidencia,
 ): Promise<Resultado<{ evidenciaId: string }>> {
-  if (!conteudoConfere(evidencia.conteudo, evidencia.tipoDoArquivo)) {
-    return falha("entrada_invalida", CONTEUDO_TROCADO);
+  if (
+    !caminhoConfere(
+      evidencia.caminho,
+      oferta.empresaId,
+      oferta.id,
+      evidencia.tipoDoArquivo,
+    )
+  ) {
+    return falha("sem_permissao");
   }
-  const caminho = caminhoDoArquivo(
-    oferta.empresaId,
-    oferta.id,
-    randomUUID(),
-    evidencia.tipoDoArquivo,
+  const arquivo = await conferirArquivoEnviado(
+    dependencias.administrativo(),
+    BUCKET_DAS_EVIDENCIAS,
+    evidencia.caminho,
+    {
+      tipo: evidencia.tipoDoArquivo,
+      tamanhoMaximo: TAMANHO_MAXIMO_DO_ARQUIVO,
+      confere: (conteudo, tipo) =>
+        conteudoConfere(conteudo, tipo as TipoDeArquivoDoDocumento),
+    },
   );
-  const envio = await dependencias.sessao.storage
-    .from(BUCKET_DAS_EVIDENCIAS)
-    .upload(caminho, evidencia.conteudo, {
-      contentType: evidencia.tipoDoArquivo,
-      upsert: false,
-    });
-  if (envio.error !== null) return falha("sem_permissao");
+  if (!arquivo.ok) return arquivo;
   const { data, error } = await comRastreio(
     dependencias.sessao
       .from("check_evidence_files")
       .insert({
         offer_id: oferta.id,
-        storage_path: caminho,
-        sha256: createHash("sha256").update(evidencia.conteudo).digest("hex"),
+        storage_path: evidencia.caminho,
+        sha256: arquivo.dados.sha256,
         content_type: evidencia.tipoDoArquivo,
-        size_bytes: evidencia.conteudo.byteLength,
+        size_bytes: arquivo.dados.tamanho,
       })
       .select("id")
       .single(),

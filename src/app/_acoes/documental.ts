@@ -36,24 +36,10 @@ import {
   type EstadoDoFormulario,
 } from "../_apoio/formulario";
 import { errosPorCampo, juntarErros } from "../_apoio/oferta";
+import { arquivoEnviado } from "../_apoio/envio";
 import { executarOperacaoDaTela } from "./executar";
 
 const CONFIRA = "Confira os campos destacados.";
-
-function arquivoDoFormulario(dados: FormData): File | null {
-  const arquivo = dados.get("arquivo");
-  return arquivo instanceof File && arquivo.size > 0 ? arquivo : null;
-}
-
-async function evidenciaDoArquivo(arquivo: File): Promise<{
-  tipoDoArquivo: string;
-  conteudo: Uint8Array;
-}> {
-  return {
-    tipoDoArquivo: arquivo.type,
-    conteudo: new Uint8Array(await arquivo.arrayBuffer()),
-  };
-}
 
 /** Registro manual da consulta (§6.3), com a evidência quando houver. */
 export async function registrarConsultaAcao(
@@ -61,11 +47,15 @@ export async function registrarConsultaAcao(
   dados: FormData,
 ): Promise<EstadoDoFormulario> {
   const lido = lerConsulta(dados);
-  const arquivo = arquivoDoFormulario(dados);
-  const erroDoAnexo = erroDoArquivo(arquivo, false);
+  // O navegador já enviou a evidência ao bucket (I3.11); aqui chega só o caminho.
+  const enviado = arquivoEnviado(dados);
+  const erroDoAnexo = erroDoArquivo(enviado, false);
   const entrada: Record<string, unknown> = { ...lido.entrada };
-  if (arquivo !== null && erroDoAnexo === null) {
-    entrada.evidencia = await evidenciaDoArquivo(arquivo);
+  if (enviado !== null && erroDoAnexo === null) {
+    entrada.evidencia = {
+      tipoDoArquivo: enviado.tipoDoArquivo,
+      caminho: enviado.caminho,
+    };
   }
   const conferido = esquemaDaConsulta.safeParse(entrada);
   const erros = juntarErros(
@@ -164,9 +154,9 @@ export async function resolverImpedimentoAcao(
   dados: FormData,
 ): Promise<EstadoDoFormulario> {
   const lido = lerResolucao(dados);
-  const arquivo = arquivoDoFormulario(dados);
-  const erroDoAnexo = erroDoArquivo(arquivo, true);
-  if (!lido.ok || erroDoAnexo !== null || arquivo === null) {
+  const enviado = arquivoEnviado(dados);
+  const erroDoAnexo = erroDoArquivo(enviado, true);
+  if (!lido.ok || erroDoAnexo !== null || enviado === null) {
     return estadoDeErro(anterior, CONFIRA, {
       campos: juntarErros(
         lido.ok ? {} : lido.campos,
@@ -178,7 +168,13 @@ export async function resolverImpedimentoAcao(
   return executarOperacaoDaTela(
     anterior,
     resolverImpedimento,
-    { ...lido.entrada, evidencia: await evidenciaDoArquivo(arquivo) },
+    {
+      ...lido.entrada,
+      evidencia: {
+        tipoDoArquivo: enviado.tipoDoArquivo,
+        caminho: enviado.caminho,
+      },
+    },
     "Impedimento resolvido. O motivo e a evidência ficaram registrados.",
     {
       nomesDosCampos: { evidencia: "arquivo" },

@@ -4,7 +4,6 @@
  * o erro sair em português no campo certo; o formato, os limites, a lista de
  * linguagem e quem pode agir ficam nos esquemas, na operação e no banco.
  */
-import { TAMANHO_MAXIMO_DO_ARQUIVO } from "@/modules/offers/storage/arquivos";
 import { texto, textoOpcional, valoresDoFormulario } from "./formulario";
 import type { CampoDoEsquema } from "./oferta";
 import type { LeituraDoFormulario } from "./oferta-da-plataforma";
@@ -131,16 +130,14 @@ const TIPOS_DA_EVIDENCIA: readonly string[] = [
 
 /** Erro do arquivo da evidência, ou `null` se ele serve (o servidor confere o conteúdo). */
 export function erroDoArquivo(
-  arquivo: { readonly size: number; readonly type: string } | null,
+  arquivo: { readonly tipoDoArquivo: string } | null,
   obrigatorio: boolean,
 ): string | null {
   if (arquivo === null) {
     return obrigatorio ? "Anexe a evidência da regularização." : null;
   }
-  if (arquivo.size > TAMANHO_MAXIMO_DO_ARQUIVO) {
-    return "O arquivo precisa ter até 10 MB.";
-  }
-  if (!TIPOS_DA_EVIDENCIA.includes(arquivo.type)) {
+  // O tamanho e o conteúdo, o servidor confere no bucket depois do envio direto (I3.11).
+  if (!TIPOS_DA_EVIDENCIA.includes(arquivo.tipoDoArquivo)) {
     return "Use um arquivo PDF, JPEG, PNG ou WebP.";
   }
   return null;

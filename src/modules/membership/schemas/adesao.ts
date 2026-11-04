@@ -47,17 +47,23 @@ export const esquemaDaConferencia = z.strictObject({
     }),
 });
 
+/** Passo 1 do envio direto da evidência (I3.11): o tipo e o tamanho declarados. */
+export const esquemaDoEnvioDaEvidencia = z.strictObject({
+  pedidoId: id,
+  tipoDoArquivo: z.enum(TIPOS_DA_EVIDENCIA),
+  tamanho: z
+    .int()
+    .min(1, { error: "O arquivo está vazio." })
+    .max(TAMANHO_MAXIMO_DA_EVIDENCIA, {
+      error: "O arquivo precisa ter até 10 MB.",
+    }),
+});
+
+/** Passo 3: o caminho no bucket; o servidor confere o pedido, o tipo e o conteúdo. */
 export const esquemaDaEvidencia = z.strictObject({
   pedidoId: id,
   tipoDoArquivo: z.enum(TIPOS_DA_EVIDENCIA),
-  conteudo: z
-    .instanceof(Uint8Array)
-    .refine(
-      (conteudo) =>
-        conteudo.byteLength > 0 &&
-        conteudo.byteLength <= TAMANHO_MAXIMO_DA_EVIDENCIA,
-      { error: "O arquivo precisa ter até 10 MB." },
-    ),
+  caminho: z.string().min(1, { error: "Envie o arquivo." }).max(300),
   descricao: z.string().trim().max(500).optional(),
 });
 

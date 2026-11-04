@@ -32,7 +32,7 @@ import {
   dependencias,
   empresaAprovada,
   entrar,
-  pdfDeTeste,
+  evidenciaDaConsulta,
 } from "./operacoes/apoio";
 import { exigir, ofertaCompleta, ofertaPublicada } from "./operacoes/ofertas";
 
@@ -116,10 +116,7 @@ describe("registro de consulta (recordCheck)", () => {
       await registrarConsulta(
         dependencias(f2),
         consulta(rascunho, {
-          evidencia: {
-            tipoDoArquivo: "application/pdf",
-            conteudo: pdfDeTeste(),
-          },
+          evidencia: await evidenciaDaConsulta(f2, rascunho),
         }),
       ),
       "consulta do member",
@@ -147,10 +144,7 @@ describe("registro de consulta (recordCheck)", () => {
       await registrarConsulta(
         dependencias(operador),
         consulta(publicada, {
-          evidencia: {
-            tipoDoArquivo: "application/pdf",
-            conteudo: pdfDeTeste(),
-          },
+          evidencia: await evidenciaDaConsulta(operador, publicada),
         }),
       ),
       "consulta da equipe",
@@ -341,10 +335,7 @@ describe("impedimento de transferência", () => {
     expect(doSnapshot).toEqual(estados.avisos.map((a) => a.codigo));
 
     const impedimentoId = estados.impedimentos[0]?.id ?? "";
-    const evidencia = {
-      tipoDoArquivo: "application/pdf",
-      conteudo: pdfDeTeste(),
-    };
+    const evidencia = await evidenciaDaConsulta(admin, rascunho);
     const doOperador = await resolverImpedimento(dependencias(operador), {
       impedimentoId,
       motivo: "Regularização apresentada.",
@@ -385,10 +376,7 @@ describe("evidência e lista de linguagem", () => {
         dependencias(f1),
         consulta(rascunho, {
           categoria: "debts_ipva",
-          evidencia: {
-            tipoDoArquivo: "application/pdf",
-            conteudo: pdfDeTeste(),
-          },
+          evidencia: await evidenciaDaConsulta(f1, rascunho),
         }),
       ),
       "consulta",

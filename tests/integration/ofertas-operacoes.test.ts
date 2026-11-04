@@ -35,7 +35,6 @@ import {
   suspenderOferta,
 } from "@/modules/offers/server/transicoes";
 import {
-  enviarFotoDaOferta,
   ordenarFotoDaOferta,
   removerFotoDaOferta,
 } from "@/modules/offers/storage/servidor";
@@ -53,6 +52,7 @@ import {
   dependenciasEspiadas,
   empresaAprovada,
   entrar,
+  fotoDaOferta,
 } from "./operacoes/apoio";
 import {
   diaDaqui,
@@ -760,11 +760,7 @@ describe("fotos", () => {
       ...new TextEncoder().encode(`foto ${SUFIXO}`),
     ]);
     const { fotoId } = exigir(
-      await enviarFotoDaOferta(dependencias(f2), {
-        ofertaId,
-        tipoDoArquivo: "image/png",
-        conteudo: png,
-      }),
+      await fotoDaOferta(f2, ofertaId, png),
       "envio da foto",
     );
     for (const sessao of [oper, g1]) {

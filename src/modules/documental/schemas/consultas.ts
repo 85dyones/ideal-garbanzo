@@ -89,17 +89,24 @@ const categoria = z
   .string()
   .regex(/^[a-z][a-z0-9_]{0,63}$/u, { error: "Categoria inválida." });
 
-const conteudo = z
-  .instanceof(Uint8Array)
-  .refine(
-    (arquivo) =>
-      arquivo.byteLength > 0 && arquivo.byteLength <= TAMANHO_MAXIMO_DO_ARQUIVO,
-    { error: "O arquivo precisa ter até 10 MB." },
-  );
+/**
+ * Evidência pelo envio direto ao Storage (I3.11): o passo 1 declara o tipo e o
+ * tamanho; o passo 3 traz só o caminho, e o servidor confere o arquivo.
+ */
+export const esquemaDoEnvioDaEvidencia = z.strictObject({
+  ofertaId: id,
+  tipoDoArquivo: z.enum(TIPOS_DE_ARQUIVO_DO_DOCUMENTO),
+  tamanho: z
+    .int()
+    .min(1, { error: "O arquivo está vazio." })
+    .max(TAMANHO_MAXIMO_DO_ARQUIVO, {
+      error: "O arquivo precisa ter até 10 MB.",
+    }),
+});
 
 export const esquemaDaEvidencia = z.strictObject({
   tipoDoArquivo: z.enum(TIPOS_DE_ARQUIVO_DO_DOCUMENTO),
-  conteudo,
+  caminho: z.string().min(1, { error: "Envie o arquivo." }).max(300),
 });
 
 export const esquemaDaConsulta = z.strictObject({

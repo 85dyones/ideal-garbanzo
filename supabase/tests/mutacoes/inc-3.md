@@ -914,3 +914,15 @@ Troca em `pg_get_functiondef('private.aviso_do_estado(text)'::regprocedure)`:
 ```sql
 regexp_replace(d, 'categoria_em_analise[.]v2', 'categoria_em_analise.v1')
 ```
+
+## I3.11: envio direto de arquivo ao Storage (04/11/2026)
+
+Mutações de código. O arquivo é trocado, o teste de integração indicado roda, e o original volta, conferido byte a byte.
+
+| ID  | Arquivo                                    | Mudança                                              | Teste                    | Resultado                                                                                      |
+| --- | ------------------------------------------ | ---------------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------- |
+| U01 | `src/modules/offers/storage/servidor.ts`   | registro sem conferir o caminho da oferta            | `operacoes/envio-direto` | caiu: o caminho de outra oferta                                                                |
+| U02 | `src/lib/operacao/envio-direto.ts`         | passo 3 sem conferir o tipo pelo conteúdo            | `operacoes/envio-direto` | caiu: conteúdo de outro tipo                                                                   |
+| U03 | `src/lib/operacao/envio-direto.ts`         | passo 3 sem apagar o arquivo recusado                | `operacoes/envio-direto` | caiu: conteúdo de outro tipo (o objeto continua no bucket)                                     |
+| U04 | `src/modules/membership/server/revisao.ts` | evidência da adesão sem conferir o caminho do pedido | `operacoes/identidade`   | caiu: D13/D17, com 14 casos seguintes em cascata, porque dependem da evidência gravada ali     |
+| U05 | `src/modules/offers/storage/servidor.ts`   | passo 1 sem a checagem do vínculo                    | `operacoes/envio-direto` | equivalente, como esperado: a política de inclusão do bucket recusa a URL para a outra empresa |

@@ -4,7 +4,7 @@
 **Próxima subtarefa:**
 - **Mudança de escopo de 30/10 (fornecedora só por convite):** concluída em 31/10, com I1.9 a I1.12 e a revisão independente sem crítico nem alto (ADR-0002 §9 e §10). Fica com a pessoa responsável o texto do `convite.html` no painel do Auth.
 - **Inc. 4 (catálogo privado):** I4.0 entregue em 04/11 (ADR-0005 proposto). Próxima: I4.1, a leitura do comprador no banco e no servidor (T2).
-- **Inc. 3 (domínio documental):** a I3.10 corrigiu os achados da revisão prévia da I3.8 (04/11). Falta a I3.11 (envio direto de arquivos ao Storage) e a I3.8 (revisão externa, AG), pela pessoa responsável, com o roteiro em `docs/workflow/revisao-externa-i3.8.md`. Depois, o gate e o aceite do ADR-0004. O piloto com dados reais continua bloqueado pela D5.
+- **Inc. 3 (domínio documental):** a I3.10 corrigiu os achados da revisão prévia da I3.8 (04/11). A I3.11 (envio direto de arquivos ao Storage) foi entregue em 04/11. Falta a I3.8 (revisão externa, AG), pela pessoa responsável, com o roteiro em `docs/workflow/revisao-externa-i3.8.md`. Depois, o gate e o aceite do ADR-0004. O piloto com dados reais continua bloqueado pela D5.
 
 **Painéis do Auth:** configurados em 28/10 (veja a entrada "configuração do Auth nos painéis"). O captcha fica para o Inc. 6.
 
@@ -1282,4 +1282,31 @@
 - **Pendente da pessoa responsável:**
   - colar de novo o `convite.html`, porque o link mudou para `{{ .RedirectTo }}`;
   - ajustar a Site URL quando a homologação entrar em uso.
+
+### 2026-11-04 · I3.11 · envio direto de arquivo ao Storage
+
+- **Decisão da pessoa responsável (04/11, R-AG-06):** os arquivos vão do navegador direto ao Storage. A Vercel recusa corpo acima de 4,5 MB.
+- **Três passos** (`src/lib/operacao/envio-direto.ts`; ADR-0004 §10):
+  - **preparar:** a operação confere a permissão e pede a URL assinada com a sessão, e a política do bucket decide de novo;
+  - **enviar:** o navegador envia ao bucket (`src/app/_apoio/envio-direto.ts`), e a Server Action recebe só o caminho e o tipo;
+  - **registrar:** a operação confere o caminho, baixa o arquivo com a chave secreta, confere tamanho, tipo pelo conteúdo e sha256, e apaga o que não confere. Só então grava a linha com a sessão.
+- **Onde vale:**
+  - fotos e documentos da oferta;
+  - evidência da consulta e da resolução do impedimento;
+  - evidência da adesão.
+- **Também:**
+  - o teto das Server Actions voltou ao padrão de 1 MB;
+  - o ADR-0002 §2.12 registra o sexto uso da chave secreta;
+  - o formulário de resolução do impedimento leva a oferta.
+- **Testes:**
+  - integração nova `operacoes/envio-direto` (6), com um arquivo de 6 MB, conteúdo trocado apagado do bucket, caminho de outra oferta, registro sem envio, outra empresa e tamanho acima de 10 MB;
+  - o caso da evidência de outro pedido na adesão;
+  - os testes antigos passaram a enviar em três passos.
+- **Mutações de código:** 5. U01 a U04 foram detectadas; a U05 (sem a checagem do vínculo no passo 1) é equivalente, porque a política do bucket recusa do mesmo jeito.
+- **Evidência no dev:**
+  - **banco:** `test:db` com 28 arquivos passando;
+  - **integração:** `test:integration` com 14 arquivos e 139 testes passando;
+  - **e2e:** 35 passando, com os envios pelas telas;
+  - **código:** 438 unitários, tipos, lint, formatação e build passando.
+- **Falta verificar no preview:** o arquivo de 6 MB, porque o limite de 4,5 MB só existe na Vercel.
 

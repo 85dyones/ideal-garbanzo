@@ -5,8 +5,9 @@
  * decisão (só administrador). A tela esconde do operador o que é do
  * administrador; a operação de servidor recusa de qualquer jeito.
  */
-import { useActionState, useId, useState } from "react";
+import { useActionState, useId, useMemo, useState } from "react";
 import { localParaIso, paraCampoLocal } from "@/app/_apoio/datas";
+import { comEnvioDireto } from "@/app/_apoio/envio-direto";
 import { ESTADO_INICIAL, type AcaoDoFormulario } from "@/app/_apoio/formulario";
 import { BOTAO_SECUNDARIO, CAMPO, LINK } from "@/components/estilos";
 import {
@@ -204,7 +205,12 @@ export function FormularioDeEvidencia({
   readonly pedidoId: string;
   readonly acao: AcaoDoFormulario;
 }) {
-  const [estado, enviar] = useActionState(acao, ESTADO_INICIAL);
+  // A evidência vai do navegador direto ao Storage (I3.11).
+  const comEnvio = useMemo(
+    () => comEnvioDireto(acao, "evidencia-da-adesao", "pedidoId"),
+    [acao],
+  );
+  const [estado, enviar] = useActionState(comEnvio, ESTADO_INICIAL);
   return (
     <form action={enviar} className="flex flex-col gap-3" noValidate>
       <input type="hidden" name="pedidoId" value={pedidoId} />

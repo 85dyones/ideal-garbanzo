@@ -10,12 +10,14 @@
  */
 import {
   useActionState,
+  useMemo,
   useEffect,
   useId,
   useState,
   type ReactNode,
 } from "react";
 import { localParaIso, paraCampoLocal } from "@/app/_apoio/datas";
+import { comEnvioDireto } from "@/app/_apoio/envio-direto";
 import {
   ESTADO_INICIAL,
   type AcaoDoFormulario,
@@ -341,7 +343,12 @@ export function RegistroDeConsulta({
   readonly dicaDaSubstituicao: string;
   readonly acao: AcaoDoFormulario;
 }) {
-  const [estado, enviar] = useActionState(acao, ESTADO_INICIAL);
+  // A evidência vai do navegador direto ao Storage (I3.11).
+  const comEnvio = useMemo(
+    () => comEnvioDireto(acao, "evidencia-da-consulta", "ofertaId"),
+    [acao],
+  );
+  const [estado, enviar] = useActionState(comEnvio, ESTADO_INICIAL);
   return (
     <form
       action={enviar}
@@ -436,16 +443,24 @@ export function MudancaDaRevisao({
  * mensagem do último envio.
  */
 export function ResolucaoDoImpedimento({
+  ofertaId,
   impedimentos,
   semImpedimento,
   acao,
 }: {
+  /** A oferta do impedimento: a evidência vai para o bucket dela. */
+  readonly ofertaId: string;
   /** Impedimentos ativos: id e texto de leitura. */
   readonly impedimentos: readonly (readonly [string, string])[];
   readonly semImpedimento: string;
   readonly acao: AcaoDoFormulario;
 }) {
-  const [estado, enviar] = useActionState(acao, ESTADO_INICIAL);
+  // A evidência vai do navegador direto ao Storage (I3.11).
+  const comEnvio = useMemo(
+    () => comEnvioDireto(acao, "evidencia-da-consulta", "ofertaId"),
+    [acao],
+  );
+  const [estado, enviar] = useActionState(comEnvio, ESTADO_INICIAL);
   const [unico] = impedimentos;
   let escolha: ReactNode = null;
   if (impedimentos.length === 1 && unico !== undefined) {
@@ -474,6 +489,7 @@ export function ResolucaoDoImpedimento({
       noValidate
       aria-label="Resolver impedimento de transferência"
     >
+      <input type="hidden" name="ofertaId" value={ofertaId} />
       {impedimentos.length === 0 ? (
         <p className="text-sm text-neutral-700">{semImpedimento}</p>
       ) : (

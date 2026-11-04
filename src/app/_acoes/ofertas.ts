@@ -34,11 +34,6 @@ import {
   retirarOferta,
 } from "@/modules/offers/server/transicoes";
 import {
-  TAMANHO_MAXIMO_DO_ARQUIVO,
-  TIPOS_DE_ARQUIVO_DO_DOCUMENTO,
-  TIPOS_DE_FOTO,
-} from "@/modules/offers/storage/arquivos";
-import {
   enviarDocumentoDaOferta,
   enviarFotoDaOferta,
   gerarUrlDoDocumento,
@@ -61,6 +56,7 @@ import {
   juntarErros,
   lerFormularioDaOferta,
 } from "../_apoio/oferta";
+import { arquivoEnviado } from "../_apoio/envio";
 import { executarOperacaoDaTela } from "./executar";
 
 const CONFIRA = "Confira os campos destacados.";
@@ -250,30 +246,16 @@ export async function declararCategoriasAcao(
   );
 }
 
-function arquivoDoFormulario(dados: FormData): File | null {
-  const arquivo = dados.get("arquivo");
-  return arquivo instanceof File && arquivo.size > 0 ? arquivo : null;
-}
-
 /** Etapa 2: envia a foto ao bucket privado e a inclui na oferta. */
 export async function enviarFotoAcao(
   anterior: EstadoDoFormulario,
   dados: FormData,
 ): Promise<EstadoDoFormulario> {
-  const arquivo = arquivoDoFormulario(dados);
-  if (arquivo === null) {
+  // O navegador já enviou a foto ao bucket (I3.11); aqui chega só o caminho.
+  const enviado = arquivoEnviado(dados);
+  if (enviado === null) {
     return estadoDeErro(anterior, "Escolha a foto.", {
       campos: { arquivo: ["Escolha um arquivo."] },
-    });
-  }
-  if (arquivo.size > TAMANHO_MAXIMO_DO_ARQUIVO) {
-    return estadoDeErro(anterior, CONFIRA, {
-      campos: { arquivo: ["A foto precisa ter até 10 MB."] },
-    });
-  }
-  if (!(TIPOS_DE_FOTO as readonly string[]).includes(arquivo.type)) {
-    return estadoDeErro(anterior, CONFIRA, {
-      campos: { arquivo: ["Use uma foto em JPEG, PNG ou WebP."] },
     });
   }
   const ordem = inteiroDoCampo(texto(dados, "ordem"));
@@ -282,12 +264,12 @@ export async function enviarFotoAcao(
     enviarFotoDaOferta,
     {
       ofertaId: texto(dados, "ofertaId"),
-      tipoDoArquivo: arquivo.type,
-      conteudo: new Uint8Array(await arquivo.arrayBuffer()),
+      tipoDoArquivo: enviado.tipoDoArquivo,
+      caminho: enviado.caminho,
       ...(ordem === null ? {} : { ordem: Math.min(ordem, 999) }),
     },
     "Foto enviada.",
-    { nomesDosCampos: { tipoDoArquivo: "arquivo", conteudo: "arquivo" } },
+    { nomesDosCampos: { tipoDoArquivo: "arquivo", caminho: "arquivo" } },
   );
 }
 
@@ -346,17 +328,12 @@ export async function enviarDocumentoAcao(
   if (texto(dados, "tipo") === "") {
     erros.tipo = ["Escolha o tipo do documento."];
   }
-  const arquivo = arquivoDoFormulario(dados);
-  if (arquivo === null) {
+  // O navegador já enviou o arquivo ao bucket (I3.11); aqui chega só o caminho.
+  const enviado = arquivoEnviado(dados);
+  if (enviado === null) {
     erros.arquivo = ["Escolha um arquivo."];
-  } else if (arquivo.size > TAMANHO_MAXIMO_DO_ARQUIVO) {
-    erros.arquivo = ["O arquivo precisa ter até 10 MB."];
-  } else if (
-    !(TIPOS_DE_ARQUIVO_DO_DOCUMENTO as readonly string[]).includes(arquivo.type)
-  ) {
-    erros.arquivo = ["Use um arquivo PDF, JPEG, PNG ou WebP."];
   }
-  if (arquivo === null || !semCampos(erros)) {
+  if (enviado === null || !semCampos(erros)) {
     return estadoDeErro(anterior, CONFIRA, { campos: erros, valores });
   }
   return executarOperacaoDaTela(
@@ -365,13 +342,13 @@ export async function enviarDocumentoAcao(
     {
       ofertaId: texto(dados, "ofertaId"),
       tipo: texto(dados, "tipo"),
-      tipoDoArquivo: arquivo.type,
-      conteudo: new Uint8Array(await arquivo.arrayBuffer()),
+      tipoDoArquivo: enviado.tipoDoArquivo,
+      caminho: enviado.caminho,
       descricao: textoOpcional(dados, "descricao"),
     },
     "Documento enviado.",
     {
-      nomesDosCampos: { tipoDoArquivo: "arquivo", conteudo: "arquivo" },
+      nomesDosCampos: { tipoDoArquivo: "arquivo", caminho: "arquivo" },
       valores,
     },
   );

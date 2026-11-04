@@ -21,6 +21,7 @@ import {
   enviarEvidencia,
   gerarUrlDaEvidencia,
   moverPedidoParaAnalise,
+  prepararEnvioDaEvidencia,
   registrarConferencia,
 } from "@/modules/membership/server/revisao";
 import { mudarStatusDaEmpresa } from "@/modules/organizations/server/empresas";
@@ -41,6 +42,8 @@ import {
   dependenciasEspiadas,
   emailDeTeste,
   entrar,
+  enviarAoStorage,
+  evidenciaDaAdesao,
   pdfDeTeste,
   type UsuarioDeTeste,
 } from "./apoio";
@@ -200,10 +203,17 @@ describe("adesão pelo servidor", () => {
       registrarConferencia(d, { pedidoId, itens: [] }),
     );
     await recusadoPeloServidor(operador, (d) =>
+      prepararEnvioDaEvidencia(d, {
+        pedidoId,
+        tipoDoArquivo: "application/pdf",
+        tamanho: pdfDeTeste().byteLength,
+      }),
+    );
+    await recusadoPeloServidor(operador, (d) =>
       enviarEvidencia(d, {
         pedidoId,
         tipoDoArquivo: "application/pdf",
-        conteudo: pdfDeTeste(),
+        caminho: `${pedidoId}/00000000-0000-4000-8000-000000000000.pdf`,
       }),
     );
 
@@ -225,19 +235,40 @@ describe("adesão pelo servidor", () => {
     });
     expect(conferencia.ok).toBe(true);
 
-    const trocado = await enviarEvidencia(dependencias(admin.sessao), {
+    // Conteúdo de PDF declarado como PNG: o servidor confere no bucket e apaga (I3.11).
+    const trocado = await evidenciaDaAdesao(
+      admin.sessao,
       pedidoId,
-      tipoDoArquivo: "image/png",
-      conteudo: pdfDeTeste(),
-    });
+      pdfDeTeste(),
+      "image/png",
+    );
     expect(trocado).toMatchObject({ ok: false, erro: "entrada_invalida" });
 
-    const evidencia = await enviarEvidencia(dependencias(admin.sessao), {
-      pedidoId,
+    // O caminho é do pedido: a evidência enviada para um pedido não serve a outro (I3.11).
+    const caminho = await enviarAoStorage(
+      admin.sessao,
+      await prepararEnvioDaEvidencia(dependencias(admin.sessao), {
+        pedidoId,
+        tipoDoArquivo: "application/pdf",
+        tamanho: pdfDeTeste().byteLength,
+      }),
+      pdfDeTeste(),
+      "application/pdf",
+    );
+    const deOutroPedido = await enviarEvidencia(dependencias(admin.sessao), {
+      pedidoId: "00000000-0000-4000-8000-0000000000aa",
       tipoDoArquivo: "application/pdf",
-      conteudo: pdfDeTeste(),
-      descricao: "comprovante de inscrição",
+      caminho,
     });
+    expect(deOutroPedido).toMatchObject({ ok: false, erro: "sem_permissao" });
+
+    const evidencia = await evidenciaDaAdesao(
+      admin.sessao,
+      pedidoId,
+      pdfDeTeste(),
+      "application/pdf",
+      "comprovante de inscrição",
+    );
     expect(evidencia.ok).toBe(true);
     if (!evidencia.ok) return;
     evidenciaId = evidencia.dados.evidenciaId;

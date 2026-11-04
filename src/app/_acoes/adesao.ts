@@ -12,7 +12,6 @@ import {
   moverPedidoParaAnalise,
   registrarConferencia,
 } from "@/modules/membership/server/revisao";
-import { TAMANHO_MAXIMO_DA_EVIDENCIA } from "@/modules/membership/rules/evidencia";
 import {
   estadoDeErro,
   estadoDeSucesso,
@@ -23,6 +22,7 @@ import {
   type EstadoDoFormulario,
 } from "../_apoio/formulario";
 import { criarDependencias } from "@/lib/supabase/servidor";
+import { arquivoEnviado } from "../_apoio/envio";
 import { executarOperacaoDaTela } from "./executar";
 
 export async function moverParaAnaliseAcao(
@@ -66,16 +66,11 @@ export async function enviarEvidenciaAcao(
   dados: FormData,
 ): Promise<EstadoDoFormulario> {
   const valores = valoresDoFormulario(dados, ["descricao"]);
-  const arquivo = dados.get("arquivo");
-  if (!(arquivo instanceof File) || arquivo.size === 0) {
+  // O navegador já enviou o arquivo ao bucket (I3.11); aqui chega só o caminho.
+  const enviado = arquivoEnviado(dados);
+  if (enviado === null) {
     return estadoDeErro(anterior, "Escolha o arquivo da evidência.", {
       campos: { arquivo: ["Escolha um arquivo."] },
-      valores,
-    });
-  }
-  if (arquivo.size > TAMANHO_MAXIMO_DA_EVIDENCIA) {
-    return estadoDeErro(anterior, "Confira os campos destacados.", {
-      campos: { arquivo: ["O arquivo precisa ter até 10 MB."] },
       valores,
     });
   }
@@ -84,13 +79,13 @@ export async function enviarEvidenciaAcao(
     enviarEvidencia,
     {
       pedidoId: texto(dados, "pedidoId"),
-      tipoDoArquivo: arquivo.type,
-      conteudo: new Uint8Array(await arquivo.arrayBuffer()),
+      tipoDoArquivo: enviado.tipoDoArquivo,
+      caminho: enviado.caminho,
       descricao: textoOpcional(dados, "descricao"),
     },
     "Evidência enviada.",
     {
-      nomesDosCampos: { tipoDoArquivo: "arquivo", conteudo: "arquivo" },
+      nomesDosCampos: { tipoDoArquivo: "arquivo", caminho: "arquivo" },
       valores,
     },
   );

@@ -240,11 +240,12 @@ Nenhuma dessas tabelas tem DELETE para `anon`, `authenticated` ou `service_role`
 ### 2.12. Escrita pelo servidor com a sessão do usuário
 
 - As operações de servidor da I1.5 escrevem com o cliente da sessão do usuário (chave publicável e cookie). Assim, toda escrita passa pelas políticas e pelos gatilhos com o ator verdadeiro.
-- A chave secreta (`service_role`) fica restrita a cinco usos, todos em código de servidor:
+- A chave secreta (`service_role`) fica restrita a seis usos, todos em código de servidor:
   - contagem do limite de tentativas (seção 2.16), depois da checagem de permissão da operação;
   - API administrativa do Auth (bloqueio, desbloqueio e convite, de membro e de fornecedora; no convite de membro a conta existente, também a leitura da confirmação do e-mail e da origem da conta, seção 2.6);
   - leitura do perfil pelo e-mail no convite de membro, depois de o servidor conferir que quem convida gere a empresa (I1.5): a sessão de quem convida não enxerga perfis fora da empresa, e a resposta é a mesma exista ou não a conta. A gravação do vínculo continua com a sessão de quem convida;
   - inclusão em `restricted_access_logs`;
+  - leitura e remoção do arquivo enviado direto ao Storage, no passo 3 do envio, depois da checagem de permissão da operação (I3.11; ADR-0004 §10);
   - preparação e limpeza dos testes de integração.
 - Cada caminho com `service_role` tem teste próprio da checagem do servidor, porque ali a RLS não vale.
 - Nas tabelas de identidade, o `service_role` só lê. Na `platform_settings`, a escrita que a I0.6 dava ao servidor foi retirada na I1.3.

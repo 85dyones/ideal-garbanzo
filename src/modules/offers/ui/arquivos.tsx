@@ -4,7 +4,8 @@
  * das fotos, envio e abertura dos documentos. O servidor confere o tipo, o
  * tamanho, o conteúdo e quem pode agir no estado da oferta.
  */
-import { useActionState } from "react";
+import { useActionState, useMemo } from "react";
+import { comEnvioDireto } from "@/app/_apoio/envio-direto";
 import { ESTADO_INICIAL, type AcaoDoFormulario } from "@/app/_apoio/formulario";
 import { BOTAO_DE_RISCO, BOTAO_SECUNDARIO, LINK } from "@/components/estilos";
 import {
@@ -37,7 +38,12 @@ export function EnvioDeFoto({
   readonly ordem: number;
   readonly acao: AcaoDoFormulario;
 }) {
-  const [estado, enviar] = useActionState(acao, ESTADO_INICIAL);
+  // O arquivo vai do navegador direto ao Storage (I3.11).
+  const comEnvio = useMemo(
+    () => comEnvioDireto(acao, "foto", "ofertaId"),
+    [acao],
+  );
+  const [estado, enviar] = useActionState(comEnvio, ESTADO_INICIAL);
   return (
     <form
       action={enviar}
@@ -110,7 +116,12 @@ export function EnvioDeDocumento({
   readonly ofertaId: string;
   readonly acao: AcaoDoFormulario;
 }) {
-  const [estado, enviar] = useActionState(acao, ESTADO_INICIAL);
+  // O arquivo vai do navegador direto ao Storage (I3.11).
+  const comEnvio = useMemo(
+    () => comEnvioDireto(acao, "documento", "ofertaId"),
+    [acao],
+  );
+  const [estado, enviar] = useActionState(comEnvio, ESTADO_INICIAL);
   return (
     <form
       action={enviar}

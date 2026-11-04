@@ -121,16 +121,13 @@ describe("arquivo da evidência", () => {
     );
   });
 
-  it("recusa tipo fora da lista e arquivo acima de 10 MB", () => {
-    expect(erroDoArquivo({ size: 10, type: "application/pdf" }, true)).toBe(
+  it("recusa tipo fora da lista; o tamanho, o servidor confere no bucket (I3.11)", () => {
+    expect(erroDoArquivo({ tipoDoArquivo: "application/pdf" }, true)).toBe(
       null,
     );
-    expect(erroDoArquivo({ size: 10, type: "text/plain" }, false)).toBe(
+    expect(erroDoArquivo({ tipoDoArquivo: "text/plain" }, false)).toBe(
       "Use um arquivo PDF, JPEG, PNG ou WebP.",
     );
-    expect(
-      erroDoArquivo({ size: 10 * 1024 * 1024 + 1, type: "image/png" }, false),
-    ).toBe("O arquivo precisa ter até 10 MB.");
   });
 });
 

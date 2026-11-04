@@ -550,6 +550,7 @@ export default async function PaginaDaOfertaNaAdministracao({
                       {TEXTO_DOCUMENTAL.introducaoDaResolucao}
                     </p>
                     <ResolucaoDoImpedimento
+                      ofertaId={oferta.id}
                       impedimentos={ativos.map(
                         (impedimento) =>
                           [

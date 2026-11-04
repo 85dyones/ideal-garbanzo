@@ -9,7 +9,7 @@ function documento(descricao?: string) {
     ofertaId: OFERTA,
     tipo: "laudo_cautelar",
     tipoDoArquivo: "application/pdf",
-    conteudo: new TextEncoder().encode("%PDF-1.4 documento de teste"),
+    caminho: "a/b/c.pdf",
     ...(descricao === undefined ? {} : { descricao }),
   };
 }

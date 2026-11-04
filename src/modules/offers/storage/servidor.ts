@@ -1,10 +1,12 @@
 /**
  * Fotos e documentos da oferta no Storage (ADR-0003 §2.13; teste 6 da §7.4).
  *
- * - O envio usa a sessão do usuário: a política do bucket e o gatilho da linha
- *   decidem quem envia, com o ator verdadeiro. O arquivo vai primeiro, porque
- *   a linha exige o objeto no bucket. Se a linha falhar depois do envio, o
- *   arquivo fica sem referência (ninguém apaga no bucket) e não aparece.
+ * - O envio é direto ao Storage, em duas etapas (I3.11;
+ *   `src/lib/operacao/envio-direto.ts`): a URL assinada nasce com a sessão do
+ *   usuário, e a política do bucket decide quem envia; depois, o servidor
+ *   confere o arquivo e grava a linha com a sessão, e o gatilho da linha decide
+ *   de novo. Se a linha falhar depois do envio, o arquivo fica sem referência
+ *   e não aparece.
  * - Foto: a URL temporária sai com a sessão de quem pede, pela política de
  *   leitura do bucket. Remover e reordenar mexem só na linha de
  *   `offer_media`, nos estados editáveis; o objeto fica no bucket.
@@ -16,8 +18,13 @@
  * O staff não envia arquivo (Q3): o servidor exige vínculo ativo com a empresa
  * dona antes de chegar ao Storage.
  */
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type { Dependencias } from "@/lib/operacao/dependencias";
+import {
+  conferirArquivoEnviado,
+  prepararUrlDeEnvio,
+  type EnvioPreparado,
+} from "@/lib/operacao/envio-direto";
 import {
   falha,
   sucesso,
@@ -42,10 +49,13 @@ import { lerOferta } from "../server/leitura";
 import {
   BUCKET_DAS_FOTOS,
   BUCKET_DOS_DOCUMENTOS,
+  TAMANHO_MAXIMO_DO_ARQUIVO,
   VALIDADE_DA_URL_DA_FOTO,
   VALIDADE_DA_URL_DO_DOCUMENTO,
+  caminhoConfere,
   caminhoDoArquivo,
   conteudoConfere,
+  type TipoDeArquivoDoDocumento,
 } from "./arquivos";
 import {
   esquemaDaFoto,
@@ -54,6 +64,8 @@ import {
   esquemaDaUrlDaFoto,
   esquemaDaUrlDoDocumento,
   esquemaDoDocumento,
+  esquemaDoEnvioDaFoto,
+  esquemaDoEnvioDoDocumento,
 } from "./esquemas";
 
 interface OfertaVisivel {
@@ -82,10 +94,99 @@ async function ofertaVisivel(
   return sucesso(data);
 }
 
-const CONTEUDO_TROCADO =
-  "O conteúdo do arquivo não corresponde ao tipo informado.";
+/** A empresa dona, se quem age tem vínculo ativo com ela; senão, "sem permissão". */
+async function empresaDoEnvio(
+  dependencias: Dependencias,
+  contexto: ContextoDoUsuario,
+  ofertaId: string,
+): Promise<Resultado<string>> {
+  const oferta = await ofertaVisivel(dependencias, ofertaId);
+  if (!oferta.ok) return oferta;
+  const empresaId = oferta.dados.supplier_organization_id;
+  if (vinculoAtivo(contexto, empresaId) === undefined) {
+    return falha("sem_permissao");
+  }
+  return sucesso(empresaId);
+}
 
-/** Envia a foto ao bucket e registra a linha em `offer_media`. */
+/** Passo 1 do envio direto (I3.11): confere quem envia e devolve a URL assinada. */
+function prepararEnvio(
+  bucket: string,
+  esquema: typeof esquemaDoEnvioDaFoto | typeof esquemaDoEnvioDoDocumento,
+) {
+  return (
+    dependencias: Dependencias,
+    entrada: unknown,
+  ): Promise<Resultado<EnvioPreparado>> =>
+    executarOperacao(
+      dependencias,
+      esquema,
+      entrada,
+      async (dados, contexto) => {
+        const empresa = await empresaDoEnvio(
+          dependencias,
+          contexto,
+          dados.ofertaId,
+        );
+        if (!empresa.ok) return empresa;
+        return prepararUrlDeEnvio(
+          dependencias.sessao,
+          bucket,
+          caminhoDoArquivo(
+            empresa.dados,
+            dados.ofertaId,
+            randomUUID(),
+            dados.tipoDoArquivo,
+          ),
+        );
+      },
+    );
+}
+
+export const prepararEnvioDaFoto = prepararEnvio(
+  BUCKET_DAS_FOTOS,
+  esquemaDoEnvioDaFoto,
+);
+export const prepararEnvioDoDocumento = prepararEnvio(
+  BUCKET_DOS_DOCUMENTOS,
+  esquemaDoEnvioDoDocumento,
+);
+
+/** Passo 3: o caminho é desta oferta e deste tipo, e o arquivo confere. */
+async function arquivoDaOferta(
+  dependencias: Dependencias,
+  bucket: string,
+  empresaId: string,
+  dados: {
+    readonly ofertaId: string;
+    readonly caminho: string;
+    readonly tipoDoArquivo: TipoDeArquivoDoDocumento;
+  },
+) {
+  if (
+    !caminhoConfere(
+      dados.caminho,
+      empresaId,
+      dados.ofertaId,
+      dados.tipoDoArquivo,
+    )
+  ) {
+    return falha("sem_permissao");
+  }
+  return conferirArquivoEnviado(
+    dependencias.administrativo(),
+    bucket,
+    dados.caminho,
+    {
+      tipo: dados.tipoDoArquivo,
+      tamanhoMaximo: TAMANHO_MAXIMO_DO_ARQUIVO,
+      confere: (conteudo, tipo) =>
+        conteudoConfere(conteudo, tipo as TipoDeArquivoDoDocumento),
+    },
+  );
+}
+
+/** Registra em `offer_media` a foto já enviada ao bucket (passo 3). */
 export function enviarFotoDaOferta(
   dependencias: Dependencias,
   entrada: unknown,
@@ -95,35 +196,26 @@ export function enviarFotoDaOferta(
     esquemaDaFoto,
     entrada,
     async (dados, contexto) => {
-      if (!conteudoConfere(dados.conteudo, dados.tipoDoArquivo)) {
-        return falha("entrada_invalida", CONTEUDO_TROCADO);
-      }
-      const oferta = await ofertaVisivel(dependencias, dados.ofertaId);
-      if (!oferta.ok) return oferta;
-      const empresaId = oferta.dados.supplier_organization_id;
-      if (vinculoAtivo(contexto, empresaId) === undefined) {
-        return falha("sem_permissao");
-      }
-      const caminho = caminhoDoArquivo(
-        empresaId,
+      const empresa = await empresaDoEnvio(
+        dependencias,
+        contexto,
         dados.ofertaId,
-        randomUUID(),
-        dados.tipoDoArquivo,
       );
-      const envio = await dependencias.sessao.storage
-        .from(BUCKET_DAS_FOTOS)
-        .upload(caminho, dados.conteudo, {
-          contentType: dados.tipoDoArquivo,
-          upsert: false,
-        });
-      if (envio.error !== null) return falha("sem_permissao");
+      if (!empresa.ok) return empresa;
+      const arquivo = await arquivoDaOferta(
+        dependencias,
+        BUCKET_DAS_FOTOS,
+        empresa.dados,
+        dados,
+      );
+      if (!arquivo.ok) return arquivo;
 
       const { data, error } = await comRastreio(
         dependencias.sessao
           .from("offer_media")
           .insert({
             offer_id: dados.ofertaId,
-            storage_path: caminho,
+            storage_path: dados.caminho,
             display_order: dados.ordem ?? 0,
           })
           .select("id")
@@ -136,7 +228,7 @@ export function enviarFotoDaOferta(
   );
 }
 
-/** Envia o documento ao bucket e registra a linha em `offer_documents`, com o sha256. */
+/** Registra em `offer_documents` o documento já enviado ao bucket, com o sha256 (passo 3). */
 export function enviarDocumentoDaOferta(
   dependencias: Dependencias,
   entrada: unknown,
@@ -146,29 +238,19 @@ export function enviarDocumentoDaOferta(
     esquemaDoDocumento,
     entrada,
     async (dados, contexto) => {
-      if (!conteudoConfere(dados.conteudo, dados.tipoDoArquivo)) {
-        return falha("entrada_invalida", CONTEUDO_TROCADO);
-      }
-      const oferta = await ofertaVisivel(dependencias, dados.ofertaId);
-      if (!oferta.ok) return oferta;
-      const empresaId = oferta.dados.supplier_organization_id;
-      if (vinculoAtivo(contexto, empresaId) === undefined) {
-        return falha("sem_permissao");
-      }
-      const caminho = caminhoDoArquivo(
-        empresaId,
+      const empresa = await empresaDoEnvio(
+        dependencias,
+        contexto,
         dados.ofertaId,
-        randomUUID(),
-        dados.tipoDoArquivo,
       );
-      const sha256 = createHash("sha256").update(dados.conteudo).digest("hex");
-      const envio = await dependencias.sessao.storage
-        .from(BUCKET_DOS_DOCUMENTOS)
-        .upload(caminho, dados.conteudo, {
-          contentType: dados.tipoDoArquivo,
-          upsert: false,
-        });
-      if (envio.error !== null) return falha("sem_permissao");
+      if (!empresa.ok) return empresa;
+      const arquivo = await arquivoDaOferta(
+        dependencias,
+        BUCKET_DOS_DOCUMENTOS,
+        empresa.dados,
+        dados,
+      );
+      if (!arquivo.ok) return arquivo;
 
       const { data, error } = await comRastreio(
         dependencias.sessao
@@ -176,8 +258,8 @@ export function enviarDocumentoDaOferta(
           .insert({
             offer_id: dados.ofertaId,
             kind: dados.tipo,
-            storage_path: caminho,
-            sha256,
+            storage_path: dados.caminho,
+            sha256: arquivo.dados.sha256,
             description: dados.descricao ?? null,
           })
           .select("id")
@@ -185,7 +267,7 @@ export function enviarDocumentoDaOferta(
         dependencias.requestId,
       ).overrideTypes<{ id: string }, { merge: false }>();
       if (error !== null) return traduzirErroDoBanco(error);
-      return sucesso({ documentoId: data.id, sha256 });
+      return sucesso({ documentoId: data.id, sha256: arquivo.dados.sha256 });
     },
   );
 }

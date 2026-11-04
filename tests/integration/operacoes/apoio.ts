@@ -9,11 +9,21 @@
 import { randomBytes } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Dependencias } from "@/lib/operacao/dependencias";
+import type { EnvioPreparado } from "@/lib/operacao/envio-direto";
+import type { Resultado } from "@/lib/operacao/resultado";
+import { prepararEnvioDaEvidencia as prepararEnvioDaEvidenciaDaConsulta } from "@/modules/documental/server/consultas";
 import { enviarPedidoDeAdesao } from "@/modules/membership/server/adesao";
+import {
+  enviarDocumentoDaOferta,
+  enviarFotoDaOferta,
+  prepararEnvioDaFoto,
+  prepararEnvioDoDocumento,
+} from "@/modules/offers/storage/servidor";
 import { convidarFornecedora } from "@/modules/membership/server/convites";
 import {
   decidirPedido,
   enviarEvidencia,
+  prepararEnvioDaEvidencia,
   registrarConferencia,
 } from "@/modules/membership/server/revisao";
 import { conectar } from "../../../scripts/lib/banco.mjs";
@@ -228,6 +238,123 @@ export function cnpjDeTeste(variante = "A"): string {
 }
 
 /**
+ * Envio direto ao Storage (I3.11), como o navegador faz: o passo 1 já rodou
+ * (`preparado`); aqui o arquivo vai ao bucket com o token. Devolve o caminho,
+ * para o passo 3 da operação.
+ */
+export async function enviarAoStorage(
+  sessao: SupabaseClient,
+  preparado: Resultado<EnvioPreparado>,
+  conteudo: Uint8Array,
+  tipo: string,
+): Promise<string> {
+  if (!preparado.ok) {
+    throw new Error(`preparar o envio: ${preparado.mensagem}`);
+  }
+  const { bucket, caminho, token } = preparado.dados;
+  const { error } = await sessao.storage
+    .from(bucket)
+    .uploadToSignedUrl(caminho, token, conteudo, { contentType: tipo });
+  if (error !== null) throw new Error(`envio ao Storage: ${error.message}`);
+  return caminho;
+}
+
+/** Evidência da adesão pelo envio direto: prepara, envia e registra. */
+export async function evidenciaDaAdesao(
+  administrador: SupabaseClient,
+  pedidoId: string,
+  conteudo: Uint8Array = pdfDeTeste(),
+  tipo = "application/pdf",
+  descricao?: string,
+) {
+  const caminho = await enviarAoStorage(
+    administrador,
+    await prepararEnvioDaEvidencia(dependencias(administrador), {
+      pedidoId,
+      tipoDoArquivo: tipo,
+      tamanho: conteudo.byteLength,
+    }),
+    conteudo,
+    tipo,
+  );
+  return enviarEvidencia(dependencias(administrador), {
+    pedidoId,
+    tipoDoArquivo: tipo,
+    caminho,
+    ...(descricao === undefined ? {} : { descricao }),
+  });
+}
+
+/** Evidência da consulta pelo envio direto: devolve o que `registrarConsulta` e `resolverImpedimento` recebem. */
+export async function evidenciaDaConsulta(
+  sessao: SupabaseClient,
+  ofertaId: string,
+  conteudo: Uint8Array = pdfDeTeste(),
+  tipo = "application/pdf",
+): Promise<{ tipoDoArquivo: string; caminho: string }> {
+  const caminho = await enviarAoStorage(
+    sessao,
+    await prepararEnvioDaEvidenciaDaConsulta(dependencias(sessao), {
+      ofertaId,
+      tipoDoArquivo: tipo,
+      tamanho: conteudo.byteLength,
+    }),
+    conteudo,
+    tipo,
+  );
+  return { tipoDoArquivo: tipo, caminho };
+}
+
+/** Foto da oferta pelo envio direto: prepara, envia e registra. */
+export async function fotoDaOferta(
+  sessao: SupabaseClient,
+  ofertaId: string,
+  conteudo: Uint8Array,
+  tipo = "image/png",
+) {
+  const caminho = await enviarAoStorage(
+    sessao,
+    await prepararEnvioDaFoto(dependencias(sessao), {
+      ofertaId,
+      tipoDoArquivo: tipo,
+      tamanho: conteudo.byteLength,
+    }),
+    conteudo,
+    tipo,
+  );
+  return enviarFotoDaOferta(dependencias(sessao), {
+    ofertaId,
+    tipoDoArquivo: tipo,
+    caminho,
+  });
+}
+
+/** Documento da oferta pelo envio direto: prepara, envia e registra. */
+export async function documentoDaOferta(
+  sessao: SupabaseClient,
+  ofertaId: string,
+  conteudo: Uint8Array,
+  tipoDoArquivo = "application/pdf",
+) {
+  const caminho = await enviarAoStorage(
+    sessao,
+    await prepararEnvioDoDocumento(dependencias(sessao), {
+      ofertaId,
+      tipoDoArquivo,
+      tamanho: conteudo.byteLength,
+    }),
+    conteudo,
+    tipoDoArquivo,
+  );
+  return enviarDocumentoDaOferta(dependencias(sessao), {
+    ofertaId,
+    tipo: "crlv",
+    tipoDoArquivo,
+    caminho,
+  });
+}
+
+/**
  * Empresa pelo fluxo real das operações: convite de fornecedora (quando o tipo
  * não é só compradora; ADR-0002 §9), pedido do requerente, conferência,
  * evidência e aprovação pelo administrador. Devolve o id da empresa, com o
@@ -260,11 +387,7 @@ export async function empresaAprovada(
     itens: [],
   });
   if (!conferencia.ok) throw new Error(`conferência ${variante}`);
-  const evidencia = await enviarEvidencia(dependencias(administrador), {
-    pedidoId,
-    tipoDoArquivo: "application/pdf",
-    conteudo: pdfDeTeste(),
-  });
+  const evidencia = await evidenciaDaAdesao(administrador, pedidoId);
   if (!evidencia.ok) throw new Error(`evidência ${variante}`);
   const decisao = await decidirPedido(dependencias(administrador), {
     pedidoId,

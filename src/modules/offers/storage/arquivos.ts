@@ -53,6 +53,26 @@ export function caminhoDoArquivo(
   return `${empresaId}/${ofertaId}/${arquivoId}.${EXTENSAO[tipo]}`;
 }
 
+/**
+ * O caminho que o navegador devolve depois do envio direto (I3.11) é o desta
+ * oferta e deste tipo: `<empresa>/<oferta>/<uuid>.<extensão>`.
+ */
+export function caminhoConfere(
+  caminho: string,
+  empresaId: string,
+  ofertaId: string,
+  tipo: TipoDeArquivoDoDocumento,
+): boolean {
+  const prefixo = `${empresaId}/${ofertaId}/`;
+  return (
+    caminho.startsWith(prefixo) &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u.test(
+      caminho.slice(prefixo.length, -(EXTENSAO[tipo].length + 1)),
+    ) &&
+    caminho.endsWith(`.${EXTENSAO[tipo]}`)
+  );
+}
+
 /** O conteúdo tem a assinatura do tipo declarado. */
 export function conteudoConfere(
   conteudo: Uint8Array,
